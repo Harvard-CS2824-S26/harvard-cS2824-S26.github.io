@@ -1,0 +1,175 @@
+% !TEX root = rltheorybook_AJKS.tex
+\chapter{Deterministic MDPs with Linearly Parameterized $Q^\star$}
+\label{chap:deterministic_linear_Q}
+
+\emph{To be added}
+
+\iffalse
+
+In this chapter, we consider the learning setting where the finite horizon MDP is deterministic in both transition and reward, and the optimal Q function $Q_h^\star$ is linear with respect to some known feature mapping $\phi:\Scal\times\Acal\mapsto \mathbb{R}^d$ for all $h$, i.e., there exists $\theta_h^\star$ such that $Q^\star_h(s,a) = (\theta_h^\star)^{\top} \phi(s,a)$. We show that unlike the general linear $Q^\star$ setting, with the additional assumption that the MDP is deterministic, there exists an efficient algorithm to learn the optimal policy.
+
+
+\section{Setting} 
+
+We consider a finite horizon MDP $\Mcal = \{s_0, \Scal,\Acal, H, r, P\}$ where $s_0$ is the fixed initial state distribution, and $P$ and $r$ are deterministic.  We also assume that there exists a feature mapping $\phi:\Scal\times\Acal\mapsto \mathbb{R}^d$ such that the optimal Q function $Q^\star_h$ is linear with respect to $\phi$. We summarize the assumption in the following statement. 
+\begin{assumption} We assume transition $P$ and reward $r$ are both deterministic. We assume $r(s,a) \in [0,1], \forall s,a$. We also assume that there is a feature mapping $\phi:\Scal\times\Acal\mapsto \mathbb{R}^d$, such that $Q^\star_h(s,a) = (\theta^\star_h)^{\top} \phi(s,a), \forall s,a, h$, where $\theta^\star_h \in \mathbb{R}^d, \forall h$.
+\end{assumption}
+
+Our goal here is to design an algorithm that identifies the optimal policy with number of samples scaling polynomially with respect to $d, H$.
+
+%Our goal is to design an algorithm that learns a policy $\widehat\pi$ that is $\epsilon$-near optimal, i.e., $V^{\widehat\pi} - V^\star \geq \epsilon$, with number of samples $\widetilde{O}\left( H, d, 1/\epsilon  \right)$.
+
+\section{Algorithm}
+
+Since the system is fully deterministic, once the algorithm visits a particular state $s$ at any time step $h$, it effectively knows how to reset to such system, by simply executing the open-loop actions that lead to state $s$ at time step $h$ from the fixed initial state $s_0$. For presentation simplicity, whenever the learner visits and stores a state $s$, we assume that it also directly memorizes (i.e., stores) the sequence of actions that lead to the state $s$, such that later when whenever the learner need to reset the state $s$, it can just execute the stored sequence of actions starting from $s_0$. Given a state $s$ that is visited by the learner before, we simply say \emph{Reset to $s$} in short of executing the memorized sequence of actions that lead to $s$. Such reset procedure effectively costs at most $H$ many real world interactions.
+
+
+
+
+\begin{algorithm}[h]
+\begin{algorithmic}[1]
+%\State \textbf{Input: parameters $\beta, \lambda$}
+\State Initialize datasets $\Dcal_0, \Dcal_1,\dots, \Dcal_{H-1}$
+%\State Set $s = s_0$
+\While{true}
+	\State Set $\theta_h =  \Phi_h^{\dagger} Y_h $ % \arg\min_{\theta} \sum_{s,a,y\in\Dcal_h} (\theta^{\top} \phi(s,a)  - y)^2, \forall h$
+	\State Set $\pi_h(s) := \arg\max_{a} \theta_h^{\top} \phi(s,a), \forall h$
+	\State Execute $\{\pi_h\}_{h=0}^{H-1}$ to get a trajectory $\{s_h,a_h,s_{h+1}\}_{h=0}^{H-2}$ \label{line:test_policy}
+	\If{ $\forall h, a: \theta_h^{\top} \phi(s_h,a) = \text{Compute-}Q^\star(s_h,a, h)$}
+		\State \textbf{Return} $\{\pi_h\}_{h=0}^{H-1}$
+	%\Else
+	%	Locate $h, a$ where $$
+	\EndIf
+	% \If {$\forall h:  \theta_h^{\top} \phi(s_h,a_h) = r(s_h,a_h) + \max_{a'} \theta_{h+1}^{\top} \phi(s_{h+1}, a')$}
+	% 	\State \textbf{Return} $\{\pi_h\}_{h=0}^{H-1}$
+	%\Else
+	%	\State Find $h$ where $\theta_h^{\top} \phi(s_h,a_h) \neq r(s_h,a_h) + \max_{a'} \theta_{h+1}^{\top} \phi(s_{h+1}, a')$
+	%	\State Compute-$Q^\star(s_h,a_h, h)$
+	% \EndIf
+\EndWhile
+%\For{$ a\in \Acal$}
+%  \State $ \text{Compute-Q}^\star\left( s_0, a, 0 \right), \forall a\in \Acal$
+%\EndFor
+%\State $\theta_h = \arg\min_{\theta} \sum_{s,a, y \in \Dcal_h} (  \theta^{\top} \phi(s,a) - y )^2 $
+%\State $\widehat\pi_h(s) := \arg\max_{a} \theta_h^{\top} \phi(s,a)$
+\end{algorithmic}
+\caption{LSVI for Deterministic linear $Q^\star$}
+\label{alg:ucbvi_deter_linear_q_star}
+\end{algorithm}
+
+\begin{algorithm}[h]
+\begin{algorithmic}[1]
+\If{ $\phi(s,a) \in \text{Span}\left(\{ \phi(s,a): s,a\in\Dcal_{h} \}\right)$}
+	\State \textbf{Return} $\left(\Phi_h^{\dagger} Y_h \right)^{\top} \phi(s,a)$ 
+\Else
+	\If {$h = H-1$}
+		\State  Add $(s,a,r(s,a))$ to $\Dcal_{H-1}$
+		\State \textbf{Return} $r(s,a)$
+	\Else
+		\State Reset system to $s$, execute $a$, observe $s'$ \label{line:executation}
+		\For{$a' \in \Acal$} 
+			%\State Reset system to $s$, execute $a'$, observe $s'_{a'}$
+			\State $y_{s',a'} = \text{Compute-}Q^\star(s',a', h+1)$	
+		\EndFor
+		\State Add $(s,a, r(s,a) + \max_{a'} y_{s', a'}  )$ to $\Dcal_{h}$ \label{line:addition}
+		\State \textbf{Return} $r(s,a) + \max_{a'} y_{s', a'}$
+	\EndIf
+	%\State Fit $\theta_{h} = \argmin_{\theta} ( \theta^{\top} \phi(s,a) - y  )^2$
+	%\State \textbf{Return} $\theta_h^{\top} \phi(s,a)$
+\EndIf
+\end{algorithmic}
+\caption{Compute-$Q^\star(s,a,h)$}
+\label{alg:compute_q_star_recursion}
+\end{algorithm}
+
+
+The algorithm relies on the idea of recursion. We first maintain $H$ many datasets where each $\Dcal_h$ contains triples $(s,a,y)$.   For notation simplicity, given $\Dcal_h$, we also denote $\Phi_h = [ \phi(s,a) : s,a,y\in\Dcal_h ]^{\top} \in \mathbb{R}^{ |\Dcal_h| \times d }$, and $Y_h = [ y: s,a,y\in\Dcal ]^{\top} \in \mathbb{R}^{|\Dcal_h|}$.  Thus, the least square solution with minimum norm on $\Dcal_h$ can be succinctly written as $\Phi_h^{\dagger} Y_h$.
+
+
+The function Compute-$Q^\star(s,a,h)$ is designed to return the exact value $Q_h^\star(s,a)$, and the datasets $\Dcal_h$ is maintained such that it only contains $(s,a,y)$ triples where $y = Q^\star_h(s,a)$, and the features of the $(s,a)$ pairs in $\Dcal_h$ are linearly independent, i.e., we only add new $(s,a)$ pair into $\Dcal_h$ if $\phi(s,a)$ is not in the span of the current $\Phi_h$. These properties of the dataset ensure that if a new query $(s,a)$ pair's feature is in the span of $\Phi_h$, then we must be able to directly predict $Q^\star_h(s,a)$ using the current least square solution $\theta_h = \Phi_h^{\dagger} Y_h$.  On the other hand, if $\phi(s,a)$ is not in the span of $\Phi_h$, then we compute $Q^\star_h(s,a)$ by recursively querying Compute-$Q^\star(s',a',h+1)$ to compute $Q^\star_{h+1}(s',a')$, with $s' \sim P(s,a )$ (here we abuse notation and write $P(s,a)$ as a delta distribution), for all $a'\in \Acal$. With $(s,a, Q^\star_h(s,a))$, we add it to $\Dcal_h$. Note that by adding this new triple, we make ``progress" in terms of increasing the rank of $\Phi_h$ by one. Note that since one such data triple addition increases the rank of $\Dcal_h$ by one for some $h$, the total number of data triple additions cannot be larger than $dH$. This observation can be used to bound the sample and computation complexity of the algorithm. %The ranks of $[ \phi(s,a): s,a\in \Dcal_h ]$ for all $h$ are the potential functions that we track for determining the sample and computation complexity of the algorithm. 
+
+The termination criteria is designed as follows. We execute the current policy to get a trajectory $\tau = \{s_h,a_h\}_{h=0}^{H-1}$. For every $s_h$, we use Compute-$Q^\star(s_h,a,h)$ to query $Q^\star_h(s_h,a)$ for all $a\in \Acal$, and check if our current predictor matches to $Q_h^\star(s_h,a)$, i.e., $\theta_h^{\top} \phi(s_h,a) = Q^\star_h(s_h,a), \forall a$. If that is the case, then we can claim the generated trajectory is indeed the optimal trajectory (i.e., it matches to the trajectory that would be generated by $\pi^\star$). 
+
+
+
+\section{Analysis}
+
+The following theorem quantifies the sample complexity of Alg.~\ref{alg:ucbvi_deter_linear_q_star} identifying the optimal policy. 
+\begin{theorem}\label{them:sample_complexity_linear_Q_star_deter}Algorithm~\ref{alg:ucbvi_deter_linear_q_star} returns the optimal policy with total number of samples scaling $O( dH^2)$.
+\end{theorem}
+
+
+
+To analyze the sample complexity, we first present some important lemmas. 
+
+The first lemma claims that Compute-$Q^\star(s,a,h)$ always return $Q^\star_h(s,a)$. 
+\begin{lemma} \label{lemma:optimal_Q_value}For any $s,a,h$, we must have $Q^\star_h(s,a) = \text{Compute-}Q^\star(s,a,h)$.
+\end{lemma}
+\begin{proof}
+We prove the lemma via induction. For the base case where $ h = H-1$,  note that our dataset only contains $(s,a,r(s,a))$ where $r(s,a) = Q^\star_{H-1}(s,a)$.  There are two cases we need to consider. 
+
+First, when we query $\text{Compute-}Q^\star(s,a,h)$, we happen to have $\phi(s,a) \in \text{span}( \{\phi(s,a)\}: s,a\in\Dcal_{H-1} )$. In this case, we must have $\theta_{H-1}^{\top} \phi(s,a) = r(s,a)$.
+
+Second, when we query $\text{Compute-}Q^\star(s,a,h)$, we have $\phi(s,a) \not \text{span}( \{\phi(s,a)\}: s,a\in\Dcal_{H-1} )$. In this case, the algorithm directly adds $(s,a, r(s,a))$ to $\Dcal_{H-1}$ and re-fit $\theta_{H-1}$. Thus after the addition and re-fitting, it gets back to the situation where $\phi(s,a) \in \text{span}(\{\phi(s,a): s,a\in\Dcal_{H-1}\})$, which implies that $\theta_{H-1}^{\top} \phi(s,a) = r(s,a)$. 
+
+This concludes the base case.  The inductive hypothesis assumes that for $h+1$, we always have $\text{Compute-}Q^\star(s,a,h+1) = Q^\star_{h+1}(s,a), \forall s,a$. We now move on to prove this also holds at time step $h$.
+
+At time step $h$, note that given $(s,a)$ and its associated next state $s'$, note that we query Compute-$Q^\star(s',a', h+1)$ for all $a' \in \Acal$. The inductive hypothesis implies that Compute-$Q^\star(s',a', h+1)$ returns $Q^\star_{h+1}(s'a')$, which means that $r(s,a) + \max_{a'} y_{s', a'} = r(s,a) + \max_{a'} Q^\star_{h+1}(s', a') = Q^\star_h(s,a)$. Namely, whenever we add $(s,a, y)$ triple to $\Dcal_{h}$, we have $y = Q^\star_h(s,a)$.
+
+We also discuss two cases. The first case is that $\phi(s,a) \in \text{span}(\{\phi(s,a): s,a\in\Dcal_h\} )$. In this case, since $\Dcal_{h}$ contains triples $(s,a,y)$ with $y = Q_h^\star(s,a)$, we must have $\theta_{h}^{\top} \phi(s,a) = Q^\star_h(s,a)$. 
+
+The second case is $\phi(s,a) \not\in \text{span}(\{\phi(s,a): s,a\in\Dcal_h\} )$. In this case, note that we will add $(s,a, r+\max_{a'} y_{s',a'})$ to $\Dcal_{h}$ where we have argued that $r(s,a) + \max_{a'} y_{s',a'} = Q^\star_h(s,a)$ due to the inductive hypothesis. Once we add this new data point to $\Dcal_h$ and refit $\theta_{h}$, we get back to the first case and can  conclude that $\theta_h^{\top} \phi(s,a) = Q^\star_h(s,a)$. 
+
+Thus we finish induction and can conclude the proof
+\end{proof}
+
+The second lemma shows that if Algorithm~\ref{alg:ucbvi_deter_linear_q_star} terminates, it must have find the optimal policy. 
+\begin{lemma} At termination of Algorithm~\ref{alg:ucbvi_deter_linear_q_star}, the returned policy is the optimal policy.
+\end{lemma}
+\begin{proof}
+Denote $\tau^\star = \{s_h^\star,a_h^\star\}_{h=0}^{H-1}$ as the optimal trajectory that is generated by $\pi^\star$. 
+
+Based on Lemma~\ref{lemma:optimal_Q_value}, we know that once the termination criteria holds, we have that for all $h,a$, $\theta_h^{\top} \phi(s_h,a) = Q^\star_h(s_h,a)$. 
+
+Starting at time step $h = 0$, we then have $\pi_0(s_0) = \argmax_{a} \theta_0^{\top} \phi(s_0,a) =  \argmax_{a} Q^\star_0(s_0,a) = \pi^\star(s_0)$.
+
+The inductive hypothesis is that at time step $h$, $\{s_\tau, a_\tau\}_{\tau = 0}^{h}$ generated by $\pi$ is equivalent to the the partial trajectory from $\tau = 0$ to $\tau = h$ that would be generated by $\pi^\star$, i.e., $s_\tau,a_\tau = s_\tau^\star,a_\tau^\star$ for $\tau = 0$ to $h$ (including $h$).  We proceed to $h+1$ as follows. 
+
+Since $a_h^\star = a_h, s_h^\star = s_h$, we have $s_{h+1} = s_{h+1}^\star$. For $a_{h+1}$, we have $a_{h+1} = \arg\max_{a} \theta_{h+1}^{\top} \phi(s_{h+1}, a) = \arg\max_{a} Q^\star_{h+1}(s_{h+1}, a) =  \arg\max_{a} Q^\star_{h+1}(s_{h+1}^\star, a) = a_{h+1}^\star$. 
+
+Thus we conclude the proof that $\tau = \tau^\star$, which immediately implies that $\pi$ has the same total reward as $\pi^\star$. 
+\end{proof}
+
+
+The following lemma shows that the algorithm will terminate in polynomial number of rounds. 
+\begin{lemma}
+Algorithm~\ref{alg:ucbvi_deter_linear_q_star} musst terminate in at most $dH$ iterations. 
+\end{lemma} 
+\begin{proof}
+If the termination criteria does not hold,  then there is $s_h,a$ such that $\theta_{h}^{\top}\phi(s_h,a) \neq Q^\star_h(s_h,a)$ (recall from Lemma~\ref{lemma:optimal_Q_value}, we have Compute-$Q^\star(s,a,h) = Q_h^\star(s,a)$). Note that this implies that when we check if $\theta_{h}^{\top}\phi(s_h,a)$ is equal to $Q^\star_h(s_h,a)$, we have $\phi(s_h,a) \not\in\text{span}(\{\phi(s,a): s,a\in\Dcal_h\})$. This means that during the execution of Compute-$Q^\star(s_h,a,h)$, we must add $(s_h,a, Q^\star_h(s_h,a))$ to $\Dcal_h$. Since $\phi(s_h,a)$ was originally not in the span of the features of state-action pairs in $\Dcal_h$, by adding $(s_h,a)$ into $\Dcal_h$, we include the rank of $[ \phi(s,a) : s,a\in\Dcal_h ]$ by one. 
+
+Thus, if the termination criteria does not hold, we must increase the rank of $[ \phi(s,a) : s,a\in\Dcal_h ]$ for some h by one.  Since the maximum rank for $[ \phi(s,a) : s,a\in\Dcal_h ]$ is at most $d$, and we have $H$ many such datasets, the total number of termination criteria violation is at most $dH$.
+\end{proof}
+
+Finally we are ready to conclude the sample complexity of the above algorithm. 
+
+
+\begin{proof}[Proof of Theorem~\ref{them:sample_complexity_linear_Q_star_deter}]
+
+Inside the computation procedure Compute-$Q^\star(s,a,h)$, Line~\ref{line:executation} interacts with the real world by first resetting to $s$ and then execute action $a$, of which the total number of interactions will be at most $H$ (recall resetting to $s$ requires executing the open loop actions that lead to $s$). Also note that Line~\ref{line:executation} is only triggered if $\phi(s,a)$ was not in the span of the features of the state-action pairs in the $\Dcal_h$ and will result adding $(s,a)$ to $\Dcal_h$ in Line.~\ref{line:addition}, which will increase the rank of $\Dcal_h$ by one. 
+
+Since the rank induced by $\Dcal_h$ is at most $d$ and there are $H$ such datasets, the total number of execution of Line~\ref{line:executation} during the entire run of the algorithm cannot exceed $dH$ many times. Thus the total number of real world interactions can be bounded by $dH \times H$. Also Line~\ref{line:test_policy} in  Algorithm~\ref{alg:ucbvi_deter_linear_q_star} uses $H$ many real world samples per iteration, which in total uses $dH^2$ many samples. Thus in total, the algorithm uses $2dH^2$ many samples. 
+\end{proof}
+
+
+\fi
+
+%\begin{lemma} For any $h $, at any time during the execution of the algorithm, for any $(s,a, y)$ triple in $\Dcal_h$, we must have $ y = Q^\star_h(s,a)$.
+%\end{lemma}
+% \begin{proof}
+% Let us consider the base case where $h = H-1$. Note that in this case, we have $r(s,a) = Q_{H-1}^\star(s,a)$.  Since we add $(s,a r(s,a))$ to $\Dcal_{H-1}$, we can conclude that the claim in the lemma holds for $H-1$.
+ 
+% The inductive hypothesis here is that for time step $h+1$, we have that for any $(s,a,y) \in \Dcal_{h+1}$, we have $y = Q^\star(s,a)$. We now move on to prove the claim for time step $h$.
+ 
+% \end{proof}
+

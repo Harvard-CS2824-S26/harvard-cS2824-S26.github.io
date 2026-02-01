@@ -1,0 +1,22 @@
+% --- Page Layout ---
+\setlength{\oddsidemargin}{0.25in}
+\setlength{\evensidemargin}{-0.25in}
+\setlength{\topmargin}{-0.6in}
+\setlength{\textwidth}{6.5in}
+\setlength{\textheight}{8.5in}
+\setlength{\headsep}{0.75in}
+
+% --- Paragraph Formatting ---
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.1in}
+
+% --- Standard Numbering ---
+\renewcommand{\thesection}{\thechapter.\arabic{section}}
+\renewcommand{\theequation}{\thechapter.\arabic{equation}}
+\renewcommand{\thefigure}{\thechapter.\arabic{figure}}
+\renewcommand{\thetable}{\thechapter.\arabic{table}}
+
+% Reset counters per chapter
+\counterwithin{equation}{chapter}
+\counterwithin{figure}{chapter}
+\counterwithin{table}{chapter}

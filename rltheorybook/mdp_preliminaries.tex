@@ -1,0 +1,1201 @@
+\chapter{Markov Decision Processes}
+% \\ and Computational Complexity}
+\label{chap:prelims}
+
+\section{Discounted (Infinite-Horizon) Markov Decision Processes}
+In reinforcement learning, the interactions between the agent and the
+environment are often described by an infinite-horizon, discounted Markov decision process (MDP)
+\[
+M = (\Scal, \Acal, P, r, \gamma, \mu),
+\]
+specified as follows:
+\begin{itemize}
+\item A state space $\Scal$, which may be finite or infinite.
+For mathematical convenience, we will assume that $\Scal$ is
+finite or countably infinite.
+\item An action space $\Acal$, which also may be discrete or infinite.
+For mathematical convenience, we will assume that $\Acal$ is
+finite.
+\item A transition function $P: \Scal\times \Acal \to \Delta(\Scal)$,
+  where $\Delta(\Scal)$ is the space of probability distributions over
+  $\Scal$ (i.e., the probability simplex). $P(s' \mid s, a)$ is the
+  probability of transitioning into state $s'$ upon taking action $a$
+  in state $s$. We use $P_{s,a}$ to denote the vector $P(\cdot \cond s,a)$.
+\item A reward function $r: \Scal\times \Acal \to [0,1]$. $r(s,a)$ is
+  the immediate reward associated with taking action $a$ in state
+  $s$. More generally, $r(s,a)$ could be a random variable (with a distribution that
+  depends on $s,a$). While we largely focus on the deterministic case,
+  extensions to stochastic rewards are often straightforward.
+\item A discount factor $\gamma \in [0, 1)$, which defines an effective horizon for
+  the problem.
+\item An initial state distribution $\mu \in \Delta(\Scal)$, which
+  specifies how the initial state $s_0$ is generated.
+\end{itemize}
+
+In many cases, we will assume that the initial state is fixed at
+$s_0$, i.e.\ $\mu$ is a distribution supported only on $s_0$.
+
+\subsection{The objective, policies, and values}
+\label{sec:background_trajectory}
+
+
+\paragraph{Policies.} In a given MDP $M = (\Scal, \Acal, P, r, \gamma,\mu)$, the agent interacts
+with the environment according to the following protocol: the agent
+starts at some state $s_0\sim \mu$; at each time step $t=0,1,2,\ldots$, the
+agent first observes the current state $s_t$, then selects an action $a_t \in \Acal$,
+receives the immediate reward $r_t = r(s_t,a_t)$, and finally observes the next state
+$s_{t+1}\sim P(\cdot\mid s_t,a_t)$.
+
+It will be convenient to work with the \emph{history} (or trajectory prefix) available at
+decision time $t$, which ends with the currently observed state:
+\[
+\tau_t := (s_0, a_0, r_0, s_1, \ldots, a_{t-1}, r_{t-1}, s_t).
+\]
+We will refer to $\tau_t$ interchangeably as a \emph{history} or a \emph{trajectory} (prefix).
+Note that $\tau_t$ contains exactly the information available to the agent when choosing $a_t$.
+
+In the most general setting, a policy specifies a decision-making strategy in which the agent chooses
+actions adaptively based on the history of observations; precisely, a policy is a (possibly randomized)
+mapping $\pi:\Hcal \to \Delta(\Acal)$, where $\Hcal$ is the set of all finite trajectories of the form above
+(i.e.\ histories of all lengths that end in a state).
+At time $t$, the action is sampled as $a_t \sim \pi(\cdot\mid \tau_t)$.
+
+A \emph{stationary} policy $\pi:\Scal \to \Delta(\Acal)$ specifies a decision-making strategy in which
+the agent chooses actions based only on the current state, i.e.\ $a_t \sim \pi(\cdot\mid s_t)$.
+A deterministic, stationary policy is of the form $\pi:\Scal \to \Acal$.
+
+\paragraph{Values.}
+We now define values for (general) policies. For a fixed policy and a starting state $s_0=s$, we define the value
+function $V_M^\pi: \Scal \to \R$ as
+\[
+V_M^\pi(s) = \Expe{\sum_{t=0}^\infty \gamma^t  r(s_t, a_t)
+  \cond \pi, s_0 = s} \, .
+\]
+The expectation is with respect to the randomness of the trajectory (state transitions and any
+stochasticity in $\pi$). Since $r(s,a)\in[0,1]$, we have $0\leq
+V_M^\pi(s) \leq 1/(1-\gamma)$.
+
+Similarly, the action-value (or Q-value) function $Q_M^\pi: \Scal
+\times \Acal \to \R$ is defined as
+\[
+Q_M^\pi(s,a) = \Expe{\sum_{t=0}^\infty \gamma^t  r(s_t, a_t) \cond \pi, s_0 = s, a_0 = a},
+\]
+and $Q_M^\pi(s,a)$ is also bounded by $1/(1-\gamma)$.
+
+\paragraph{Goal.}
+Given a state $s$, the goal of the agent is to find a policy $\pi$ that maximizes the value:
+\begin{align}\label{eq:expected_return_discounted}
+\sup_\pi V_M^\pi(s),
+\end{align}
+where the supremum is over all (possibly non-stationary and randomized) policies.
+As we shall see, there exists a stationary deterministic policy which is simultaneously optimal for all starting states $s$.
+
+We drop the dependence on $M$ and write $V^\pi$ when it is clear from context.
+
+\begin{example}[Navigation]
+Navigation is perhaps the simplest example of reinforcement learning. The state
+is the agent's current location. The four actions might be moving one step east, west, north, or south.
+In the simplest setting the transitions are deterministic. Taking the
+north action moves the agent one step north of its location. The agent might
+have a goal state $g$, and the reward is $0$ until the agent reaches the goal, and $1$ upon reaching $g$.
+Since $\gamma<1$, there is an incentive to reach the goal earlier. As a result, the
+optimal behavior corresponds to finding a shortest path from the initial to the goal state.
+If a policy reaches the goal in $d$ steps (and then stays there), the value from the initial state is $\gamma^d$.
+\end{example}
+
+\begin{example}[Conversational agent]
+This is another natural reinforcement learning problem. The state can be
+the transcript of the conversation so far, along with additional context (e.g., task context,
+user profile information, or other relevant world state). Actions depend on the domain; in the most basic form,
+an action is the next utterance.
+
+Sometimes, conversational agents are designed for task completion, such as a travel assistant, tech support agent,
+or virtual receptionist. In these cases, there may be a predefined set of \emph{slots} that the agent must fill
+before it can propose a solution (e.g., travel dates, origin, destination, and mode of travel). Actions can be
+natural language queries aimed at filling these slots.
+
+In task-completion settings, reward is naturally defined as a binary indicator of whether the task was completed (e.g.,
+whether travel was successfully booked). Depending on the domain, the reward can be refined to reflect quality or cost.
+In more open-ended conversational settings, the reward may reflect user satisfaction.
+\end{example}
+
+\begin{example}[Strategic games]
+This is a popular category of applications, where reinforcement learning has achieved human-level performance in
+Backgammon, Go, Chess, and various forms of Poker. Typically, the state is the current game position, actions are
+legal moves, and reward is the eventual win/loss outcome (or a more detailed score, when defined). Technically,
+these are multi-agent settings, yet many successful approaches use methods that do not explicitly model multiple agents.
+\end{example}
+
+\subsection{Bellman Consistency Equations for Stationary Policies}
+\label{sec:background_policyvalue}
+
+Stationary policies satisfy the following consistency conditions:
+
+\begin{lemma}\label{lemma:BEPE}
+Suppose that $\pi$ is a stationary policy (possibly randomized). Then $V^\pi$ and $Q^\pi$
+satisfy the following \emph{Bellman consistency equations}: for all $s \in \Scal$ and $a\in\Acal$,
+\begin{align*}
+V^\pi(s) &= \EE_{a\sim \pi(\cdot\mid s)}\!\left[ Q^\pi(s,a)\right], \\
+Q^\pi(s,a) &= r(s,a) + \gamma \EE_{s' \sim P(\cdot\mid s, a)}\!\left[
+V^\pi(s') \right].
+\end{align*}
+In particular, if $\pi$ is deterministic, then $V^\pi(s)=Q^\pi(s,\pi(s))$.
+\end{lemma}
+
+We leave the proof as an exercise to the reader.
+
+It is helpful to view $V^\pi$ as a vector of length $|\Scal|$, and $Q^\pi$
+and $r$ as vectors of length $|\Scal|\cdot |\Acal|$.
+We overload notation and let $P$ also refer to a matrix
+of size $(|\Scal|\cdot |\Acal|)\times |\Scal|$ where the entry
+$P_{(s,a),s'}$ is equal to $P(s'\mid s,a)$.
+
+We also define $P^\pi$ to be the transition matrix on state-action pairs induced by a
+stationary policy $\pi$, specifically:
+\[
+P^\pi_{(s,a),(s',a')}:=P(s'\mid s,a)\,\pi(a'\mid s').
+\]
+In particular, for deterministic policies we have:
+\[
+P^\pi_{(s,a),(s',a')} :=
+\left\{ \begin{array}{rl}
+P(s'\mid s,a) & \mbox{if } a'=\pi(s'),\\
+0 & \mbox{if } a'\neq\pi(s').
+\end{array}\right.
+\]
+
+With this notation, it is straightforward to verify:
+\begin{align*}
+Q^\pi &= r+ \gamma P V^\pi, \\
+Q^\pi &= r+ \gamma P^\pi Q^\pi \, .
+\end{align*}
+
+\begin{corollary}
+\label{corollary:policy_value_matrix_form}
+Suppose that $\pi$ is a stationary policy. Then
+\begin{equation}\label{eq:policy_value_matrix_form}
+Q^\pi = (I-\gamma P^\pi)^{-1} r,
+\end{equation}
+where $I$ is the identity matrix.
+\end{corollary}
+
+\begin{proof}
+To see that $I - \gamma P^\pi$ is invertible,
+observe that for any non-zero vector $x \in \R^{|\Scal||\Acal|}$,
+\begin{align*}
+\maxnorm{(I - \gamma P^\pi) x }
+= &~\|x - \gamma P^\pi x \|_\infty \\
+\ge &~ \|x\|_\infty - \gamma \|P^\pi x \|_\infty  \tag{triangle inequality for norms} \\
+\ge &~ \|x\|_\infty - \gamma \|x \|_\infty \tag{$P^\pi$ is row-stochastic} \\
+= &~ (1-\gamma) \|x\|_\infty > 0 \tag{$\gamma < 1$, $x \ne 0$},
+\end{align*}
+which implies $I - \gamma P^\pi$ is full rank.
+\end{proof}
+
+The following lemma will also be useful:
+\begin{lemma}\label{eq:sa_measure}
+We have that
+\[
+[(1-\gamma) (I-\gamma P^\pi)^{-1}]_{(s,a), (s',a')}
+= (1-\gamma) \sum_{t=0}^\infty \gamma^t \mathbb{P}^{\pi}(s_t=s',a_t=a' \mid s_0=s,a_0=a),
+\]
+so we can view the $(s,a)$-th row of this matrix as an induced distribution over state-action pairs
+when following $\pi$ after starting with $s_0=s$ and $a_0=a$.
+\end{lemma}
+
+We leave the proof as an exercise to the reader.
+
+\subsection{Bellman Optimality Equations}
+
+A remarkable and convenient property of discounted MDPs is that there exists a
+stationary and deterministic policy that simultaneously maximizes $V^{\pi}(s)$
+for all $s\in\Scal$. This is formalized in the following theorem.
+
+\begin{theorem}
+\label{thm:bellman-stat}
+Let $\Pi$ be the set of all (possibly non-stationary and randomized) policies.
+Define
+\begin{align*}
+V^\star(s)&:=\sup_{\pi \in \Pi} V^{\pi}(s),\\
+Q^\star(s,a)&:=\sup_{\pi \in \Pi} Q^{\pi}(s,a).
+\end{align*}
+These quantities are finite since $V^{\pi}(s)$ and $Q^{\pi}(s,a)$ are bounded
+between $0$ and $1/(1-\gamma)$.
+
+There exists a stationary and deterministic policy $\pi$ such that for all
+$s \in \Scal$ and $a\in\Acal$,
+\begin{align*}
+V^{\pi}(s) &=V^\star(s),\\
+Q^{\pi}(s,a)&=Q^\star(s,a).
+\end{align*}
+We refer to such a $\pi$ as an optimal policy.
+\end{theorem}
+
+\begin{proof}
+For any $\pi \in \Pi$ and time $t$, $\pi$ specifies a distribution over actions
+conditioned on the history of observations. For the purposes of this proof, it
+is helpful to formally let $S_t$, $A_t$, and $R_t$ denote random variables,
+distinguishing them from realizations denoted by lower-case symbols.
+
+We first show that conditioned on the one-step history $(S_0,A_0,R_0,S_1)=(s,a,r,s')$, the maximum
+future discounted return from time $1$ onwards does not depend on $s,a,r$.
+More precisely, we claim that
+\begin{equation}\label{eq:to_show_1step}
+\sup_{\pi \in \Pi}\Expe{\sum_{t=1}^\infty \gamma^t  r(S_t, A_t)
+  \cond \pi, (S_0,A_0,R_0,S_1)=(s,a,r,s') } 
+=\gamma V^\star(s').
+\end{equation}
+
+Fix any policy $\pi$. Define the ``offset'' policy $\pi_{(s,a,r)}$ as follows:
+for all $t\ge 0$ and all histories $(s_0,a_0,r_0,\ldots,s_t)$,
+\begin{align*}
+&\pi_{(s,a,r)}(A_t=b\mid S_0=s_0,A_0=a_0,R_0=r_0,\ldots,S_t=s_t)\\
+&\quad:=\pi(A_{t+1}=b\mid S_0=s,A_0=a,R_0=r,S_1=s_0,A_1=a_0,R_1=r_0,\ldots,S_{t+1}=s_t).
+\end{align*}
+By a change of variables on the time index and the definition of $\pi_{(s,a,r)}$,
+we have
+\[
+\Expe{\sum_{t=1}^\infty \gamma^t  r(S_t, A_t)
+  \cond \pi, (S_0,A_0,R_0,S_1)=(s,a,r,s') } 
+=
+\gamma \Expe{\sum_{t=0}^\infty \gamma^t  r(S_t, A_t)
+  \cond \pi_{(s,a,r)}, S_0=s' }
+=\gamma V^{\pi_{(s,a,r)} }(s').
+\]
+Moreover, for each fixed $(s,a,r)$, the set $\{\pi_{(s,a,r)}:\pi\in\Pi\}$ is equal
+to $\Pi$ itself (shifting a policy by one step is a bijection on the class of all
+history-dependent randomized policies). Therefore,
+\[
+\sup_{\pi \in \Pi}\Expe{\sum_{t=1}^\infty \gamma^t  r(S_t, A_t)
+  \cond \pi, (S_0,A_0,R_0,S_1)=(s,a,r,s') } 
+=\gamma \cdot \sup_{\pi\in\Pi} V^{\pi_{(s,a,r)} }(s')
+=\gamma \cdot \sup_{\pi\in\Pi} V^{\pi}(s')
+=\gamma V^\star(s'),
+\]
+proving~\eqref{eq:to_show_1step}.
+
+We now define a stationary deterministic policy $\widetilde\pi$ by choosing, for
+each state $s$, any maximizer of the one-step lookahead objective:
+\[
+\widetilde\pi(s)\in\argmax_{a \in \Acal}\Expe{r(s,a) +\gamma V^\star(S_1)
+  \cond S_0=s, A_0=a}.
+\]
+We claim that $V^{\widetilde\pi}(s)=V^\star(s)$ for all $s$.
+
+Fix an initial state $s_0$. Using the law of iterated expectations,
+\begin{align*}
+V^\star(s_0)
+&= \sup_{\pi \in \Pi}\Expe{r(S_0,A_0) +\sum_{t=1}^\infty \gamma^t r(S_t, A_t) \cond S_0=s_0 } \\
+&= \sup_{\pi \in \Pi}\Expe{r(s_0,A_0) +\Expe{\sum_{t=1}^\infty \gamma^t r(S_t, A_t)
+\cond \pi,(S_0,A_0,R_0,S_1)=(s_0,A_0,R_0,S_1)} \cond S_0=s_0} \\
+&\le \sup_{\pi \in \Pi}\Expe{r(s_0,A_0) + \sup_{\pi'\in\Pi}\Expe{\sum_{t=1}^\infty \gamma^t r(S_t, A_t)
+\cond \pi',(S_0,A_0,R_0,S_1)=(s_0,A_0,R_0,S_1)} \cond S_0=s_0} \\
+&\stackrel{(a)}{=} \sup_{\pi \in \Pi}\Expe{r(s_0,A_0) + \gamma V^\star(S_1) \cond S_0=s_0} \\
+&= \sup_{a_0 \in \Acal}\Expe{r(s_0,a_0) + \gamma V^\star(S_1) \cond S_0=s_0, A_0=a_0} \\
+&\stackrel{(b)}{=} \Expe{r(s_0,A_0)+\gamma V^\star(S_1)\cond S_0=s_0,\widetilde\pi}.
+\end{align*}
+Here, step $(a)$ uses~\eqref{eq:to_show_1step}, and step $(b)$ follows from the
+definition of $\widetilde\pi$.
+
+Applying the same argument recursively (conditioning on $S_1$, then $S_2$, etc.)
+yields, for all $t\ge 0$,
+\[
+V^\star(s_0)\le \Expe{r(S_0,A_0)+\gamma r(S_1,A_1)+\cdots+\gamma^{t}V^\star(S_{t+1})\cond S_0=s_0,\widetilde\pi}.
+\]
+Taking $t\to\infty$ and using dominated convergence (since $V^\star$ is bounded),
+we obtain $V^\star(s_0)\le V^{\widetilde\pi}(s_0)$. Since by definition
+$V^{\widetilde\pi}(s_0)\le \sup_{\pi\in\Pi}V^\pi(s_0)=V^\star(s_0)$, we conclude
+$V^{\widetilde\pi}(s_0)=V^\star(s_0)$. As $s_0$ was arbitrary, this proves the
+first claim.
+
+For the same policy $\widetilde\pi$, an analogous argument starting from $Q^\star(s,a)$
+shows $Q^{\widetilde\pi}(s,a)=Q^\star(s,a)$ for all $(s,a)$, completing the proof.
+\end{proof}
+
+This shows that we may restrict ourselves to stationary and deterministic policies
+without any loss in performance. The following theorem, also due to
+\cite{bellman1956dynamic}, gives a precise characterization of the optimal
+action-value function.
+
+\begin{theorem}[Bellman optimality equations]
+\label{thm:bellman-opt}
+We say that a vector $Q \in \R^{|\Scal||\Acal|}$ satisfies the \emph{Bellman
+optimality equations} if, for all $(s,a)\in\Scal\times\Acal$,
+\[
+Q(s,a) =  r(s,a) + \gamma \EE_{s' \sim P(\cdot\mid s, a)}\left[ \max_{a'\in\Acal} Q(s',a') \right].
+\]
+For any $Q \in \R^{|\Scal||\Acal|}$, we have $Q=Q^\star$ if and only if $Q$
+satisfies the Bellman optimality equations. Furthermore, any deterministic policy
+defined by
+\[
+\pi(s)\in \argmax_{a\in\Acal}Q^\star(s,a)
+\]
+is an optimal policy (with ties broken in an arbitrary but fixed manner).
+\end{theorem}
+
+Before we prove this claim, we introduce a few definitions. Let $\pi_{Q}$ denote
+a greedy policy with respect to a vector $Q \in \R^{|\Scal||\Acal|}$:
+\[
+\pi_Q(s) \in \argmax_{a \in \Acal} Q(s, a),
+\]
+where ties are broken in some arbitrary but fixed manner. With this notation,
+the optimal policy can be written as
+\[
+\pi^\star = \pi_{Q^{\star}} \, .
+\]
+
+We also use the following notation to map a vector $Q \in \R^{|\Scal||\Acal|}$
+to a vector of length $|\Scal|$:
+\[
+V_Q(s) := \max_{a\in\Acal} Q(s,a).
+\]
+The \emph{Bellman optimality operator} $\Tcal_M: \R^{|\Scal||\Acal|} \to
+\R^{|\Scal||\Acal|}$ is defined as
+\begin{align} \label{eq:bellman_update}
+\Tcal Q := r + \gamma P V_Q \, .
+\end{align}
+With this notation, the Bellman optimality equations can be written concisely as
+\[
+Q = \Tcal Q.
+\]
+Thus, the previous theorem states that $Q=Q^\star$ if and only if $Q$ is a fixed
+point of the operator $\Tcal$.
+
+\begin{proof}
+We begin by showing that
+\begin{equation}\label{eq:step_bellman}
+V^\star(s) = \max_{a\in\Acal} Q^\star(s,a).
+\end{equation}
+Let $\pi^\star$ be an optimal stationary deterministic policy, which exists by
+Theorem~\ref{thm:bellman-stat}. Consider the (non-stationary) policy that takes
+action $a$ in state $s$ at time $0$ and then follows $\pi^\star$ thereafter.
+By definition of $V^\star$ as the supremum over all (possibly non-stationary)
+policies,
+\[
+V^\star(s) \ge Q^{\pi^\star}(s,a) = Q^\star(s,a),
+\]
+where the last equality uses that $\pi^\star$ is optimal for all starting
+states. Since $a$ is arbitrary, this gives $V^\star(s)\ge \max_a Q^\star(s,a)$.
+Conversely, since $\pi^\star$ is deterministic, Lemma~\ref{lemma:BEPE} yields
+\[
+V^\star(s)=V^{\pi^\star}(s)=Q^{\pi^\star}(s,\pi^\star(s))\le \max_a Q^{\pi^\star}(s,a)=\max_a Q^\star(s,a),
+\]
+proving~\eqref{eq:step_bellman}.
+
+First, we show the forward direction, i.e.\ that $Q^\star$ satisfies $Q^\star=\Tcal Q^\star$.
+For any $(s,a)$,
+\begin{align*}
+Q^\star(s,a)
+&= \sup_{\pi\in\Pi} Q^\pi(s,a)\\
+&= r(s,a) + \gamma \sup_{\pi\in\Pi}\E_{s'\sim P(\cdot\mid s,a)}\!\left[V^\pi(s')\right] \\
+&= r(s,a) + \gamma \E_{s'\sim P(\cdot\mid s,a)}\!\left[\sup_{\pi\in\Pi}V^\pi(s')\right] \\
+&= r(s,a) + \gamma \E_{s'\sim P(\cdot\mid s,a)}\!\left[V^\star(s')\right] \\
+&= r(s,a) + \gamma \E_{s'\sim P(\cdot\mid s,a)}\!\left[\max_{a'} Q^\star(s',a')\right],
+\end{align*}
+where the third line uses that the transition distribution does not depend on
+$\pi$, and the last line uses~\eqref{eq:step_bellman}. This proves sufficiency.
+
+For the converse, suppose $Q=\Tcal Q$ for some $Q$. We now show that $Q=Q^\star$.
+Let $\pi=\pi_Q$ be a greedy policy with respect to $Q$. The identity $Q=\Tcal Q$
+means
+\[
+Q(s,a)=r(s,a)+\gamma \EE_{s'\sim P(\cdot\mid s,a)}[V_Q(s')]
+= r(s,a)+\gamma \EE_{s'\sim P(\cdot\mid s,a)}[Q(s',\pi(s'))],
+\]
+which in matrix form is $Q=r+\gamma P^\pi Q$. Thus,
+\[
+Q=(I-\gamma P^\pi)^{-1}r = Q^\pi,
+\]
+using Corollary~\ref{corollary:policy_value_matrix_form}.
+
+It remains to show that $\pi$ is optimal. Let $\pi'$ be any other deterministic
+stationary policy. First note that
+\[
+\big[(P^\pi-P^{\pi'})Q^\pi\big]_{s,a}
+= \EE_{s'\sim P(\cdot\mid s,a)}\!\left[Q^\pi(s',\pi(s'))-Q^\pi(s',\pi'(s'))\right]\ge 0,
+\]
+since $\pi$ is greedy with respect to $Q=Q^\pi$. Using $Q^\pi=r+\gamma P^\pi Q^\pi$
+and $Q^{\pi'}=(I-\gamma P^{\pi'})^{-1}r$, we have
+\begin{align*}
+Q^\pi-Q^{\pi'}
+&= (I-\gamma P^{\pi'})^{-1}\Big((I-\gamma P^{\pi'})-(I-\gamma P^\pi)\Big)Q^\pi \\
+&= \gamma (I-\gamma P^{\pi'})^{-1}(P^\pi-P^{\pi'})Q^\pi \\
+&\ge 0,
+\end{align*}
+where the last step uses that $(I-\gamma P^{\pi'})^{-1}$ has nonnegative entries
+(indeed, $(I-\gamma P^{\pi'})^{-1}=\sum_{t=0}^\infty \gamma^t (P^{\pi'})^t$).
+Thus $Q^\pi\ge Q^{\pi'}$ for all deterministic stationary $\pi'$.
+Since Theorem \ref{thm:bellman-stat} establishes that an optimal
+policy exists within the set of stationary deterministic policies, and
+$\pi$ dominates all such policies, $\pi$ must be globally optimal. 
+Therefore $Q=Q^\pi=Q^\star$, completing the proof.
+\end{proof}
+
+\section{Finite-Horizon Markov Decision Processes}
+\label{section:finite_horizon}
+
+In some settings, it is more natural to work with finite-horizon (and hence
+time-dependent) Markov Decision Processes; see the discussion below.
+A finite-horizon, time-dependent MDP
+$M = (\Scal, \Acal, \{P_h\}_{h=0}^{H-1}, \{r_h\}_{h=0}^{H-1}, H, \mu)$ is specified by:
+\begin{itemize}
+\item A state space $\Scal$, which may be finite or infinite.
+\item An action space $\Acal$, which may be finite or infinite.
+\item A time-dependent transition kernel $P_h: \Scal\times \Acal \to \Delta(\Scal)$,
+  where $\Delta(\Scal)$ is the set of probability distributions over $\Scal$.
+  Here $P_h(s' \mid s, a)$ is the probability of transitioning to state $s'$
+  after taking action $a$ in state $s$ at time step $h$.
+  (The stationary setting is recovered when $P_h$ does not depend on $h$.)
+\item A time-dependent reward function $r_h: \Scal\times \Acal \to [0,1]$,
+  where $r_h(s,a)$ is the immediate reward obtained by taking action $a$ in state $s$
+  at time step $h$. More generally, one may allow $r_h(s,a)$ to be stochastic,
+  but we focus on deterministic rewards for simplicity.
+\item A positive integer horizon $H$.
+\item An initial state distribution $\mu \in \Delta(\Scal)$, which specifies how $s_0$ is generated.
+\end{itemize}
+
+A (possibly non-stationary and randomized) policy $\pi$ specifies, at each time $h$,
+a distribution over actions conditioned on the observed history up to time $h$.
+(Equivalently, one may restrict attention to Markov policies $\pi(s, h)$
+without loss of optimality in finite-horizon MDPs; see the theorem below.)
+
+For a policy $\pi$, state $s$, and time $h \in \{0,\ldots,H\}$, define the value function
+$V_h^\pi: \Scal \to \R$ as the expected cumulative reward from time $h$ onward:
+\[
+V_h^\pi(s) \;=\; \Expe{\sum_{t=h}^{H-1} r_t(S_t, A_t)\;\Big|\;\pi,\; S_h=s}\,,
+\]
+where $r_t$ denotes the stage-$t$ reward function and the expectation is over the trajectory
+induced by $\pi$ and the transition kernels. Similarly, define the state-action value (Q-value)
+function $Q_h^\pi:\Scal\times\Acal\to\R$ by
+\[
+Q_h^\pi(s,a) \;=\; \Expe{\sum_{t=h}^{H-1} r_t(S_t, A_t)\;\Big|\;\pi,\; S_h=s,\; A_h=a}\,.
+\]
+We also write $V^\pi(s)=V_0^\pi(s)$, and note that $V_H^\pi(s)\equiv 0$ for all $s$.
+
+Given a starting state $s$, the goal is to find a policy maximizing the value,
+i.e.,
+\begin{align}
+\label{eq:expected_return_finite}
+\max_\pi V^\pi(s),
+\end{align}
+where the maximum is over all (possibly non-stationary and randomized) policies.
+
+\begin{theorem}[Bellman optimality equations: finite horizon]
+\label{thm:Bellman_finite}
+For $h\in\{0,\ldots,H\}$, define
+\[
+Q^\star_h(s,a) \;=\; \sup_{\pi} Q_h^\pi(s,a),
+\]
+where the $\sup$ is over all (possibly non-stationary and randomized) policies, and define
+$Q^\star_H(s,a)\equiv 0$ (terminal condition) for all $(s,a)$.
+
+Then $\{Q^\star_h\}_{h=0}^{H}$ is the unique collection of functions satisfying, for all
+$h\in\{0,\ldots,H-1\}$ and $(s,a)\in\Scal\times\Acal$,
+\begin{equation}
+\label{eqn:Beq_finite}
+Q_h(s,a) \;=\; r_h(s,a) \;+\; \EE_{s' \sim P_h(\cdot\mid s, a)}\!\left[\max_{a'\in\Acal} Q_{h+1}(s',a')\right].
+\end{equation}
+Moreover, any policy $\pi^\star$ defined by
+\[
+\pi^\star(s, h) \in \argmax_{a\in\Acal} Q^\star_h(s,a),
+\qquad h=0,\ldots,H-1,
+\]
+is an optimal policy.
+\end{theorem}
+
+We leave the proof as an exercise to the reader. (It follows by backward induction.)
+
+\paragraph{Discussion: stationary vs.\ time-dependent models.}
+For the purposes of this book, it is natural to study both models:
+we typically assume stationary dynamics in the infinite-horizon discounted setting
+and time-dependent dynamics in the finite-horizon setting.
+
+From a theoretical perspective, the finite-horizon \emph{time-dependent} formulation is
+often more convenient: backward induction avoids contraction arguments, and many sharp
+statistical rates admit simpler proofs in this setting.
+
+From a practical perspective, explicitly time-dependent models are less common because
+they lead to policies and value functions whose tabular representations scale as
+$O(H|\Scal||\Acal|)$ and $O(H|\Scal|)$, respectively, i.e., a factor $O(H)$ larger than in
+the stationary case. In practice, one often folds temporal information into the state
+(e.g., augmenting the state with the time index), which recovers a stationary MDP on an
+expanded state space and can be combined naturally with function approximation to
+represent policies and value functions compactly.
+
+\section{Computational Complexity} \label{sec:complexity}
+
+This section concerns the problem of computing an optimal policy when the MDP
+$M = (\Scal, \Acal, P, r, \gamma)$ is known; this is the classical
+\emph{planning} problem in reinforcement learning. While much of this book is
+concerned with statistical limits, understanding computational limits is also
+informative. We will consider algorithms that return both exact and
+approximately optimal policies. In particular, we will distinguish polynomial-time
+(and strongly polynomial-time) algorithms.
+
+Assume that $(P,r,\gamma)$ are specified with rational entries. Let $L(P,r,\gamma)$
+denote the total bit-length of the description of $M$. We measure running time
+in the standard bit-complexity model in which basic arithmetic operations
+$+,-,\times,\div$ on numbers with $O(L(P,r,\gamma))$ bits take unit time.\footnote{
+Equivalently, one can state bounds that scale polynomially with the bit-length of
+the numbers manipulated by the algorithm. We use the simplified unit-cost model
+to keep the dependence on $L(P,r,\gamma)$ explicit.}
+In this setting, one may hope for an algorithm that returns an \emph{exact}
+optimal policy with running time polynomial in $|\Scal|$, $|\Acal|$, and
+$L(P,r,\gamma)$.
+
+It is also useful to understand which algorithms are \emph{strongly} polynomial.
+Here, one does not explicitly restrict $(P,r,\gamma)$ to be rational. An
+algorithm is strongly polynomial if it returns an optimal policy with running
+time polynomial in $|\Scal|$ and $|\Acal|$ only (with no dependence on
+$L(P,r,\gamma)$).
+
+\begin{table*}[t!]
+\centering
+\begin{tabular}{ |c|c|c|c| }
+\hline
+& Value Iteration & Policy Iteration & LP Algorithms\\ \hline
+Poly?  &
+$|\Scal|^2 |\Acal|\dfrac{ L(P,r,\gamma)\, \log \frac{1}{1-\gamma}}{1-\gamma}$
+&
+$(|\Scal|^3 +|\Scal|^2|\Acal|)\dfrac{ L(P,r,\gamma)\, \log \frac{1}{1-\gamma}}{1-\gamma}$
+&
+$|\Scal|^3 |\Acal|\, L(P,r,\gamma)$\\ \hline
+Strongly Poly? &
+\xmark
+&
+$(|\Scal|^3 +|\Scal|^2|\Acal|)\cdot \min\left\{ \dfrac{|\Acal|^{|\Scal|}}{|\Scal|},
+\dfrac{|\Scal|^2 |\Acal| \log\frac{|\Scal|^2 }{1-\gamma}}{1-\gamma}
+\right\}$
+&
+$|\Scal|^4 |\Acal|^4 \log\frac{|\Scal| }{1-\gamma}$ \\ \hline
+\end{tabular}
+\caption{Computational complexities of various approaches (universal constants are omitted).
+Polynomial-time algorithms may depend on the bit complexity $L(P,r,\gamma)$, while
+strongly polynomial algorithms do not.
+Note that value iteration and policy iteration have iteration complexity scaling
+as $1/(1-\gamma)$; thus, if $\gamma$ is treated as part of the input (encoded in
+$L(P,r,\gamma)$), these methods are not polynomial-time in the bit-length model.
+Similarly, policy iteration is strongly polynomial only when $\gamma$ is treated
+as a fixed constant. In contrast, the linear programming approach yields both
+polynomial-time (in the bit-length model) and strongly polynomial algorithms; the
+latter can be obtained via interior point methods. See the text and
+Section~\ref{ch1:bib} for references.
+Here, $|\Scal|^2 |\Acal|$ is the assumed runtime per iteration of value iteration,
+and $|\Scal|^3 +|\Scal|^2|\Acal|$ is the assumed runtime per iteration of policy
+iteration; these are consistent with cubic-time linear system solves.}
+\label{table:computation}
+\end{table*}
+
+The next two subsections cover classical \emph{iterative} algorithms that compute
+$Q^\star$. We then discuss the linear programming approach.
+
+\subsection{Value Iteration}
+Perhaps the simplest algorithm for discounted MDPs is to iteratively apply the
+Bellman optimality operator $\Tcal$. Starting from some initialization $Q$, we
+repeat
+\begin{eqnarray*}
+Q \leftarrow \Tcal Q \, .
+\end{eqnarray*}
+This algorithm is referred to as \emph{$Q$-value iteration}.
+
+\begin{lemma}[Contraction]\label{lemma:contraction}
+For any $Q,Q' \in \R^{|\Scal||\Acal|}$,
+\[
+  \| \Tcal Q - \Tcal Q'\|_\infty \leq \gamma \|Q-Q'\|_\infty \, .
+\]
+\end{lemma}
+\begin{proof}
+First, for any $s\in\Scal$, we claim
+\[
+|V_Q(s) - V_{Q'}(s)| \leq \max_{a\in\Acal} |Q(s,a) - Q'(s,a)|.
+\]
+Assume $V_Q(s) \ge V_{Q'}(s)$ (the other case is symmetric), and let
+$a\in\argmax_{a\in\Acal} Q(s,a)$ be a greedy action for $Q$ at $s$. Then
+\begin{align*}
+V_Q(s) - V_{Q'}(s)
+&= Q(s,a) - \max_{a'\in\Acal} Q'(s,a')\\
+&\le Q(s,a) - Q'(s,a)
+\le \max_{a\in\Acal} |Q(s,a)-Q'(s,a)|.
+\end{align*}
+Using this bound,
+\begin{align*}
+\|\Tcal Q - \Tcal Q'\|_\infty
+&= \gamma \|P V_Q - P V_{Q'}\|_\infty
+= \gamma \|P (V_Q - V_{Q'})\|_\infty\\
+&\le \gamma \|V_Q - V_{Q'}\|_\infty
+= \gamma \max_{s} |V_Q(s)-V_{Q'}(s)|\\
+&\le \gamma \max_{s}\max_{a} |Q(s,a)-Q'(s,a)|
+= \gamma \|Q-Q'\|_\infty,
+\end{align*}
+where the inequality $\|P x\|_\infty \le \|x\|_\infty$ uses that each component of
+$Px$ is a convex combination of the entries of $x$.
+\end{proof}
+
+The following result bounds the suboptimality of the greedy policy induced by an
+approximate $Q$-function.
+
+\begin{lemma}\label{lemma:Q_to_policy}
+($Q$-error amplification) For any $Q \in \R^{|\Scal||\Acal|}$,
+\[
+V^{\pi_{Q}} \;\geq\; V^{\star}
+-\frac{2 \|Q - Q^\star\|_\infty}{1-\gamma}\, \mathds{1},
+\]
+where $\mathds{1}$ denotes the vector of all ones.
+\end{lemma}
+
+\begin{proof}
+Fix a state $s$ and let $a=\pi_Q(s)$. Then
+\begin{align*}
+V^\star(s) - V^{\pi_Q}(s)
+&= Q^\star(s, \pi^\star(s)) - Q^{\pi_Q}(s, a) \\
+&= \big(Q^\star(s, \pi^\star(s)) - Q^\star(s, a)\big) + \big(Q^\star(s, a) - Q^{\pi_Q}(s, a)\big).
+\end{align*}
+For the first term, using that $a$ is greedy for $Q$,
+\[
+Q(s,\pi^\star(s)) \le Q(s,a)
+\quad \Longrightarrow \quad
+Q^\star(s,\pi^\star(s)) - Q^\star(s,a)
+\le \big(Q^\star(s,\pi^\star(s)) - Q(s,\pi^\star(s))\big) + \big(Q(s,a)-Q^\star(s,a)\big)
+\le 2\|Q-Q^\star\|_\infty.
+\]
+For the second term, Bellman consistency for $\pi_Q$ gives
+\[
+Q^\star(s,a) - Q^{\pi_Q}(s,a)
+= \gamma \EE_{s'\sim P(\cdot\mid s,a)}\!\left[V^\star(s') - V^{\pi_Q}(s')\right]
+\le \gamma \|V^\star - V^{\pi_Q}\|_\infty.
+\]
+Combining,
+\[
+V^\star(s) - V^{\pi_Q}(s)
+\le 2\|Q-Q^\star\|_\infty + \gamma \|V^\star - V^{\pi_Q}\|_\infty.
+\]
+Taking the supremum over $s$ on the left-hand side yields
+\[
+\|V^\star - V^{\pi_Q}\|_\infty
+\le 2\|Q-Q^\star\|_\infty + \gamma \|V^\star - V^{\pi_Q}\|_\infty,
+\]
+and rearranging gives
+\[
+\|V^\star - V^{\pi_Q}\|_\infty \le \frac{2}{1-\gamma}\|Q-Q^\star\|_\infty.
+\]
+Equivalently, $V^{\pi_Q} \ge V^\star - \frac{2}{1-\gamma}\|Q-Q^\star\|_\infty\,\mathds{1}$.
+\end{proof}
+
+\begin{theorem}\label{thm:qiter_conv}
+($Q$-value iteration convergence) Set $Q^{(0)}=0$, and for $k=0,1,\ldots$ define
+\[
+Q^{(k+1)}= \Tcal Q^{(k)}.
+\]
+Let $\pi^{(k)}=\pi_{Q^{(k)}}$. For
+\[
+k\;\geq\; \frac{1}{1-\gamma}\log\!\left(\frac{2}{ (1-\gamma)^2 \eps}\right),
+\]
+we have
+\[
+V^{\pi^{(k)}} \geq V^{\star} -\eps \mathds{1} \, .
+\]
+\end{theorem}
+
+\begin{proof}
+Since $\|Q^\star\|_\infty\leq 1/(1-\gamma)$, and $Q^{(k)}=\Tcal^k Q^{(0)}$ with
+$Q^\star=\Tcal Q^\star$, the contraction property (Lemma~\ref{lemma:contraction})
+gives
+\begin{align*}
+\|Q^{(k)}-Q^\star\|_\infty
+&= \|\Tcal^k Q^{(0)} - \Tcal^k Q^\star\|_\infty
+\leq \gamma^k \|Q^{(0)}-Q^\star\|_\infty \\
+&= \gamma^k \|Q^\star\|_\infty
+\leq \frac{\gamma^k}{1-\gamma}
+\leq \frac{\exp(-(1-\gamma)k)}{1-\gamma},
+\end{align*}
+where we used $\gamma^k \le \exp(-(1-\gamma)k)$. Choosing $k$ as stated ensures
+$\|Q^{(k)}-Q^\star\|_\infty \le \frac{(1-\gamma)\eps}{2}$, and applying
+Lemma~\ref{lemma:Q_to_policy} yields $V^{\pi^{(k)}} \ge V^\star - \eps\mathds{1}$.
+\end{proof}
+
+\paragraph{Iteration complexity for an exact solution.}
+The previous results guarantee that $Q$-value iteration converges
+geometrically to $Q^\star$, and hence yields an $\eps$-optimal policy after
+$O\!\left(\frac{1}{1-\gamma}\log\frac{1}{\eps}\right)$ iterations.  To obtain an
+\emph{exact} optimal policy in the setting where $(P,r,\gamma)$ are rational, one
+can combine this convergence with a standard bit-complexity separation argument.
+In particular, when the data $(P,r,\gamma)$ have total description length
+$L(P,r,\gamma)$, the value of any \emph{fixed} deterministic stationary policy can
+be written as a rational function of these inputs whose numerator and denominator
+have bit-length polynomial in $L(P,r,\gamma)$. Consequently, among the finite set
+of deterministic stationary policies, either two policies have exactly the same
+value (a true tie) or their values differ by at least $2^{-\textrm{poly}(L(P,r,\gamma))}$.
+Thus, once $\|Q^{(k)}-Q^\star\|_\infty$ is smaller than a corresponding threshold,
+any greedy policy with respect to $Q^{(k)}$ must be optimal (up to arbitrary
+tie-breaking). This yields the polynomial-time bound in
+Table~\ref{table:computation} when $\gamma$ is treated as a fixed constant.
+Value iteration is not strongly polynomial: as $\gamma\uparrow 1$, the number of
+iterations required to reach the separation scale can grow arbitrarily large, and
+moreover the algorithm may never certify exact optimality in finite time without
+explicitly appealing to such bit-length arguments.
+
+\subsection{Policy Iteration}
+
+Policy iteration for discounted MDPs starts from an arbitrary
+deterministic stationary policy $\pi_0$ and repeats, for $k=0,1,2,\ldots$:
+\begin{enumerate}
+\item \emph{Policy evaluation.} Compute the value of the current policy, e.g.,
+      compute $V^{\pi_k}$ by solving the linear system
+      $V^{\pi_k} = r(\cdot,\pi_k(\cdot)) + \gamma P^{\pi_k} V^{\pi_k}$,
+      and then obtain $Q^{\pi_k}$ via
+      $Q^{\pi_k}(s,a)=r(s,a)+\gamma \EE_{s'\sim P(\cdot\mid s,a)}[V^{\pi_k}(s')]$.
+      (Equivalently, one may compute $Q^{\pi_k}$ directly using
+      Equation~\ref{eq:policy_value_matrix_form}.)
+\item \emph{Policy improvement.} Update the policy to be greedy w.r.t.\ $Q^{\pi_k}$:
+\[
+\pi_{k+1} = \pi_{Q^{\pi_k}}.
+\]
+\end{enumerate}
+The first step is called \emph{policy evaluation} and the second
+\emph{policy improvement}.
+
+\begin{lemma}[Monotonicity and contraction of policy iteration]
+\label{lemma:pi_monotone_contraction}
+For all $k\ge 0$,
+\begin{enumerate}
+\item \textbf{(Sandwich bound)} $Q^{\pi_{k+1}} \;\ge\; \Tcal Q^{\pi_k} \;\ge\; Q^{\pi_k}$ (elementwise).
+\item \textbf{(Geometric contraction to optimality)}
+\[
+\|Q^\star - Q^{\pi_{k+1}}\|_\infty \;\le\; \gamma \, \|Q^\star - Q^{\pi_k}\|_\infty.
+\]
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+We repeatedly use that $\Tcal$ is monotone and a $\gamma$-contraction in $\|\cdot\|_\infty$
+(Lemma~\ref{lemma:contraction}), and that $Q^\star \ge Q^\pi$ elementwise for any policy $\pi$.
+
+\paragraph{Step 1: $\Tcal Q^{\pi_k} \ge Q^{\pi_k}$.}
+For deterministic $\pi_k$, we have $V^{\pi_k}(s)=Q^{\pi_k}(s,\pi_k(s))$.
+Moreover, by definition,
+$V_{Q^{\pi_k}}(s)=\max_a Q^{\pi_k}(s,a) \ge Q^{\pi_k}(s,\pi_k(s))=V^{\pi_k}(s)$.
+Therefore, for every $(s,a)$,
+\[
+\Tcal Q^{\pi_k}(s,a)
+= r(s,a) + \gamma \EE_{s'\sim P(\cdot\mid s,a)}[V_{Q^{\pi_k}}(s')]
+\ge r(s,a) + \gamma \EE_{s'\sim P(\cdot\mid s,a)}[V^{\pi_k}(s')]
+= Q^{\pi_k}(s,a).
+\]
+
+\paragraph{Step 2: $Q^{\pi_{k+1}} \ge \Tcal Q^{\pi_k}$.}
+Let $\pi'=\pi_{k+1}=\pi_{Q^{\pi_k}}$.
+Define the (policy-specific) Bellman evaluation operator on state values,
+\[
+(\Tcal^{\pi'} V)(s) := r(s,\pi'(s)) + \gamma \EE_{s'\sim P(\cdot\mid s,\pi'(s))}[V(s')].
+\]
+This operator is monotone and a $\gamma$-contraction in $\|\cdot\|_\infty$,
+with unique fixed point $V^{\pi'}$.
+
+By greediness of $\pi'$ w.r.t.\ $Q^{\pi_k}$,
+\[
+(\Tcal^{\pi'} V^{\pi_k})(s)
+= r(s,\pi'(s)) + \gamma \EE_{s'\sim P(\cdot\mid s,\pi'(s))}[V^{\pi_k}(s')]
+= Q^{\pi_k}(s,\pi'(s))
+= \max_a Q^{\pi_k}(s,a)
+= V_{Q^{\pi_k}}(s)
+\ge V^{\pi_k}(s).
+\]
+Applying $\Tcal^{\pi'}$ repeatedly and using monotonicity yields an increasing sequence
+$V^{\pi_k} \le (\Tcal^{\pi'})V^{\pi_k} \le (\Tcal^{\pi'})^2 V^{\pi_k}\le \cdots$,
+which converges to the fixed point $V^{\pi'}$. Hence,
+\[
+V^{\pi_{k+1}} = V^{\pi'} \;\ge\; V_{Q^{\pi_k}} \quad \text{(elementwise)}.
+\]
+Now, for any $(s,a)$,
+\[
+Q^{\pi_{k+1}}(s,a)
+= r(s,a) + \gamma \EE_{s'\sim P(\cdot\mid s,a)}[V^{\pi_{k+1}}(s')]
+\ge r(s,a) + \gamma \EE_{s'\sim P(\cdot\mid s,a)}[V_{Q^{\pi_k}}(s')]
+= \Tcal Q^{\pi_k}(s,a),
+\]
+which proves $Q^{\pi_{k+1}} \ge \Tcal Q^{\pi_k}$ and completes the sandwich bound.
+
+\paragraph{Step 3: contraction.}
+Since $Q^\star=\Tcal Q^\star$ and $Q^\star \ge Q^{\pi_{k+1}} \ge \Tcal Q^{\pi_k}$ elementwise,
+\[
+0 \le Q^\star - Q^{\pi_{k+1}} \le Q^\star - \Tcal Q^{\pi_k}
+= \Tcal Q^\star - \Tcal Q^{\pi_k}.
+\]
+Taking $\|\cdot\|_\infty$ and applying Lemma~\ref{lemma:contraction} gives
+\[
+\|Q^\star - Q^{\pi_{k+1}}\|_\infty
+\le \|\Tcal Q^\star - \Tcal Q^{\pi_k}\|_\infty
+\le \gamma \|Q^\star - Q^{\pi_k}\|_\infty,
+\]
+as claimed.
+\end{proof}
+
+With Lemma~\ref{lemma:pi_monotone_contraction}, a geometric convergence bound follows immediately.
+
+\begin{theorem}[Policy iteration convergence]
+\label{thm:pi-convergence}
+Let $\pi_0$ be any initial deterministic stationary policy, and let $\{\pi_k\}$ be generated
+by policy iteration. Then for all $k\ge 0$,
+\[
+\|Q^\star - Q^{\pi_k}\|_\infty \le \gamma^k \|Q^\star - Q^{\pi_0}\|_\infty \le \frac{\gamma^k}{1-\gamma}.
+\]
+In particular, for
+\[
+k \;\ge\; \frac{\log\!\left(\frac{1}{(1-\gamma)\eps}\right)}{1-\gamma},
+\]
+we have the elementwise performance guarantee
+\[
+Q^{\pi_k} \ge Q^\star - \eps \mathds{1}.
+\]
+\end{theorem}
+
+\paragraph{Iteration complexity for an exact solution.}
+Policy iteration improves the value monotonically and converges geometrically, but unlike value
+iteration it can terminate with an \emph{exact} optimal policy in finitely many iterations because
+the policy changes only when the greedy action changes.
+A naive worst-case bound on the number of iterations is the number of deterministic stationary
+policies, $|\Acal|^{|\Scal|}$, since policy iteration never revisits a policy.
+A modest refinement improves this to $\frac{|\Acal|^{|\Scal|}}{|\Scal|}$.
+More strongly, when one measures complexity in the \emph{strongly polynomial} model (unit-cost real arithmetic)
+and treats $\gamma$ as fixed, substantially better bounds are known: policy iteration finds an optimal policy
+in a number of iterations polynomial in $|\Scal|$ and $|\Acal|$ (see Table~\ref{table:computation} and
+Section~\ref{ch1:bib} for references and precise statements).
+
+\subsection{Value Iteration for Finite-Horizon MDPs}
+
+We now specify the value iteration algorithm for finite-horizon MDPs.
+In the finite-horizon (time-dependent) setting, dynamic programming via backward
+induction computes the optimal value functions exactly, and the natural analogues
+of value iteration and policy iteration coincide.
+
+Let $Q_H(s,a)\equiv 0$ for all $(s,a)$. For $h=H-1,H-2,\ldots,0$, define
+\begin{equation}\label{eq:finite_value_iteration}
+Q_h(s,a)
+= r_h(s,a) + \EE_{s'\sim P_h(\cdot\mid s,a)}\!\left[\max_{a'\in\Acal} Q_{h+1}(s',a')\right].
+\end{equation}
+Equivalently, one may initialize $Q_{H-1}(s,a)=r_{H-1}(s,a)$ and then run the same
+recursion for $h=H-2,\ldots,0$.
+
+By Theorem~\ref{thm:Bellman_finite}, the resulting functions satisfy
+$Q_h = Q_h^\star$ for all $h\in\{0,\ldots,H\}$, and the policy
+\[
+\pi(s,h)\in \argmax_{a\in\Acal} Q_h^\star(s,a)
+\]
+(with arbitrary tie-breaking) is optimal.
+
+
+\subsection{The Linear Programming Approach}
+\label{sec:LP}
+
+It is helpful to understand an alternative approach to computing an optimal
+policy when the MDP is known.  In particular, consider a discounted MDP
+$M=(\Scal,\Acal,P,r,\gamma,\mu)$ where $P$, $r$, and $\gamma$ are specified by rational
+numbers. From a bit-complexity perspective, the iterative algorithms above are
+not, in general, polynomial-time in the description length of the input because
+their iteration complexity typically depends polynomially on $1/(1-\gamma)$, while
+a rational value of $1-\gamma$ may be represented with only
+$O\!\left(\log\frac{1}{1-\gamma}\right)$ bits. In contrast, the LP approach yields
+polynomial-time algorithms in the standard bit model.
+
+\subsubsection*{The Primal LP}
+
+Consider the following linear program in variables $V\in \R^{|\Scal|}$:
+\begin{eqnarray*}
+\min && \sum_{s\in\Scal} \mu(s)\, V(s)\\
+\textrm{subject to} && V(s) \;\ge\; r(s,a) + \gamma \sum_{s'\in\Scal} P(s'\mid s,a)\, V(s')
+\qquad \forall s\in\Scal,\; a\in\Acal.
+\end{eqnarray*}
+The feasible region is exactly the set of value functions that dominate their
+Bellman optimality backup. The optimal value function $V^\star$ is the (unique)
+minimal feasible vector (componentwise). If $\mu$ has full support, then $V^\star$
+is also the unique optimizer of the above objective (since increasing any
+coordinate increases the objective).
+
+\paragraph{Computational complexity for an exact solution.}
+Table~\ref{table:computation} summarizes standard runtime bounds for solving this
+LP when the coefficients are rational and we measure complexity in the bit model.
+There are also specialized interior-point methods for discounted MDP LPs with
+strong guarantees; see Section~\ref{ch1:bib} for references and further discussion.
+
+\paragraph{Policy iteration and simplex.}
+Policy iteration can be interpreted as a pivoting method for closely related LP
+formulations (and, in particular, has a well-known connection to simplex-type
+methods under appropriate pivot rules). While the simplex method is not strongly
+polynomial for general LPs, policy-iteration/simplex variants admit strong
+polynomial-time guarantees for discounted MDPs when the discount factor is treated
+as fixed; see \cite{DBLP:journals/mor/Ye11a}.
+
+
+\subsubsection*{The Dual LP and the State--Action Polytope}
+
+We next introduce the discounted occupancy measure, which yields a convenient
+dual view. For a (possibly randomized) stationary policy $\pi$ and a fixed
+starting state $s_0$, define the distribution over state--action pairs
+\begin{equation}\label{eq:dpisa}
+d_{s_0}^\pi(s,a)
+:= (1-\gamma)\sum_{t=0}^\infty \gamma^t {\Pr}^\pi(s_t=s,a_t=a\mid s_0).
+\end{equation}
+It is straightforward to verify that $d_{s_0}^\pi$ is a probability distribution
+over $\Scal\times\Acal$ (since $(1-\gamma)\sum_{t\ge0}\gamma^t=1$).  For a starting
+distribution $\mu$, we also define the averaged occupancy measure
+\[
+d_\mu^\pi(s,a) := \EE_{s_0\sim \mu}\!\left[d_{s_0}^\pi(s,a)\right].
+\]
+
+\paragraph{Flow (consistency) constraints.}
+The discounted occupancy satisfies a linear recursion.  For a fixed start state
+$s_0$, one has for every $s\in\Scal$,
+\begin{equation}\label{eq:occupancy_flow_s0}
+\sum_{a\in\Acal} d_{s_0}^\pi(s,a)
+= (1-\gamma)\mathds{1}\{s=s_0\}
++ \gamma \sum_{s'\in\Scal}\sum_{a'\in\Acal} P(s\mid s',a')\, d_{s_0}^\pi(s',a').
+\end{equation}
+Averaging \eqref{eq:occupancy_flow_s0} over $s_0\sim \mu$ yields the corresponding
+relation for $d_\mu^\pi$:
+\begin{equation}\label{eq:occupancy_flow_mu}
+\sum_{a\in\Acal} d_\mu^\pi(s,a)
+= (1-\gamma)\mu(s)
++ \gamma \sum_{s'\in\Scal}\sum_{a'\in\Acal} P(s\mid s',a')\, d_\mu^\pi(s',a')
+\qquad \forall s\in\Scal.
+\end{equation}
+
+Motivated by \eqref{eq:occupancy_flow_mu}, define the \emph{state--action polytope}
+\[
+\mathcal{K}_\mu
+:= \left\{ d \in \R^{|\Scal|\cdot|\Acal|} \,\middle|\,
+d(s,a)\ge 0\;\; \forall(s,a), \;\;
+\sum_{a\in\Acal} d(s,a) = (1-\gamma)\mu(s) + \gamma \sum_{s',a'} P(s\mid s',a')\, d(s',a')
+\;\; \forall s\in\Scal
+\right\}.
+\]
+
+\begin{proposition}\label{lemma:polytope}
+$\mathcal{K}_\mu$ is exactly the set of discounted occupancy measures induced by
+stationary policies: $d\in \mathcal{K}_\mu$ if and only if there exists a stationary
+(possibly randomized) policy $\pi$ such that $d_\mu^\pi = d$.
+\end{proposition}
+
+\paragraph{The dual LP.}
+Using the identity
+\[
+V^\pi(\mu) = \EE\!\left[\sum_{t=0}^\infty \gamma^t r(s_t,a_t)\right]
+= \frac{1}{1-\gamma}\sum_{s\in\Scal}\sum_{a\in\Acal} d_\mu^\pi(s,a)\, r(s,a),
+\]
+we can write a dual LP in the variables $d\in \R^{|\Scal|\cdot|\Acal|}$:
+\begin{eqnarray*}
+\max && \frac{1}{1-\gamma}\sum_{s\in\Scal}\sum_{a\in\Acal} d(s,a)\, r(s,a)\\
+\textrm{subject to} && d \in \mathcal{K}_\mu.
+\end{eqnarray*}
+One can verify that this is dual to the primal LP above (and strong duality holds
+under standard conditions). This dual perspective provides an alternative route
+to computing an optimal policy.
+
+If $d^\star$ is an optimal solution and $\mu$ has full support, then an optimal
+policy can be recovered via
+\[
+\pi^\star(a\mid s) = \frac{d^\star(s,a)}{\sum_{a'} d^\star(s,a')}
+\quad \text{whenever } \sum_{a'} d^\star(s,a')>0,
+\]
+with $\pi^\star(\cdot\mid s)$ defined arbitrarily on states with zero occupancy.
+An alternative optimal policy is $\argmax_a d^\star(s,a)$; these coincide when the
+optimizer is unique.
+
+
+\section{Sample Complexity and Sampling Models}
+\label{sec:sampling_models}
+
+Much of reinforcement learning is concerned with finding a near-optimal
+policy (or, equivalently, achieving near-optimal return) in settings where
+the MDP is \emph{not} known to the learner. We will study these questions
+under several different \emph{sampling models}, which specify how the agent
+obtains information about the unknown underlying MDP. In each model, we are
+interested in understanding the number of samples required to compute a
+near-optimal policy, i.e.\ the \emph{sample complexity}. Ultimately, we are
+interested in results that remain meaningful when the number of states and
+actions is large (or even when $\Scal$ is countably or uncountably infinite).
+This is analogous in spirit to generalization in supervised learning, but, as
+we shall see, it is fundamentally more challenging in reinforcement learning
+because the data distribution depends on the learner's behavior.
+
+\paragraph{The episodic setting.}
+In the episodic setting, the learner interacts with the environment in
+\emph{episodes}. In each episode, the learner starts from an initial state
+$s_0\sim \mu$, acts for a finite number of steps, observes the resulting
+trajectory, and then the environment resets and a new episode begins with
+a fresh draw $s_0\sim \mu$. This episodic model of feedback is applicable to
+both finite-horizon and infinite-horizon MDPs:
+\begin{itemize}
+\item \textbf{Finite-horizon MDPs.} Each episode lasts exactly $H$ steps, after
+  which the environment resets to $s_0\sim \mu$.
+\item \textbf{Infinite-horizon MDPs.} It is often natural to impose an episodic
+  protocol even in the infinite-horizon discounted setting by ending each episode
+  after a random (finite) number of steps. A standard model is to terminate the
+  episode at each time step independently with probability $1-\gamma$ (equivalently,
+  the episode length has a geometric distribution). After termination, the state
+  resets to $s_0\sim \mu$. Under this protocol, the undiscounted cumulative reward
+  observed in one episode is an unbiased estimate of the infinite-horizon discounted
+  value $V^\pi(\mu)$.
+\end{itemize}
+In this setting, we are often interested either in the number of episodes needed
+to find a near-optimal policy (a \emph{PAC} guarantee), or in \emph{regret} guarantees
+(which we study in Chapter~\ref{chap:tabular_exploration}). Both are statements about
+the statistical (sample) complexity of learning.
+
+The episodic setting is challenging because the agent must explore to obtain
+information about relevant state--action pairs. As we shall see in
+Chapter~\ref{chap:tabular_exploration}, this exploration must be strategic: simply
+behaving randomly can be far too inefficient. It is therefore often helpful to
+also study the statistical complexity of RL in an abstract sampling model that
+bypasses exploration concerns.
+
+\paragraph{The generative model setting.}
+A \emph{generative model} (or simulator oracle) takes as input a state--action
+pair $(s,a)$ and returns an independent sample $s'\sim P(\cdot\mid s,a)$ together
+with the reward $r(s,a)$ (or, in the stochastic-reward setting, an independent
+sample of the reward). This model allows the learner to sample transitions from
+any chosen $(s,a)$ directly, and is a convenient abstraction for isolating
+statistical questions from exploration dynamics.
+
+\paragraph{The offline RL setting.}
+In \emph{offline} RL, the agent is given a fixed dataset collected in advance,
+typically generated by some (unknown) behavior policy or a mixture of policies.
+In the simplest model, the dataset consists of tuples $\{(s,a,r,s')\}$, where
+$r$ corresponds to $r(s,a)$ in the deterministic-reward case (or a reward sample
+otherwise) and $s'\sim P(\cdot\mid s,a)$. For simplicity, it is often helpful to
+assume that the state--action pairs $(s,a)$ in the dataset are sampled i.i.d.\
+from some distribution $\nu$ over $\Scal\times\Acal$, after which $(r,s')$ are
+drawn from the conditional dynamics given $(s,a)$. This i.i.d.\ model captures
+the core statistical difficulties associated with distribution shift and coverage.
+
+
+\section{Bonus: Advantages and the Performance Difference Lemma}
+
+Throughout, we will overload notation so that for a distribution $\mu$ over
+$\Scal$,
+\[
+V^\pi(\mu) := \E_{s\sim \mu}\!\left[V^\pi(s)\right].
+\]
+
+The \emph{advantage} of a policy $\pi$ is defined as
+\[
+A^\pi(s,a) := Q^\pi(s,a) - V^\pi(s).
+\]
+In particular, for an optimal policy $\pi^\star$, we have
+\[
+A^{\pi^\star}(s,a) = Q^\star(s,a) - V^\star(s) \le 0 \qquad \forall (s,a),
+\]
+with equality holding for any action $a\in \argmax_{a'} Q^\star(s,a')$.
+
+Analogous to the discounted state--action occupancy measure in
+Equation~\ref{eq:dpisa}, we define a discounted \emph{state} occupancy measure.
+To avoid introducing new notation, we use the same symbol $d_{s_0}^\pi$; its
+meaning will be clear from whether it is evaluated on $s$ or on $(s,a)$:
+\begin{equation}\label{eqn:dpi}
+d_{s_0}^\pi(s) := (1-\gamma)\sum_{t=0}^\infty \gamma^t \Pr^\pi(s_t=s\mid s_0).
+\end{equation}
+Here, $\Pr^\pi(s_t=s\mid s_0)$ denotes the state visitation probability at time
+$t$ under $\pi$ starting from $s_0$. As before, for a distribution $\mu$ over
+$\Scal$, we write
+\[
+d_\mu^\pi(s) := \E_{s_0\sim \mu}\!\left[d_{s_0}^\pi(s)\right].
+\]
+
+The following lemma is a standard and extremely useful identity.
+
+\begin{lemma}\label{lemma:perf_diff}
+(The performance difference lemma) For all policies $\pi,\pi'$ and all
+distributions $\mu$ over $\Scal$,
+\[
+V^\pi(\mu) - V^{\pi'}(\mu)
+=
+\frac{1}{1-\gamma}\;
+\E_{s\sim d_\mu^\pi}\;
+\E_{a\sim \pi(\cdot\mid s)}\!\left[A^{\pi'}(s,a)\right].
+\]
+\end{lemma}
+
+\begin{proof}
+We first prove the identity for a fixed start state $s_0=s$, and then average
+over $s\sim \mu$.
+
+Fix $s_0=s$ and let $\tau=(s_0,a_0,s_1,a_1,\ldots)$ denote the (infinite) trajectory
+generated by following $\pi$. For any function $f:\Scal\times\Acal\to \R$, by the
+definition \eqref{eqn:dpi} we have
+\begin{equation}\label{eq:f_equal}
+\E_{\tau\sim \Pr^\pi(\cdot\mid s_0=s)}\!\left[\sum_{t=0}^\infty \gamma^t f(s_t,a_t)\right]
+=
+\frac{1}{1-\gamma}\;
+\E_{s_t\sim d_s^\pi}\;
+\E_{a\sim \pi(\cdot\mid s_t)}\!\left[f(s_t,a)\right].
+\end{equation}
+
+Next, we use a telescoping decomposition. Since $V^{\pi'}$ is bounded and
+$\gamma\in[0,1)$,
+\[
+\sum_{t=0}^\infty \gamma^t\big(\gamma V^{\pi'}(s_{t+1})-V^{\pi'}(s_t)\big)
+= -V^{\pi'}(s_0)
+\quad \text{(almost surely)}.
+\]
+Therefore,
+\begin{align*}
+V^\pi(s) - V^{\pi'}(s)
+&=
+\E_{\tau\sim \Pr^\pi(\cdot\mid s_0=s)}\!\left[\sum_{t=0}^\infty \gamma^t r(s_t,a_t)\right]
+- V^{\pi'}(s)\\
+&=
+\E_{\tau\sim \Pr^\pi(\cdot\mid s_0=s)}\!\left[
+\sum_{t=0}^\infty \gamma^t \big(r(s_t,a_t) + \gamma V^{\pi'}(s_{t+1}) - V^{\pi'}(s_t)\big)
+\right]\\
+&=
+\E_{\tau\sim \Pr^\pi(\cdot\mid s_0=s)}\!\left[
+\sum_{t=0}^\infty \gamma^t \big(r(s_t,a_t) + \gamma \E[V^{\pi'}(s_{t+1})\mid s_t,a_t] - V^{\pi'}(s_t)\big)
+\right]\\
+&=
+\E_{\tau\sim \Pr^\pi(\cdot\mid s_0=s)}\!\left[
+\sum_{t=0}^\infty \gamma^t \big(Q^{\pi'}(s_t,a_t) - V^{\pi'}(s_t)\big)
+\right]\\
+&=
+\E_{\tau\sim \Pr^\pi(\cdot\mid s_0=s)}\!\left[\sum_{t=0}^\infty \gamma^t A^{\pi'}(s_t,a_t)\right].
+\end{align*}
+Applying \eqref{eq:f_equal} with $f=A^{\pi'}$ yields
+\[
+V^\pi(s) - V^{\pi'}(s)
+=
+\frac{1}{1-\gamma}\;
+\E_{s'\sim d_s^\pi}\;
+\E_{a\sim \pi(\cdot\mid s')}\!\left[A^{\pi'}(s',a)\right].
+\]
+Finally, averaging over $s\sim \mu$ gives the stated result.
+\end{proof}
+
+
+
+\section{Bibliographic Remarks and Further Reading}\label{ch1:bib}
+
+We refer the reader to \citet{puterman1994markov} for a comprehensive
+treatment of dynamic programming and MDPs; this text also contains a
+thorough treatment of the dual LP formulation and a proof of
+Lemma~\ref{lemma:polytope}.
+
+Regarding the computational complexity of planning, \citet{DBLP:journals/mor/Ye11a}
+provides an excellent summary of various approaches. Notably,
+\citet{DBLP:journals/mor/Ye11a} showed that policy iteration is a strongly
+polynomial-time algorithm for a fixed discount rate.\footnote{The strongly
+polynomial runtime stated in Table~\ref{table:computation} differs slightly
+from that in \cite{DBLP:journals/mor/Ye11a} because we assume the cost per
+iteration of policy iteration is $O(|\Scal|^3 +|\Scal|^2|\Acal|)$ (dominated
+by solving the linear system).}
+\citet{MS_PI} proved that the number of iterations of policy iteration is
+bounded by roughly $|\Acal|^{|\Scal|}/|\Scal|$ (improving on the trivial
+$|\Acal|^{|\Scal|}$ bound).
+For general strongly polynomial algorithms (independent of $\gamma$),
+the CIPA algorithm proposed by \citet{yinyu_CIPA} is an interior-point method
+achieving the runtime claimed in Table~\ref{table:computation}.
+
+The error amplification bound (Lemma~\ref{lemma:Q_to_policy}) is due to
+\citet{singh1994upper}.
+
+The performance difference lemma (Lemma~\ref{lemma:perf_diff}) was explicitly
+stated and utilized by \citet{kakade2002approximately,kakade2003sample},
+though the result (based on a telescoping expansion of advantages) was
+implicit in the analysis of several prior works.

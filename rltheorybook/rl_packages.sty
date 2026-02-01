@@ -1,0 +1,36 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{rl_packages}
+
+% --- Core Math & Theorems ---
+\RequirePackage{amsmath, amsfonts, amsthm, amssymb}
+\RequirePackage{mathtools}
+\RequirePackage{dsfont}
+\RequirePackage{natbib}
+\RequirePackage{chngcntr}
+
+% --- Layout & Fonts ---
+\RequirePackage{times}
+\RequirePackage{fullpage}
+\RequirePackage{enumitem}
+\RequirePackage{xspace}
+\RequirePackage[nottoc,notlot,notlof]{tocbibind}
+
+% --- Graphics ---
+\RequirePackage{tikz}
+\usetikzlibrary{automata, positioning, arrows}
+\RequirePackage[dvipsnames]{xcolor}
+
+% --- Algorithms ---
+\RequirePackage{algorithm, algorithmicx, algpseudocode}
+
+% --- Utilities ---
+\RequirePackage{comment}
+\RequirePackage{tabularx}
+\RequirePackage{pifont} % Required for \cmark and \xmark
+\RequirePackage[toc,page]{appendix}
+\RequirePackage{hyperref}
+
+\renewcommand{\algorithmicrequire}{\textbf{Input:}}
+\renewcommand{\algorithmicensure}{\textbf{Output:}}
+
+\endinput

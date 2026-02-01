@@ -1,0 +1,447 @@
+\chapter{CPI, TRPO, and More}
+\label{chap:cpi}
+
+In this chapter, we consider conservative policy iteration (CPI) and trust-region constrained policy optimization (TRPO). Both CPI and TRPO can be understood as making small incremental update to the policy by forcing that the new policy's state action distribution is not too far away from the current policy's.   We will see that CPI achieves that by forming a new policy that is a mixture of the current policy and a local greedy policy, while TRPO forcing that by explicitly adding a KL constraint (over polices' induced trajectory distributions space) in the optimization procedure. We will show that TRPO gives an equivalent update procedure as Natural Policy Gradient.  
+
+Along the way, we discuss the benefit of incremental policy update, by contrasting it to another family of policy update procedure called \emph{Approximate Policy Iteration} (API), which performs local greedy policy search and could potentially lead to abrupt policy change. We show that API in general fails to converge or make local improvement, unless under a much stronger concentrability ratio assumption. 
+
+The algorithm and analysis of CPI is adapted from the original one in~\cite{kakade2002approximately}, and the we follow the presentation of TRPO from~\cite{schulman2015trust}, while making a connection to the NGP algorithm.
+
+
+\section{Conservative Policy Iteration}
+\label{sec:cpi}
+
+As the name suggests, we will now describe a more conservative version of the policy iteration algorithm, which shifts the next policy away from the current policy with a small step size to prevent drastic shifts in successive state distributions. 
+
+We consider the discounted MDP here $\left\{ \Scal, \Acal, P, r, \gamma, \rho \right\}$ where $\rho$ is the initial state distribution. Similar to Policy Gradient Methods, we assume that we have a restart distribution $\mu$ (i.e., the $\mu$-restart setting). Throughout this section, for any policy $\pi$, we denote $d_\mu^{\pi}$ as the state-action visitation starting from $s_0 \sim \mu$ instead of $\rho$, and $d^{\pi}$ the state-action visitation starting from the true initial state distribution $\rho$, i.e., $s_0\sim \rho$.  Similarly, we denote $V^{\pi}_{\mu}$ as expected discounted total reward of policy $\pi$ starting at $\mu$, while $V^{\pi}$ as the expected discounted total reward of $\pi$ with $\rho$ as the initial state distribution.  We assume $\Acal$ is discrete but $\Scal$ could be continuous. 
+
+CPI is based on the concept of \emph{Reduction to Supervised Learning}. Specifically we will use the Approximate Greedy Policy Selector defined in Chapter~\ref{chap:api} (Definition~\ref{def:approximate_gps}). We recall the definition of the $\varepsilon$-approximate Greedy Policy Selector $\Gcal_{\varepsilon}(\pi, \Pi, \mu)$ below.  Given a policy $\pi$, policy class $\Pi$, and a restart distribution $\mu$, denote $\widehat{\pi} =  \Gcal_{\varepsilon}(\pi, \Pi, \mu)$, we have that:
+\begin{align*}
+\EE_{s\sim d^{\pi}_\mu} A^{\pi}(s, \widehat\pi(s)) \geq \max_{\widetilde\pi\in \Pi } \EE_{s\sim d^{\pi}_\mu} A^{\pi}(s, \widetilde\pi(s)) - \varepsilon.
+\end{align*}
+Recall that in Chapter~\ref{chap:api} we explained two approach to implement such approximate oracle: one with a reduction to classification oracle, and the other one with a reduction to regression oracle. 
+
+
+
+%We will show that in each iteration, CPI leverages a weight classification oracle which is a very common computation oracle in the supervised learning setting.
+
+%\subsection{The Approximate Greedy Policy Selector via Classification}
+
+
+
+
+\subsection{The CPI Algorithm}
+
+ CPI, summarized in Alg.~\ref{alg:cpi},  will iteratively generate a sequence of policies $\pi^i$. 
+ Note we use $\pi_\alpha = (1-\alpha) \pi + \alpha \pi'$ to refer to a randomized policy which at any state $s$, chooses an action according to $\pi$ with probability $1-\alpha$ and according to $\pi'$ with probability $\alpha$. The greedy policy $\pi'$ is computed using the $\varepsilon$-approximate greedy policy selector $\Gcal_{\varepsilon}(\pi^t, \Pi, \mu)$. The algorithm is terminate when there is no significant one-step improvement over $\pi^t$, i.e., $\EE_{s\sim d^{\pi^t}_\mu} A^{\pi^t}(s, \pi'(s))) \leq \varepsilon$.
+
+\begin{algorithm}
+\begin{algorithmic}[1]
+    \Require Initial policy $\pi^0 \in \Pi $, accuracy parameter $\varepsilon$.
+    \For{$t=0,1,2\ldots$}
+    	\State $\pi' = \Gcal_{\varepsilon}( \pi^t, \Pi, \mu )$
+        %\State Obtain a $Q$ value approximation $\Qh_i$ satisfying~\eqref{eqn:cpi-pre} with parameter $\epsilon/2\sqrt{|\Aset|}$. \label{algline:cpi-eps}
+        %\State Define $\pitil_i(s) = \argmax_{a\in\Aset} \Qh_i(s,a)$, and let $\widehat{A}_i = \E_{s\in d^{\pi_i}} \Qh_i(s,\pitil_i(s)) - \Qh_i(s,\pi_i(s))$.
+        \If{ $\EE_{s\sim d_\mu^{\pi^t}} A^{\pi^t}(s, \pi'(s))  \leq \varepsilon$ }
+        		\State Return $\pi^t$
+        \EndIf
+        \State Update $\pi^{t+1} = (1-\alpha) \pi^t + \alpha \pi'$
+        %\State If $\widehat{A}_i \leq 2\epsilon$, return $\pi_i$.
+        %\State Update $\pi_{i+1}(a\given s) = (1-\alpha_i) \pi_i(a\given s) + \alpha_i \pitil_i(a\given s)$, for $\alpha_i = (\widehat{A}_i-\epsilon)(1-\gamma)/4$.
+    \EndFor
+\end{algorithmic}
+\caption{Conservative Policy Iteration (CPI)}
+\label{alg:cpi}
+\end{algorithm}
+
+The main intuition behind the algorithm is that the stepsize $\alpha$ controls the difference between state distributions of $\pi^t$ and $\pi^{t+1}$. Let us look into the performance difference lemma to get some intuition on this conservative update. From PDL, we have:
+\begin{align*}
+V_\mu^{\pi^{t+1}} - V_\mu^{\pi^t} = \frac{1}{1-\gamma} \EE_{s\sim d^{\pi^{t+1}}_{\mu}} A^{\pi^t}(s, \pi^{t+1}(s)) =  \frac{ \alpha }{1-\gamma} \EE_{s\sim d^{\pi^{t+1}}_{\mu}} A^{\pi^t}(s, \pi'(s)),
+\end{align*} where the last equality we use the fact that $\pi^{t+1} = (1-\alpha) \pi^t + \alpha \pi'$ and $A^{\pi^t}(s,\pi^t(s)) = 0$ for all $s$. Thus, if we can search for a policy $\pi'\in \Pi$ that maximizes $\EE_{s\sim d^{\pi^{t+1}}_{\mu}} A^{\pi^t}(s, \pi'(s))$ and makes $\EE_{s\sim d^{\pi^{t+1}}_{\mu}} A^{\pi^t}(s, \pi'(s)) > 0$, then we can guarantee policy improvement. However, at episode $t$, we do not know the state distribution of $\pi^{t+1}$ and all we have access to is $d^{\pi^t}_\mu$.  Thus, we explicitly make the policy update procedure to be conservative such that $d^{\pi^t}_{\mu}$ and the new policy's distribution $d^{\pi^{t+1}}_\mu$ is guaranteed to be not that different. Thus we can hope that  $\EE_{s\sim d^{\pi^{t+1}}_{\mu}} A^{\pi^t}(s, \pi'(s))$ is close to $\EE_{s\sim d^{\pi^{t}}_{\mu}} A^{\pi^t}(s, \pi'(s))$, and the latter is something that we can manipulate using the greedy policy selector. 
+
+Below we formalize the above intuition and show that with small enough $\alpha$, we indeed can ensure monotonic policy improvement. 
+
+We start from the following lemma which shows that $\pi^{t+1}$ and $\pi^t$ are close to each other in terms of total variation distance at any state, and $d^{\pi^{t+1}}_\mu$ and $d^{\pi^t}_\mu$ are close as well. 
+\begin{lemma}[Similar Policies imply similar state visitations]Consider any $t$, we have that:
+\begin{align*}
+\left\| \pi^{t+1}(\cdot | s) - \pi^t(\cdot | s)  \right\|_1 \leq 2 \alpha, \forall s; 
+\end{align*} Further, we have:
+\begin{align*}
+\left\| d^{\pi^{t+1}}_\mu - d^{\pi^t}_\mu \right\|_{1} \leq  \frac{2\alpha \gamma}{1-\gamma}.
+\end{align*}\label{lem:policy_deviation_to_state_deviation}
+\end{lemma}
+\begin{proof}
+The first claim in the above lemma comes from the definition of policy update:
+\begin{align*}
+\left\| \pi^{t+1}(\cdot | s) - \pi^t(\cdot | s)  \right\|_1 = \alpha \left\| \pi^t(\cdot | s) - \pi'(\cdot | s)  \right\|_1 \leq 2 \alpha. 
+\end{align*}
+%For the second claim, we prove via induction. For $h = 0$, we have $d^{\pi^{t+1}}_{\mu; 0} =d^{\pi^{t}}_{\mu; 0}  = \mu$.  Assume that for any $h$, we have $\left\| d^{\pi^{t+1}}_{\mu; h} - d^{\pi^{t}}_{\mu; h} \right\|_1 \leq h$. 
+Denote $\mathbb{P}^{\pi}_h$ as the state distribution resulting from $\pi$ at time step $h$ with $\mu$ as the initial state distribution. 
+We consider bounding $\| \mathbb{P}^{\pi^{t+1}}_{h} - \mathbb{P}^{\pi^{t}}_{h} \|_1$ with $h \geq 1$.  
+\begin{align*}
+ \mathbb{P}^{\pi^{t+1}}_{h}(s') - \mathbb{P}^{\pi^{t}}_{h}(s') & = \sum_{s,a}\left( \mathbb{P}^{\pi^{t+1}}_{h-1}(s)\pi^{t+1}(a|s)  - \mathbb{P}^{\pi^{t}}_{h-1}(s)\pi^{t}(a|s) \right) P(s'| s,a) \\
+ &  = \sum_{s,a}\left( \mathbb{P}^{\pi^{t+1}}_{h-1}(s)\pi^{t+1}(a|s)  - \mathbb{P}^{\pi^{t+1}}_{h-1}(s)\pi^{t}(a|s) + \mathbb{P}^{\pi^{t+1}}_{h-1}(s)\pi^{t}(a|s)- \mathbb{P}^{\pi^{t}}_{h-1}(s)\pi^{t}(a|s) \right) P(s'| s,a)\\
+ & = \sum_{s} \mathbb{P}^{\pi^{t+1}}_{h-1}(s) \sum_{a} \left( \pi^{t+1}(a|s)-\pi^{t}(a|s)  \right) P(s'| s,a) \\
+ & \qquad + \sum_{s} \left( \mathbb{P}^{\pi^{t+1}}_{h-1}(s) - \mathbb{P}^{\pi^{t}}_{h-1}(s)  \right) \sum_{a} \pi^t(a|s) P(s'|s,a).
+\end{align*}
+Take absolute value on both sides, we get:
+\begin{align*}
+\sum_{s'} \left\lvert  \mathbb{P}^{\pi^{t+1}}_{h}(s') - \mathbb{P}^{\pi^{t}}_{h}(s') \right\rvert & \leq  \sum_{s} \mathbb{P}^{\pi^{t+1}}_{h-1}(s) \sum_{a} \left\lvert \pi^{t+1}(a|s)-\pi^{t}(a|s)  \right\rvert \sum_{s'} P(s'| s,a) \\
+& \qquad + \sum_{s} \left\lvert \mathbb{P}^{\pi^{t+1}}_{h-1}(s) - \mathbb{P}^{\pi^{t}}_{h-1}(s)  \right\rvert \sum_{s'}\sum_{a} \pi^t(a|s) P(s'|s,a) \\
+& \leq 2\alpha + \| \mathbb{P}^{\pi^{t+1}}_{h-1} - \mathbb{P}^{\pi^{t}}_{h-1}  \|_1 \leq 4\alpha + \| \mathbb{P}^{\pi^{t+1}}_{h-2} - \mathbb{P}^{\pi^{t}}_{h-2}  \|_1 = 2h\alpha. 
+\end{align*}
+Now use the definition of $d^{\pi}_\mu$, we have:
+\begin{align*}
+d^{\pi^{t+1}}_\mu - d^{\pi^t}_\mu = (1-\gamma) \sum_{h=0}^{\infty} \gamma^h \left( \mathbb{P}^{\pi^{t+1}}_h - \mathbb{P}^{\pi^t}_h  \right).
+\end{align*}
+Add $\ell_1$ norm on both sides, we get:
+\begin{align*}
+\left\| d^{\pi^{t+1}}_\mu - d^{\pi^t}_\mu \right\|_1 \leq (1-\gamma) \sum_{h=0}^{\infty}\gamma^h 2h\alpha
+\end{align*}
+It is not hard to verify that $\sum_{h=0}^{\infty} \gamma^h h = \frac{\gamma}{ (1-\gamma)^2}$. Thus, we can conclude that:
+\begin{align*}
+\left\| d^{\pi^{t+1}}_\mu - d^{\pi^t}_\mu \right\|_1 \leq \frac{2\alpha \gamma}{1-\gamma}.
+\end{align*}
+\end{proof}
+
+The above lemma states that if $\pi^{t+1}$ and $\pi^t$ are close in terms of total variation distance for every state, then the total variation distance between the resulting state visitations from $\pi^{t+1}$ and $\pi^t$ will be small up to a effective horizon $1/(1-\gamma)$ amplification. 
+
+The above lemma captures the key of the conservative policy update. Via the conservative policy update, we make sure that $d^{\pi^{t+1}}_\mu$ and $d^{\pi^t}_\mu$ are close to each other in terms of total variation distance.  Now we use the above lemma to show a monotonic policy improvement. 
+
+
+\begin{theorem}[Monotonic Improvement in CPI]
+Consider any episode $t$. Denote $\mathbb{A} = \EE_{s\sim d^{\pi^t}_\mu} A^{\pi^t}(s, \pi'(s))$. 
+We have:
+\begin{align*}
+V^{\pi^{t+1}}_\mu - V^{\pi^t}_\mu \geq \frac{\alpha}{ 1-\gamma} \left( \mathbb{A} - \frac{2\alpha\gamma}{(1-\gamma)^2}\right)
+\end{align*}
+    %Let $\pi = \pi_i$, $\pitil = \pitil_i$ and $\nu = \pi_{i+1}$ be the successive policies at one iteration of Algorithm~\ref{alg:cpi} and $A = \E_{s\sim d^\pi} A^\pi(s,\pitil(s))$. Then
+   % \[
+   %     V^\nu - V^\pi \geq \frac{\alpha}{1-\gamma}\left(A - \frac{2\alpha\gamma}{1-\gamma(1-\alpha)}\right).
+   % \]
+   Set $\alpha =  \frac{\mathbb{A} (1-\gamma)^2  }{4\gamma} $,  we get:
+   \begin{align*}
+   V^{\pi^{t+1}}_\mu - V^{\pi^t}_\mu \geq   \frac{\mathbb{A}^2 (1-\gamma)}{ 8 \gamma}.
+   \end{align*}
+\label{thm:cpi-improvement}
+\end{theorem}
+The above lemma shows that as long as we still have positive one-step improvement, i.e., $\mathbb{A} >0$, then we guarantee that $\pi^{t+1}$ is strictly better than $\pi^t$. 
+
+
+\begin{proof}
+Via PDL, we have:
+\begin{align*}
+V^{\pi^{t+1}}_\mu - V^{\pi^t}_\mu = \frac{1}{1-\gamma} \mathbb{E}_{s\sim d^{\pi^{t+1}}_{\mu}} \alpha A^{\pi^t}(s, \pi'(s)).
+\end{align*} Recall Lemma~\ref{lem:policy_deviation_to_state_deviation}, we have:
+\begin{align*}
+(1-\gamma) \left( V^{\pi^{t+1}}_\mu - V^{\pi^t}_\mu\right) & = \mathbb{E}_{s\sim d^{\pi^{t}}_{\mu}} \alpha A^{\pi^t}(s, \pi'(s))  + \mathbb{E}_{s\sim d^{\pi^{t+1}}_{\mu}} \alpha A^{\pi^t}(s, \pi'(s)) - \mathbb{E}_{s\sim d^{\pi^{t}}_{\mu}} \alpha A^{\pi^t}(s, \pi'(s)) \\
+& \geq \mathbb{E}_{s\sim d^{\pi^{t}}_{\mu}} \alpha A^{\pi^t}(s, \pi'(s))  - \alpha  \sup_{s,a,\pi} | A^{\pi}(s,a)|  \| d^{\pi^t}_\mu - d^{\pi^{t+1}}_\mu  \|_1  \\
+& \geq \mathbb{E}_{s\sim d^{\pi^{t}}_{\mu}} \alpha A^{\pi^t}(s, \pi'(s))  - \frac{\alpha}{ 1-\gamma }  \| d^{\pi^t}_\mu - d^{\pi^{t+1}}_\mu  \|_1 \\
+& \geq \mathbb{E}_{s\sim d^{\pi^{t}}_{\mu}} \alpha A^{\pi^t}(s, \pi'(s))  - \frac{2\alpha^2 \gamma }{ (1-\gamma )^2} = \alpha\left( \mathbb{A} - \frac{2\alpha \gamma}{(1-\gamma)^2} \right)
+ \end{align*} where the first inequality we use the fact that for any two distributions $P_1$ and $P_2$ and any function $f$, $| \EE_{x\sim P_1}f(x) - \EE_{x\sim P_2}f(x) | \leq \sup_{x} |f(x)| \| P_1 - P_2 \|_1 $,  for the second inequality, we use the fact that $| A^{\pi}(s,a)| \leq 1/(1-\gamma)$ for any $\pi,s,a$, and the last inequality uses Lemma~\ref{lem:policy_deviation_to_state_deviation}.
+ 
+ For the second part of the above theorem, note that we want to maximum the policy improvement as much as possible by choosing $\alpha$. So we can pick $\alpha$ which maximizes $\alpha (\mathbb{A} - 2\alpha\gamma/(1-\gamma)^2)$ . This gives us the $\alpha$ we claimed in the lemma. Plug in $\alpha$ back into $\alpha (\mathbb{A} - 2\alpha\gamma/(1-\gamma)^2)$, we conclude the second part of the theorem. 
+
+ 
+\end{proof}
+
+
+
+
+
+
+
+
+
+
+
+The above theorem indicates that with the right choice of $\alpha$, we guarantee that the policy is making improvement as long as $\mathbb{A} > 0$.  
+Recall the termination criteria in CPI where we terminate CPI when $\mathbb{A} \leq \varepsilon$. Putting these results together, we obtain the following overall convergence guarantee for the CPI algorithm.
+
+\begin{theorem}[Local optimality of CPI]
+    Algorithm~\ref{alg:cpi} terminates in at most $8 \gamma /\epsilon^2$ steps and outputs a policy $\pi^t$ satisfying $\max_{\pi\in \Pi} \E_{s\sim d^{\pi^t}_\mu}A^{\pi^t}(s,\pi(s)) \leq 2\varepsilon$.
+\label{thm:cpi-convergence}
+\end{theorem}
+
+\begin{proof}
+    Note that our reward is bounded in $[0,1]$ which means that $V^{\pi}_\mu \in [0,1/(1-\gamma)]$. Note that we have shown in Theorem~\ref{thm:cpi-improvement}, every iteration $t$, we have policy improvement at least $\frac{\mathbb{A}^2 (1-\gamma)}{  8 \gamma}$, where recall $\mathbb{A}$ at episode $t$ is defined as $\mathbb{A} = \EE_{s\sim d_\mu^{\pi^t}} A^{\pi^t}(s, \pi'(s))$. If the algorithm does not terminate at episode $t$, then we guarantee that:
+    \begin{align*}
+    V^{\pi^{t+1}}_{\mu}  \geq V^{\pi^t}_\mu + \frac{ \varepsilon^2 (1-\gamma) }{ 8\gamma }
+    \end{align*}
+    Since $V^{\pi}_\mu$ is upper bounded by $1/(1-\gamma)$, so we can at most make improvement $8\gamma / \epsilon^2$ many iterations. 
+    
+    Finally, recall that $\varepsilon$-approximate greedy policy selector $\pi' = \mathcal{G}_{\varepsilon}(\pi^t, \Pi, \mu)$, we have:
+    \begin{align*}
+    \max_{\pi\in \Pi} \E_{s\sim d^{\pi^t}_\mu} A^{\pi^t}(s,\pi(s))  \leq \E_{s\sim d^{\pi^t}_\mu}A^{\pi^t}(s,\pi'(s)) + \varepsilon \leq 2\varepsilon
+    \end{align*}
+    This concludes the proof. 
+\end{proof}
+
+Theorem~\ref{thm:cpi-convergence} can be viewed as a local optimality guarantee in a sense. It shows that when CPI terminates, we cannot find a policy $\pi\in \Pi$ that achieves local improvement over the returned policy more than $\varepsilon$. However, this does not necessarily imply that the value of $\pi$ is close to $V^\star$. %Indeed if the MDP has a chain like structure which we saw in the policy gradient lecture, and $\pi$ advances towards the goal state with a small probability only, then it is easy to convince ourselves that no local improvements might be possible even when the policy is significantly suboptimal. 
+However, similar to the policy gradient analysis, we can turn this local guarantee into a global one when the restart distribution $\mu$ covers $d^{\pi^\star}$. We formalize this intuition next.
+
+\begin{theorem}[Global optimality of CPI]
+    Upon termination, we have a policy $\pi$ such that:
+    \begin{align*}
+    V^\star - V^{\pi} \leq \frac{2 \varepsilon + \epsilon_{\Pi} }{ (1-\gamma)^2 } \left\| \frac{d^{\pi^\star}}{\mu}  \right\|_{\infty},
+    \end{align*} where $\epsilon_{\Pi} := \EE_{s\sim d^{\pi}_\mu}
+    [\max_{a\in\Acal } A^{\pi}(s, a)]  - \max_{\pi\in \Pi }\EE_{s\sim
+      d^{\pi}_\mu} [A^{\pi}(s, \pi(s))]$.  
+\label{thm:cpi-global}
+\end{theorem}
+In other words, if our policy class is rich enough to approximate the
+policy $\max_{a\in\Acal } A^{\pi}(s, a)$ under $d^{\pi}_\mu$, i.e.,
+$\epsilon_{\Pi}$ is small, and $\mu$ covers $d^{\pi^\star}$ in a sense
+that $ \left\| \frac{d^{\pi^\star}}{\mu}  \right\|_{\infty} \leq
+\infty$, CPI guarantees to find a near optimal policy.   
+
+\begin{proof}
+    %The proof is essentially contained in that of Theorem~\ref{thm:pg-global}. 
+    By the performance difference lemma,
+    \begin{align*}
+        V^\star - V^\pi &= \frac{1}{1-\gamma}\E_{s\sim d^{\pi^\star}} A^\pi(s,\pi^\star(s))\\
+        &\leq \frac{1}{1-\gamma}\E_{s\sim d^{\pi^\star}} \max_{a\in\Aset} A^\pi(s,a)\\
+        &\leq \frac{1}{1-\gamma} \norm{\frac{d^{\pi^*}}{d_{\mu}^\pi}}_\infty \E_{s\sim d^\pi_\mu} \max_{a\in\Aset} A^\pi(s,a)\\
+        & \leq \frac{1}{(1-\gamma)^2} \norm{\frac{d^{\pi^*}}{\mu}}_\infty \E_{s\sim d^\pi_\mu} \max_{a\in\Aset} A^\pi(s,a) \\
+        & = \leq \frac{1}{(1-\gamma)^2} \norm{\frac{d^{\pi^*}}{\mu}}_\infty \left[ \max_{\hat\pi\in \Pi}\E_{s\sim d^\pi_\mu} A^\pi(s,\hat\pi(s)) -  \max_{\hat\pi\in \Pi}\E_{s\sim d^\pi_\mu} A^\pi(s,\hat\pi(s)) + \E_{s\sim d^\pi_\mu} \max_{a\in\Aset} A^\pi(s,a)   \right] \\
+        &  \leq \frac{1}{(1-\gamma)^2} \norm{\frac{d^{\pi^*}}{\mu}}_\infty \left( 2\varepsilon + \epsilon_{\Pi} \right),
+    \end{align*} where the second inequality holds due to the fact that $\max_{a}A^{\pi}(s,a) \geq 0$, the third inequality uses the fact that $d^{\pi}_\mu(s) \geq (1-\gamma) \mu(s)$ for any $s$ and $\pi$, and the last inequality uses the definition $\epsilon_{\Pi}$ and Theorem~\ref{thm:cpi-convergence}.
+\end{proof}
+
+%Consequently, if the initial distribution, or the visitation distribution of the final policy output by CPI is sufficiently exploratory relative to $\pi^*$, then we converge to a globally optimal policy.
+
+It is informative to contrast CPI and policy gradient algorithms due to the similarity of their guarantees. Both provide local optimality guarantees. For CPI, the local optimality always holds, while for policy gradients it requires a smooth value function as a function of the policy parameters. If the distribution mismatch between an optimal policy and the output of the algorithm is not too large, then both algorithms further yield a near optimal policy. The similarities are not so surprising. Both algorithms operate by making local improvements to the current policy at each iteration, by inspecting its advantage function. The changes made to the policy are controlled using a stepsize parameter in both the approaches. It is the actual mechanism of the improvement which differs in the two cases. Policy gradients assume that the policy's reward is a differentiable function of the parameters, and hence make local improvements through gradient ascent. The differentiability is certainly an assumption and does not necessarily hold for all policy classes. An easy example is when the policy itself is not an easily differentiable function of its parameters. For instance, if the policy is parametrized by regression trees, then performing gradient updates can be challenging.
+
+In CPI, on the other hand, the basic computational primitive required on the policy class is the ability to maximize the advantage function relative to the current policy. Notice that Algorithm~\ref{alg:cpi} does not necessarily restrict to a policy class, such as a set of parametrized policies as in policy gradients. Indeed, due to the reduction to supervised learning approach (e.g., using the weighted classification oracle $\text{CO}$), we can parameterize policy class via decision tree, for instance. 
+ This property makes CPI extremely attractive. Any policy class over which efficient supervised learning algorithms exist can be adapted to reinforcement learning with performance guarantees.
+
+A second important difference between CPI and policy gradients is in the notion of locality. Policy gradient updates are local in the parameter space, and we hope that this makes small enough changes to the state distribution that the new policy is indeed an improvement on the older one (for instance, when we invoke the performance difference lemma between successive iterates). While this is always true in expectation for correctly chosen stepsizes based on properties of stochastic gradient ascent on smooth functions, the variance of the algorithm and lack of robustness to suboptimal stepsizes can make the algorithm somewhat finicky. Indeed, there are a host of techniques in the literature to both lower the variance (through control variates) and explicitly control the state distribution mismatch between successive iterates of policy gradients (through trust region techniques). On the other hand, CPI explicitly controls the amount of perturbation to the state distribution by carefully mixing policies in a manner which does not drastically alter the trajectories with high probability. Indeed, this insight is central to the proof of CPI, and has been instrumental in several follow-ups, both in the direct policy improvement as well as policy gradient literature.
+
+
+\iffalse
+\subsection{Comparison to Approximate Policy Iteration and the Benefit of Incremental Update}
+\label{subsection:comparison_to_api}
+
+One question we want to ask here is that the incremental update in CPI is necessary. In other words, what if we just iterate using the greedy policy selector, i.e.,
+\begin{align*}
+\pi^{t+1} = \Gcal_{\varepsilon}\left( \pi^t, \Pi, \mu \right).
+\end{align*}
+In the literature, this is called Approximate Policy Iteration (API). We show that API cannot guarantee monotonic improvement and convergence without relying on a much stronger assumption on the restart distribution $\mu$.  
+
+To better illustrate the oscillation situation one would encounter when doing abrupt policy change (i.e., the state distribution of the new policy is widely different from the state distribution of the old policy), we ignore the $\varepsilon$ approximation error from $\Gcal_{\varepsilon}$, and assume we have the exact greedy policy selector:
+\begin{align}
+\label{eq:exact_API}
+\pi^{t+1} = \argmax_{\pi \in \Pi} \EE_{s\sim d^{\pi^t}_\mu} A^{\pi^t}(s, \pi(s)).
+\end{align}
+\begin{claim}
+There exists a policy class $\Pi$, an MDP, a $\mu$ restart distribution, and two policies $\pi'$ and $\pi''$, such that if one start API with $\pi^0 \in \{\pi', \pi''\}$,  $\pi^t$ and $\pi^{t+1}$ will oscillate  between $\pi'$ and $\pi''$ which are both $\gamma$ away from the optimal policy. Namely API (Eq.~\ref{eq:exact_API}) will not be able to make any policy improvement.
+\end{claim}
+\begin{proof}
+The MDP is shown in Fig.~\ref{fig:api_example} where the transition is deterministic and $\mu(s_1) = 1$. We consider $\Pi$ that contains all deterministic policies.   We consider the two policies $\pi'$ and $\pi''$ as follows:
+\begin{align*}
+\pi'(s_1) = a_1, \pi'(s_2) = a_2, \pi'(s_3) = a_1; \quad  \pi''(s_1) = a_2, \pi''(s_2) = a_1, \pi''(s_3) = a_2.
+\end{align*}
+Hence for $\pi'$, $d^{\pi'}_{\mu}(s_3) = 0$ and $d^{\pi'}_\mu(s) >0$ for $s\neq s_3$. Similarly for $\pi''$, we have $d^{\pi''}_\mu(s_2) =0$ and $d^{\pi''}_\mu(s) > 0$ for $s\neq s_2$.
+
+Consider the greedy policy selection under $\pi'$:
+\begin{align*}
+\pi \in \argmax_{\pi\in \Pi} \EE_{s\sim d^{\pi'}_\mu} A^{\pi'}(s, \pi(s)).
+\end{align*}
+We claim that $\pi''$ is one of the maximizers of the above procedure.  This is because $d^{\pi'}(s_3) =0$ and thus $\pi(s_3)$ does not affect the objective function at all.   For $s_1$, note that $Q^{\pi'}(s_1, a_1) = 0$ while $Q^{\pi'}(s_1, a_2) > 0$.  Thus a greedy policy will pick $a_2$ which is consistent to the choice of $\pi''$. For $s_2$, we have $Q^{\pi'}(s_2, a_1) > 0$ while $Q^{\pi'}(s_2, a_2) = 0$. Thus a greedy policy will pick $a_1$ at $s_2$ which again is consistent with the choice of $\pi''$ at $s_2$. This concludes that $\pi''$ is one of the greedy policies under $\pi'$. 
+
+Similarly, one can argue that $\pi' \in \argmax_{\pi \in \Pi} \EE_{s \sim d^{\pi''}_h}A^{\pi''}(s,\pi(s))$, i.e., at $\pi''$, API will switch back to $\pi'$ in the next iteration. 
+
+Thus, we have proven that when running API with either $\pi'$ or $\pi''$ as initialization, API can oscillate between $\pi'$ and $\pi''$ forever. Note that $\pi'$ and $\pi''$ have the same value and are $\gamma$ away from the optimal policy's value. 
+\end{proof}
+
+
+
+\begin{figure}[t]
+\includegraphics[width=6cm]{Figures/api_example}
+\centering
+\caption{The example MDP. The MDP has deterministic transition and $\mu$ has probability mass on $s_1$. We have reward zero every where except $r(s_2, a_1) = r(s_3,a_1) = 1$.}
+\label{fig:api_example}
+\end{figure}
+
+Note that when applying CPI to the example in Fig.~\ref{fig:api_example}, we observe that at $\pi'$ (and similarly at $\pi''$), we indeed have strictly positive one-step local improvement:
+\begin{align*}
+\mathbb{A} := \max_{\pi\in \Pi} \EE_{s\sim d^{\pi'}_\mu} A^{\pi'}(s, \pi(s)) > 0,
+\end{align*} which indicates that CPI is guaranteed to find a new policy that strictly improves $\pi'$ (recall Theorem~\ref{thm:cpi-improvement}). While API fails to improve even there is non-trivial local improvement at policy $\pi'$, due to the potential abrupt policy's state-distribution change in the API policy update procedure (in our example $d^{\pi'}$ and $d^{\pi''}$ are widely different). 
+
+% Indeed one can show that starting at $\pi'$, CPI can return a new policy $\pi := (1-\alpha) \pi' + \alpha \pi''$ that is strictly better than $\pi'$. 
+
+
+
+
+In general, to ensure API convergence to a near optimal policy, one needs much stronger concentrability assumption:
+\begin{align}
+\label{eq:api_concentrability}
+\sup_{\pi\in \Pi}  \left\| \frac{ d^{\pi} }{ \mu } \right\|_{\infty} < \infty.
+\end{align} In other words, one needs the restart distribution to be wide enough in order to capture all possible policy's state distribution.  It is obvious to see that:
+\begin{align*}
+\sup_{\pi \in \Pi}   \left\| \frac{ d^{\pi} }{ \mu } \right\|_{\infty}  \geq  \left\| \frac{ d^{\pi^\star} }{ \mu } \right\|_{\infty},
+\end{align*} where the RHS of the above inequality is the concentrability coefficient in CPI.
+
+We briefly sketch out why the much stronger concentrability assumption shown in Eq.~\ref{eq:api_concentrability} helps API to converge to a near optimal policy. 
+
+Again, we will start from performance difference lemma. Recall the update of API in Eq.~\ref{eq:exact_API}. For simplicity, here we assume $\Pi$ is rich enough such that for any $\pi\in \Pi$, $\argmax_{a\in \Acal} A^{\pi}(\cdot ,a) \in \Pi$.
+\begin{align*}
+V^{\pi^{t+1}}_{\mu} - V_{\mu}^{\pi^t} & = \frac{1}{1-\gamma}\EE_{s\sim d_{\mu}^{\pi^{t+1}}} A^{\pi^t}(s, \pi^{t+1}(s)) = \frac{1}{1-\gamma}\EE_{s\sim d_{\mu}^{\pi^{t+1}}} \max_{a\in\Acal} A^{\pi^t}(s, a)\\
+ & =  \frac{1}{1-\gamma} \EE_{s\sim d^{\pi^t}_\mu} \frac{ d_\mu^{\pi^{t+1}(s)} }{d^{\pi^t}_\mu(s)} \max_{a\in\Acal} A^{\pi^t}(s, a) \geq  \inf_{s}  \frac{ d_\mu^{\pi^{t+1}(s)} }{d^{\pi^t}_\mu(s)}  \frac{1}{1-\gamma} \EE_{s\sim d^{\pi^t}_\mu} \max_{a\in\Acal} A^{\pi^t}(s,a)
+\end{align*} which leads to:
+\begin{align*}
+V^{\pi^{t+1}}_{\mu} - V_{\mu}^{\pi^t}  & \geq  \frac{1}{(1-\gamma)^2} \inf_{s} \frac{ \mu(s) }{  d^{\pi^t}_{\mu}(s) } \EE_{s\sim d^{\pi^t}_\mu} \max_{a\in\Acal} A^{\pi^t}(s,a) = \frac{1}{(1-\gamma)^2 \| d^{\pi^t}_\mu / \mu  \|_{\infty}} \EE_{s\sim d^{\pi^t}_\mu} \max_{a\in\Acal} A^{\pi^t}(s,a) \\
+& : = \frac{ \mathbb{A}}{(1-\gamma)^2 \| d^{\pi^t}_\mu / \mu  \|_{\infty}}.
+\end{align*}
+Hence to ensure improvement, one need to have:
+\begin{align*}
+\| d^{\pi^t}_{\mu} / \mu  \|_{\infty} < \infty, \forall t. 
+\end{align*}
+Namely we need concentrability coefficient to be small with respect to the policies that are generated by the algorithm itself (hence we need Eq.~\ref{eq:api_concentrability} as we do not know a prior what policies the algorithm will generate). Note that in contrast, CPI's concentrability coefficient is independent of the algorithm.
+\fi
+
+
+\section{Trust Region Methods and Covariant Policy Search}
+
+So far we have seen policy gradient methods and CPI which all uses a small step-size to ensure incremental update in policies.  Another popular approach for incremental policy update is to explicitly forcing small change in policies' distribution via a trust region constraint.  
+More specifically, let us go back to the general policy parameterization $\pi_{\theta}$. At iteration $t$ with the current policy $\pi_{\theta_t}$, we are interested in the following local trust-region constrained optimization: 
+\begin{align*} 
+ &\max_{\theta} \EE_{s\sim d^{\pi^{\theta_t}}_\mu} \EE_{a\sim \pi_\theta(\cdot | s)} A^{\pi^{\theta_t}}(s, a) \\
+ & \text{s.t., } KL\left(  {\Pr}^{\pi^{\theta_t}}_{\mu}  || {\Pr}^{\pi_{\theta}}_{\mu}    \right) \leq \delta,
+\end{align*} where recall ${\Pr}^\pi_{\mu}(\tau)$ is the trajectory distribution induced by $\pi$ starting at $s_0 \sim \mu$, and $KL(P_1 || P_2)$ are KL-divergence between two distribution $P_1$ and $P_2$. Namely we explicitly perform local policy search with a constraint forcing the new policy not being too far away from ${\Pr}^{\pi_{\theta_t}}_\mu$ in terms of KL divergence. 
+
+As we are interested in small local update in parameters, we can perform sequential quadratic programming here, i.e., we can further linearize the objective function at $\theta_t$ and quadratize the KL constraint at $\theta_t$ to form a local quadratic programming:
+\begin{align}
+ &\max_{\theta} \left\langle \EE_{s\sim d^{\pi^{\theta_t}}_\mu} \EE_{a\sim \pi_{\theta_t}(\cdot | s)} \nabla_\theta \ln \pi_{\theta_t}(a|s) A^{\pi^{\theta_t}}(s, a), \theta\right\rangle  \\
+ & \text{s.t., }\langle \nabla_{\theta} KL\left(  {\Pr}^{\pi^{\theta_t}}_{\mu}  || {\Pr}^{\pi_{\theta}}_{\mu}    \right) |_{\theta = \theta_t}, \theta - \theta_t \rangle  + \frac{1}{2} (\theta - \theta_t)^{\top} \left( \nabla^2_{\theta} KL\left(  {\Pr}^{\pi^{\theta_t}}_{\mu}  || {\Pr}^{\pi_{\theta}}_{\mu}    \right) |_{\theta = \theta_t}\right) (\theta - \theta_t)  \leq \delta,
+ \label{eq:sqp}
+\end{align} where we denote $\nabla^2 KL|_{\theta = \theta_t} $ as the Hessian of the KL constraint measured at $\theta_t$. Note that KL divergence is not a valid metric as it is not symmetric. However, its local quadratic approximation can serve as a valid local distance metric, as we prove below that the Hessian $\nabla^2 KL|_{\theta = \theta_t}$ is a positive semi-definite matrix. Indeed, we will show that the Hessian of the KL constraint is exactly equal to the fisher information matrix, and the above quadratic programming exactly reveals a Natural Policy Gradient update.   Hence Natural policy gradient can also be interpreted as performing sequential quadratic programming with KL constraint over policy's trajectory distributions. 
+
+To match to the practical algorithms in the literature (e.g., TRPO), below we focus on episode finite horizon setting again (i.e., an MDP with horizon $H$). 
+\begin{claim} 
+Consider a finite horizon MDP with horizon $H$. 
+Consider any fixed $\theta_t$. We have:
+\begin{align*}
+& \nabla_{\theta} KL\left(  {\Pr}^{\pi^{\theta_t}}_{\mu}  || {\Pr}^{\pi_{\theta}}_{\mu}    \right) |_{\theta = \theta_t} = 0, \\
+& \nabla^2_{\theta} KL\left(  {\Pr}^{\pi^{\theta_t}}_{\mu}  || {\Pr}^{\pi_{\theta}}_{\mu}    \right) |_{\theta = \theta_t} = H \mathbb{E}_{s,a\sim d^{\pi_{\theta_t}}} \nabla \ln \pi_{\theta_t}(a|s)  \left(\nabla \ln \pi_{\theta_t}(a|s)\right) ^{\top}.
+\end{align*}
+\label{claim:traj_dist_fisher}
+\end{claim}
+\begin{proof}
+We first recall the trajectory distribution in finite horizon setting. 
+\begin{align*}
+{\Pr}^{\pi}_\mu(\tau) = \mu(s_0) \prod_{h=0}^{H-1} \pi(a_h|s_h) P(s_{h+1} | s_h,a_h). 
+\end{align*}
+
+
+We first prove that the gradient of KL is zero. First note that:
+\begin{align*}
+KL\left(  {\Pr}^{\pi^{\theta_t}}_{\mu}  || {\Pr}^{\pi_{\theta}}_{\mu}    \right) & = \sum_{\tau} {\Pr}^{\pi^{\theta_t}}_{\mu}(\tau) \ln \frac{{\Pr}^{\pi^{\theta_t}}_{\mu}(\tau)}{{\Pr}^{\pi^{\theta}}_{\mu}(\tau)} \\
+&=  \sum_{\tau} {\Pr}^{\pi^{\theta_t}}_{\mu}(\tau) \left( \sum_{h=0}^{H-1} \ln \frac{ \pi_{\theta_t}(a_h|s_h)}{\pi_{\theta}(a_h|s_h)} \right) = \sum_{h=0}^{H-1} \EE_{s_h,a_h\sim \mathbb{P}_h^{\pi_{\theta_t}}} \ln\frac{ \pi_{\theta_t}(a_h|s_h)  }{ \pi_\theta(a_h|s_h)}.
+\end{align*}
+Thus, for $\nabla_\theta KL\left(  {\Pr}^{\pi^{\theta_t}}_{\mu}  || {\Pr}^{\pi_{\theta}}_{\mu}    \right)$, we have:
+\begin{align*}
+\nabla KL\left(  {\Pr}^{\pi^{\theta_t}}_{\mu}  || {\Pr}^{\pi_{\theta}}_{\mu}    \right) |_{\theta = \theta_t} &= \sum_{h=0}^{H-1 } \EE_{s_h,a_h\sim \mathbb{P}_h^{\pi_{\theta_t}}}  - \nabla \ln \pi_{\theta_t}(a_h|s_h)\\
+& =  - \sum_{h=0}^{H-1 } \EE_{s_h \sim \mathbb{P}_h^{\pi_{\theta_t}}}  \EE_{a_h\sim \pi_{\theta_t}(\cdot |  s_h)} \nabla \ln \pi_{\theta_t}(a_h|s_h) = 0,
+\end{align*} where we have seen the last step when we argue the unbiased nature of policy gradient with an action independent baseline. 
+
+Now we move to the Hessian. 
+\begin{align*}
+\nabla^2 KL\left(  {\Pr}^{\pi^{\theta_t}}_{\mu}  || {\Pr}^{\pi_{\theta}}_{\mu}    \right) |_{\theta = \theta_t}  & =  - \sum_{h=0}^{H-1 } \EE_{s_h,a_h\sim \mathbb{P}_h^{\pi_{\theta_t}}}  \nabla^2 \ln \pi_{\theta}(a_h|s_h) |_{\theta = \theta_t} \\
+& =  - \sum_{h=0}^{H-1 } \EE_{s_h,a_h\sim \mathbb{P}_h^{\pi_{\theta_t}}}  \left( \nabla \left( \frac{ \nabla \pi_{\theta}(a|s) }{ \pi_{\theta}(a|s) }  \right) \right) \\
+& = - \sum_{h=0}^{H-1 } \EE_{s_h,a_h\sim \mathbb{P}_h^{\pi_{\theta_t}}}  \left(  \frac{\nabla^2 \pi_\theta(a_h|s_h)}{ \pi_{\theta}(a_h|s_h) }    - \frac{ \nabla \pi_\theta(a_h|s_h) \nabla\pi_\theta(a_h|s_h)^{\top}  }{ \pi^2_\theta(a_h|s_h) }   \right) \\
+& = \sum_{h=0}^{H-1 } \EE_{s_h,a_h\sim \mathbb{P}_h^{\pi_{\theta_t}}} \nabla_\theta \ln \pi_\theta(a_h|s_h) \nabla_\theta \ln \pi_\theta(a_h|s_h) ^{\top},
+\end{align*} where in the last equation we use the fact that $\EE_{s_h,a_h\sim \mathbb{P}_h^{\pi_{\theta_t}}} \frac{\nabla^2 \pi_\theta(a_h|s_h)}{ \pi_{\theta}(a_h|s_h) } = 0 $.
+\end{proof}
+
+The above claim shows that a second order taylor expansion of the KL constraint over trajectory distribution gives a local distance metric at $\theta_t$: 
+\begin{align*}
+(\theta - \theta_t) F_{\theta_t} (\theta - \theta_t), 
+\end{align*} where again $F_{\theta_t} :=  H \mathbb{E}_{s,a\sim d^{\pi_{\theta_t}}} \nabla \ln \pi_{\theta_t}(a|s)  \left(\nabla \ln \pi_{\theta_t}(a|s)\right) ^{\top}$ is proportional to the fisher information matrix. Note that $F_{\theta_t}$ is a PSD matrix and thus $d(\theta, \theta_t) := (\theta - \theta_t) F_{\theta_t} (\theta - \theta_t)$ is a valid distance metric. By sequential quadratic programming, we are using local geometry information of the trajectory distribution manifold induced by the parameterization $\theta$, rather the naive Euclidean distance in the parameter space. Such a method is sometimes referred to as \emph{Covariant Policy Search}, as the policy update procedure will be invariant to linear transformation of parameterization (See Section~\ref{bib:cpi} for further discussion).
+
+Now using the results from Claim~\ref{claim:traj_dist_fisher}, we can verify that the local policy optimization procedure in Eq.~\ref{eq:sqp} exactly recovers the NPG update, where the step size is based on the trust region parameter $\delta$. Denote $\Delta = \theta - \theta_t$, we have:
+\begin{align*}
+&\max_{\Delta}  \left\langle \Delta, \nabla_\theta V^{\pi_{\theta_t}}   \right\rangle,  \\
+& s.t.,  \Delta^{\top} F_{\theta_t} \Delta^{\top} \leq \delta,
+\end{align*}  which gives the following update procedure:
+\begin{align*}
+\theta_{t+1} = \theta_t + \Delta  = \theta_t +   \sqrt{ \frac{\delta}{ (\nabla V^{\pi_{\theta_t}})^{\top} F_{\theta_t}^{-1} \nabla V^{\pi_{\theta_t}}  } } \cdot F_{\theta_t}^{-1} \nabla V^{\pi_{\theta_t}},
+\end{align*} where note that we use the self-normalized learning rate computed using the trust region parameter $\delta$. 
+
+
+\subsection{Proximal Policy Optimization}
+
+Here we consider an $\ell_\infty$ style trust region constraint:
+\begin{align}
+ &\max_{\theta} \EE_{s\sim d^{\pi^{\theta_t}}_\mu} \EE_{a\sim \pi^\theta(\cdot | s)} A^{\pi^{\theta_t}}(s, a)  \label{eq:ppo_obj}\\
+ & \text{s.t., } \sup_{s} \left\| \pi^\theta(\cdot | s) - \pi^{\theta_t}(\cdot | s)  \right\|_{tv} \leq \delta, \label{eq:state_wise_constraints} 
+\end{align}
+Namely, we restrict the new policy such that it is close to $\pi^{\theta_t}$ at every state $s$ under the total variation distance. 
+Recall the CPI's update, CPI indeed makes sure that the new policy will be close the old policy at every  state.  In other words, the new policy computed by CPI is a feasible solution of the constraint Eq.~\ref{eq:state_wise_constraints}, but is not the optimal solution of the above constrained optimization program.  Also one downside of the CPI algorithm is that one needs to keep all previous learned policies around, which requires large storage space when policies are parameterized by large deep neural networks. 
+
+Proximal Policy Optimization (PPO) aims to directly optimize the objective Eq.~\ref{eq:ppo_obj} using multiple steps of gradient updates, and approximating the constraints Eq.~\ref{eq:state_wise_constraints} via a clipping trick.  We first rewrite the objective function using importance weighting:
+\begin{align}
+\max_{\theta} \EE_{s\sim d^{\pi^{\theta_t}}_\mu} \EE_{a\sim \pi^{\theta_t}(\cdot | s)}  \frac{\pi^{\theta}(a|s)}{ \pi^{\theta_t}(\cdot | s) }A^{\pi^{\theta_t}}(s, a), 
+\label{eq:IS_obj_ppo}
+\end{align} where we can easily approximate the expectation $\EE_{s\sim d^{\pi^{\theta_t}}_\mu} \EE_{a\sim \pi^{\theta_t}(\cdot | s)} $ via finite samples $s\sim d^{\pi^{\theta_t}}, a\sim \pi^{\theta_t}(\cdot | s)$.
+
+To make sure $\pi^{\theta}(a|s)$ and $\pi^{\theta_t}(a|s)$ are not that different, PPO modifies the objective function by clipping the density ratio $\pi^{\theta}(a|s)$ and $\pi^{\theta_t}(a|s)$:
+\begin{align}
+L(\theta): =   \EE_{s\sim d^{\pi^{\theta_t}}_\mu} \EE_{a\sim \pi^{\theta_t}(\cdot | s)}   \min\left\{  \frac{\pi^{\theta}(a|s)}{ \pi^{\theta_t}(\cdot | s) }  A^{\pi^{\theta_t}}(s,a), \text{clip}\left( \frac{\pi^{\theta}(a|s)}{ \pi^{\theta_t}(\cdot | s) }; 1-\epsilon, 1+\epsilon \right) A^{\pi^{\theta_t}}(s,a)  \right\},
+\end{align}
+ where $\text{clip}\left(x; 1 - \epsilon, 1+\epsilon \right) = \begin{cases} 1-\epsilon & x \leq 1-\epsilon \\ 1+\epsilon & x \geq 1+\epsilon \\ x & \text{else} \end{cases}$. The clipping operator ensures that for $\pi_\theta$, at any state action pair where $\pi^\theta( a| s) / \pi^{\theta_t}(a|s) \not\in [1-\epsilon, 1+ \epsilon]$,  we get zero gradient, i.e., $\nabla_{\theta} \left[\text{clip}\left( \frac{\pi^{\theta}(a|s)}{ \pi^{\theta_t}(\cdot | s) }; 1-\epsilon, 1+\epsilon \right) A^{\pi^{\theta_t}}(s,a)\right]  =  0 $.
+ %{\bf To be added... \/}
+The outer min makes sure the objective function $L(\theta)$ is a lower bound of the original objective. PPO then proposes to collect a dataset $(s,a)$ with $s\sim d^{\pi^{\theta_t}}_\mu$ and $a\sim \pi^{\theta_t}(\cdot | s)$,  and then perform multiple steps of mini-batch stochastic gradient ascent on $L(\theta)$. 
+
+One of the key difference between PPO and other algorithms such as NPG is that PPO targets to optimizes objective Eq.~\ref{eq:IS_obj_ppo} via multiple steps of mini-batch stochastic gradient ascent with mini-batch data from $d^{\pi^{\theta_t}}_\mu$ and $\pi^{\theta_t}$, while algorithm such as NPG indeed optimizes the first order taylor expansion of Eq.~\ref{eq:IS_obj_ppo} at $\theta_t$, i.e.,  
+\begin{align*}
+\max_{\theta} \left\langle (\theta - \theta^t), \; \EE_{s,a\sim d^{\pi^{\theta_t}}_\mu} \nabla_{\theta} \ln\pi^{\theta_t}(a|s) A^{\pi^{\theta_t}}(s,a)      \right\rangle,
+\end{align*} upper to some trust region constraints (e.g., $\| \theta - \theta_t \|_2 \leq \delta$ in policy gradient, and $\| \theta - \theta_t \|^2_{F_{\theta^t}} \leq \delta$ for NPG ). 
+
+
+\section{Bibliographic Remarks and Further Readings}\label{bib:cpi}
+
+The analysis of CPI is adapted from the original one
+in~\cite{kakade2002approximately}. There have been a few further
+interpretations of CPI. One interesting perspective is that CPI can be
+treated as a boosting algorithm \cite{scherrer2014local}. 
+
+
+More generally, CPI and NPG are part of family of \emph{incremental}
+algorithms, including Policy Search by Dynamic Programming
+(PSDP)~\cite{bagnell2004policy} and MD-MPI ~\cite{geist2019theory}.
+PSDP operates in a finite horizon setting and optimizes a sequence of time-dependent
+policies; from the last time step to the first time step, every
+iteration of, PSDP only updates the policy at the current time step while
+holding the future policies fixed --- thus making incremental update on
+the policy.  See~\cite{scherrer2014approximate} for more a detailed
+discussion and comparison of some of these approaches.
+Mirror Descent-Modified Policy Iteration (MD-MPI) algorithm
+~\citep{geist2019theory} is a family of actor-critic style
+algorithms  which is based on regularization and is incremental in nature; 
+with negative entropy as the Bregman
+divergence (for the tabular case), MD-MPI recovers the NPG the tabular
+case (for the softmax parameterization).
+
+Broadly speaking, these incremental algorithms can improve upon the
+stringent concentrability conditions for approximate value iteration
+methods, presented in Chapter~\ref{chap:api}. \citet{scherrer2014approximate} 
+provide a more detailed discussion of bounds which depend on these
+density ratios. As discussed in the last chapter, the density ratio
+for NPG can be interpreted as a factor due to transfer learning to a
+single, \emph{fixed} distribution.
+
+
+The interpretation of NPG as Covariant Policy Search is due to
+\cite{bagnell2003covariant}, as the policy update procedure will be
+invariant to linear transformations of the parameterization; see
+\cite{bagnell2003covariant} for a more detailed discussion on this. 
+
+The TRPO algorithm is due to ~\cite{schulman2015trust}. The original
+TRPO analysis provides performance guarantees, largely relying on a
+reduction to the CPI guarantees. In this Chapter, we make a sharper connection of TRPO to NPG, which
+was subsequently observed by a number of researchers; this connection provides a
+sharper analysis for the generalization and approximation behavior of TRPO
+(e.g. via the results presented in Chapter~\ref{chap:pg_approx}). In
+practice, a popular variant is the Proximal Policy Optimization (PPO)
+algorithm~\cite{Schulman2017ProximalPO}. 

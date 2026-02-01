@@ -1,0 +1,279 @@
+% !TEX root = rltheorybook_AJKS.tex
+
+\chapter{Offline Reinforcement Learning}
+\label{chap:offline_RL}
+
+%\newcommand{\vmax}{V_{\max}}
+
+%{\bf To be added... \/}
+
+Offline reinforcement learning broadly refers to reinforcement learning
+problems in which the learner does not get to interact with the
+environment. Instead, the learner is simply presented with a batch of
+experience collected by some decision-making policy, and the goal is
+to use this data to learn a near-optimal (or at the very least) better
+policy. This setting is quite important for high-stakes
+decision-making scenarios which might arise in precision
+medicine or where safety is a serious concern. On the other hand, one
+significant challenge is that exploration is not controlled by the
+learner. Thus we will either (a) require some assumptions that ensure
+that the data-collection policy effectively covers the state-action
+space, or (b) not be able to find a global near-optimal policy.
+
+
+The fitted Q-iteration sample complexity analysis which this chapter
+focusses on, is originally due to \cite{munos2003error,
+  munos2008finite,antos2008learning}.
+
+%In addition to this ``coverage'' issue, we will also face some
+%representational issues when we turn to the function approximation
+%setting. Due to our inability to collect data, the space of algorithms
+%we may use is quite limited.
+
+%In this chapter, we study offline RL where we have a pre-collected dataset that consists of interactions 
+
+
+
+%The previous lecture showed how policy iteration like methods can be generalized to large state spaces (think discrete, but exponentially large in the desired accuracy parameters) and for policy classes that are not necessarily tabular. This chapter will consider a similar question, but for the class of value iteration like methods. We will attack the question in two parts. First we will study how the value function of a given policy can be evaluated in large state spaces, before moving to the question of policy improvement. The result and proofs in this chapter have been obtained in collaboration with Nan Jiang.
+
+
+\section{Setting} 
+\wen{put it into intro, }
+
+We consider infinite horizon discounted MDP $\mathcal{M} = \{ \Scal,\Acal, \gamma, P, r,  \rho\}$ where $\rho$ is the initial state distribution. We assume reward is bounded, i.e., $\sup_{s,a} r(s,a) \in [0,1]$. For any policy $\pi: \Scal\mapsto \Acal$, we denote $V^{\pi}$ and $Q^{\pi}$ as the value and Q function of $\pi$, and we denote $d^{\pi}\in \Delta(\Scal\times\Acal)$ as the state-action visitation of $\pi$. For notation simplicity, we denote $\vmax : = 1/(1-\gamma)$. 
+
+Given any $f: \Scal\times\Acal\mapsto \mathbb{R}$, we denote the Bellman operator $\Tcal f : \Scal\times\Acal\mapsto \mathbb{R}$ as follows. For all $s,a\in \Scal\times\Acal$,
+\begin{align*}
+\Tcal f(s,a)  := r(s,a) + \mathbb{E}_{s'\sim P(\cdot | s,a)} \max_{a'\in \Acal} f(s',a').
+\end{align*}  
+
+
+
+In batch RL, rather than interact with the environment to collect
+data, we will be presented with $n$ tuples $(s,a,r,s')$ where $(s,a)
+\sim \mu$, $r = r(s,a)$ and $s' \sim P(\cdot \mid s,a)$. Here $\mu$
+is an approximation of the data collection policy, and it is only an
+approximation because we think of the tuples as iid. This is primarily
+to simplify the analysis, and it is possible to obtain results when we
+replace the iid dataset with one actually collected by a policy, which
+involves dealing with temporal correlations. See Section~\ref{bib:offline} for further discussion.
+%See for example a paper by Antos, Munos, and Szepesvari for these kinds of arguments.
+
+Given the dataset $\mathcal{D} := \{(s_i,a_i,r_i,s_i')\}_{i=1}^n$ our
+goal is to output a near optimal policy for the MDP, that is we would
+like our algorithm to produce a policy $\hat{\pi}$ such that, with
+probability at least $1-\delta$, $V(\hat{\pi}) \geq V^\star -
+\epsilon$, for some $(\epsilon,\delta)$ pair. As usual, the number of
+samples $n$ will depend on the accuracy parameters $(\epsilon,\delta)$
+and we would like $n$ to scale favorably with these.
+
+Denote a function class $\mathcal{F} = \{ f: \Scal\times\Acal \mapsto [0, \vmax]\}$. We assume $\mathcal{F}$ is discrete and also contains $Q^\star$. 
+\begin{assumption}[Realizability]
+We assume $\mathcal{F}$ is rich enough such that $Q^\star\in\mathcal{F}$.
+\end{assumption}
+We require the sample complexity of the learning algorithm scales polynomially with respect to $\ln\left(\lvert\mathcal{F} \rvert\right)$.
+
+Since in offline RL, the learner cannot interact with the environment at all,  we require the data distribution $\nu$ is exploratory enough. 
+%following assumption on the data distribution $\nu$. 
+\begin{assumption}[Concentrability]
+\label{assum:concentrability}
+There exists a constant $C$ such that for any policy $\pi$ (including non-stationary policies), we have:
+\begin{align*}
+\forall \pi, h, x,a: \frac{d^\pi(s,a)}{\mu(s,a)} \leq C.
+\end{align*}\label{assum:concentrability_fqi}
+\end{assumption}
+Note that concentrability does not require that the state space is
+finite, but it does place some constraints on the system dynamics.  Note that the above assumption requires that $\mu$ to cover all possible policies's state-action distribution, even including non-stationary policies.  Recall the concentrability assumptions in Approximate Policy Iteration (Chapter~\ref{chap:api}) and Conservative Policy Iteration (Chapter~\ref{chap:cpi}). The concentrability assumption here is the strongest as it requires $\mu$ to cover even non-stationary policies' state-action distributions. 
+
+In additional to the above two assumptions, we need an assumption on the representational condition of class $\mathcal{F}$. 
+\begin{assumption}[Bellman Completion]\label{assump:complete}
+We assume that for any $f\in\Fcal$, $\Tcal f \in \Fcal$.
+\end{assumption}
+%The assumption depends both on the representation of $\Fcal$ and also the transition $P$. Recall the linear MDP model, there we have that for any linear function $f(s,a) := \theta\cdot \phi(s,a)$, we always have $\Tcal f(s,a) = (\theta')^{\top} \phi(s,a)$ for some $\theta'$. Such %assumption does not always hold. For instance, if $\Fcal = \{ \theta\cdot  \}$
+Note that this implies that $Q^\star \in \Fcal$ (as $Q^\star$ is the convergence point of Value Iteration), which is the weaker
+assumption we would hope is sufficient.  However, as we discuss in Section~\ref{bib:offline}, the Bellman completion assumption is necessary in order to learn in polynomial sample complexity. 
+
+
+\section{Fitted Q Iteration (FQI)}
+
+\wen{algorithm and then the sample complexity.}
+
+Fitted Q Iteration (FQI) simply performs the following iteration. Start with some $f_0 \in \Fcal$, FQI iterates:
+\begin{align}
+\label{eq:FQI}
+\text{FQI: } \quad f_{t} \in \argmin_{f\in\Fcal} \sum_{i=1}^n \left( f(s'_i,a_i) - r_i - \gamma \max_{a'\in\Acal} f_{t-1}(s_i,a_i)  \right)^2.
+\end{align}
+After $k$ many iterations, we output a policy $\pi_k(s) := \argmax_{a} f_k(s,a),\forall s$.
+
+Note that the Bayes optimal solution is $\Tcal f_{t-1}$. Due to the Bellman completion assumption, the Bayes optimal solution $\Tcal f_{t-1} \in \Fcal$. Thus, we should expect that $f_t$ is close to the Bayes optimal $\Tcal f_{t-1}$ under the distribution $\mu$, i.e., with a uniform convergence argument, for the generalization bound, we should expect that:
+\begin{align*}
+\EE_{s,a\sim \mu} \left( f_t(s,a) - \Tcal f_{t-1}(s,a) \right)^2 \approx  \sqrt{1/ n}. 
+\end{align*} Indeed, as we demonstrate in Lemma~\ref{lem:generalization_least_square}, for square loss, under the realizability assumption, i.e., the Bayes optimal belongs to $\Fcal$ ($\Tcal f_{t-1} \in \Fcal$), we can have a sharper generalization error scaling in the order of $1/ n$.  Thus in high level, $f_t \approx \Tcal f_{t-1}$ as our data distribution $\mu$ is exploratory, and we know that based on value iteration, $\Tcal f_{k-1}$ is a better approximation of $Q^\star$ than $f_k$, i.e., $\| \Tcal f_{t-1} - Q^\star \|_{\infty} \leq \gamma \| f_{t-1} - Q^\star \|_{\infty}$, we can expect FQI to converge to the optimal solution when $n\to \infty, t\to\infty$. We formalize the above intuition below. 
+
+%In high level, FQI uses its current predictor $f_{t-1}$ to form regression target $\Tcal f_{t-1}(s,a):= r(s,a) + \gamma \EE_{s'\sim P(\cdot | s,a)}\max_{a'\in \Acal} f_{t-1}(s',a')$ for the $(s,a)$ pair. Based on Value iteration, we know that $\| \Tcal f_{t-1} - Q^\star \|_{\infty} \leq \gamma \| f_{t-1} - Q^\star \|_{\infty}$.  Since we assume Bellman completion and coverage from $\nu$, i.e., $\Tcal f_{t-1} \in \Fcal$, we hope that regression Eq.~\ref{eq:FQI} finds $f_t$ that approximates $\Tcal f_{t-1}$ well.  We formalize the above intuition below. 
+
+
+\section{Analysis}
+
+\wen{put assumptions here. assume zeros is in $\Fcal$, assume low inherent bellman error...}
+
+With $f_t$ from FQI (Eq.~\ref{eq:FQI}), denote $\pi_t(s) := \argmax_{a} f_t(s,a)$ for all $s\in\Scal$.
+
+We first state the performance guarantee of FQI. 
+\begin{theorem}[FQI guarantee]
+The $k^{\textrm{th}}$ iterate of Fitted $Q$ Iteration guarantees that with probability $1-\delta$
+\begin{align*}
+V^\star - V^{\pi_k} \leq \mathcal{O}\left(\frac{1}{(1-\gamma)^3}\sqrt{\frac{C\log(|\Fcal|/\delta)}{n}}\right) + \frac{2\gamma^k }{(1-\gamma)^2}.
+\end{align*}
+\end{theorem}
+
+The first term is the estimation error term, which goes to $0$ as we
+get more data. The second term is ``optimization error'' term that
+goes to $0$ as we do more iterations. This term can always be made
+arbitrarily small at the expense of more computation.
+
+%We prove the theorem below.
+
+We now prove the theorem. Given any distribution $\nu \in \Scal\times\Acal$, and any function $f:\Scal\times\Acal\mapsto\mathbb{R}$, we write $\|f \|_{2,\nu}^2 := \EE_{s,a\sim \nu} f^2(s,a)$, and $\|f \|_{1,\nu} := \EE_{s,a\sim \nu} | f(s,a)|$. For any $\nu\in \Delta(\Scal)$ and a policy $\pi$, we denote $\nu\circ \pi$ as the joint state-action distribution, i.e., $s\sim \nu, a \sim \pi(\cdot | s)$.
+
+\begin{proof}
+We start from the Performance Difference Lemma:
+\begin{align*}
+(1-\gamma) \left( V^\star - V^{\pi_k}\right)   & =  \EE_{s \sim d^{\pi_k}} \left[ - A^{\star}(s, \pi_k(s)) \right]\\
+& = \EE_{s \sim d^{\pi_k}} \left[  Q^\star(s, \pi^\star(s)) - Q^\star(s, \pi_k(s))\right]\\
+&\leq \EE_{s \sim d^{\pi_k}} \left[  Q^\star(s, \pi^\star(s)) - f_k(s, \pi^\star(s)) + f_k(s, \pi_k(s)) -  Q^\star(s, \pi_k(s))\right]\\
+& \leq  \|Q^\star - f_k\|_{1, d^{\pi_k} \circ \pi^\star} + \|Q^\star - f_k\|_{1, d^{\pi_k} \circ \pi_k}       \\
+& \leq   \|Q^\star - f_k\|_{2, d^{\pi_k} \circ \pi^\star} + \|Q^\star - f_k\|_{2, d^{\pi_k} \circ \pi_k}      ,
+\end{align*} where the first inequality comes from the fact that $\pi_k$ is a greedy policy of $f_k$, i.e., $f_k(s, \pi_k(s)) \geq f_k(s, a)$ for any other $a$ including $\pi^\star(s)$.
+Now we bound each term on the RHS of the above inequality. We do this by consider a state-action distribution $\nu$. We have:
+\begin{align*}
+\| Q^\star - f_k \|_{2, \nu} &\leq \| Q^\star - \Tcal f_{k-1} \|_{2, \nu} + \| f_k - \Tcal f_{k-1} \|_{2, \nu}\\
+& \leq \gamma \sqrt{ \EE_{s,a\sim \nu} \left[ \left( \EE_{s'\sim P(\cdot | s,a)} \max_{a} Q^\star(s',a) - \max_{a} f_{k-1}(s',a)   \right)^2  \right]  } + \| f_k - \Tcal f_{k-1} \|_{2,\nu} \\
+&  \leq \gamma \sqrt{ \EE_{s,a\sim \nu, s'\sim P(\cdot | s,a)}  \max_{a} \left( Q^\star(s',a) - f_{k-1}(s',a) \right)^2 } + \sqrt{C} \| f_k - \Tcal f_{k-1} \|_{2, \mu},
+\end{align*} where in the last inequality, we use the fact that $(\EE[x])^2 \leq \EE[x^2]$,  $(\max_{x} f(x) - \max_{x} g(x))^2 \leq \max_{x} (f(x) - g(x))^2$ for any two functions $f$ and $g$,  and assumption~\ref{assum:concentrability_fqi}.
+
+Denote $\nu'(s',a') = \sum_{s,a} \nu(s,a) P(s'|s,a) \one\{a' = \argmax_{a}\left( Q^\star(s',a) - f_{k-1}(s',a) \right)^2  \}  $, the above inequality becomes:
+\begin{align*}
+\| Q^\star - f_k \|_{2, \nu} &\leq \gamma \| Q^\star - f_{k-1} \|_{2, \nu'} +  \sqrt{C} \| f_k - \Tcal f_{k-1} \|_{2, \mu}.
+\end{align*} We can recursively repeat the same process for $\| Q^\star - f_{k-1} \|_{2, \nu'}$ till step $k = 0$:
+\begin{align*}
+\| Q^\star - f_k \|_{2, \nu}  \leq  \sqrt{C} \sum_{t=0}^{k-1} \gamma^t \| f_{k-t} - \Tcal f_{k-t-1}  \|_{2,\mu} + \gamma^k \| Q^\star - f_0 \|_{2,\widetilde\nu},
+\end{align*} where $\widetilde\nu$ is some valid state-action distribution.  
+
+Note that for the first term on the RHS of the above inequality, we can bound it using Lemma~\ref{lem:generalization_least_square}. With probability at least $1-\delta$, we have:
+\begin{align*}
+\sqrt{C} \sum_{t=0}^{k-1} \gamma^t \| f_{k-t} - \Tcal f_{k-t-1}  \|_{2,\mu}  \leq  \mathcal{O}\left(\sqrt{C} \sum_{t=0}^{k-1} \gamma^k \sqrt{ \frac{ \vmax^2 \ln(|\Fcal|/\delta)  }{n}   } \right) = \mathcal{O}\left( \frac{\vmax \sqrt{C \ln (|\Fcal|/\delta)}}{(1-\gamma) \sqrt{n}} \right)
+\end{align*}
+For the second term, we have:
+\begin{align*}
+\gamma \| Q^\star - f_0 \|_{2,\widetilde\nu} \leq \gamma^k \vmax. 
+\end{align*}
+Thus, we have:
+\begin{align*}
+\| Q^\star - f_k \|_{2, \nu}  = \mathcal{O}\left( \frac{\vmax \sqrt{C \ln (|\Fcal|/\delta)}}{(1-\gamma) \sqrt{n}} \right) + \gamma^k \vmax,
+\end{align*} for all $\nu$, including $\nu = d^{\pi_k}\circ \pi^\star$, and $\nu = d^{\pi_k}\circ \pi_k$.  This concludes the proof.
+\end{proof}
+
+
+The following lemma studies the generalization error for least square problems in FQI. Specifically, it leverages the fact that for square loss, under the realizability assumption (Bayes optimal belongs to the function class), the generalization error scales in the order of $O(1/{n})$.
+
+\begin{lemma}[Least Square Generalization Error]
+\label{lem:generalization_least_square}
+Given $f \in \Fcal$, denote $\hat{f}_{f} := \argmin_{f\in \Fcal} \sum_{i=1}^n (f(s_i,a_i) - r_i - \gamma \max_{a'} f(s_i', a'))^2$. With probability at least $1-\delta$, for all $f\in \Fcal$, we have:
+\begin{align*}
+\EE_{s,a\sim \mu}  \left( \hat{f}_{f}(s,a) - \Tcal f(s,a)    \right)^2  = \mathcal{O}\left( \frac{ \vmax^2 \ln\left( \frac{ |\Fcal| }{\delta} \right) }{n} \right).
+\end{align*}
+\end{lemma}
+Note that the above lemma indicates that with probability at least $1-\delta$, for any $t = 1,2,\dots$, we must have:
+\begin{align*}
+\EE_{s,a\sim \mu}  \left( f_{t}(s,a) - \Tcal f_{t-1}(s,a)    \right)^2  = \mathcal{O}\left( \frac{ \vmax^2 \ln\left( \frac{ |\Fcal| }{\delta} \right) }{n} \right).
+\end{align*}
+\begin{proof}
+Let us consider a fixed function $f' \in \Fcal$ first, and denote $\hat{f} = \argmin_{{f}\in\Fcal} \sum_{i=1}^n ( {f}(s_i,a_i) - r_i - \gamma \max_{a'\in\Acal} f'(s'_i, a')  )^2$. Note that $\hat{f}$ is fully determined by $f$. At the end, we will apply a union bound over all $f'\in\Fcal$. 
+
+For any fixed $f\in \Fcal$, let us denote the random variable $z_i$:
+\begin{align*}
+z^f_i := \left( {f}(s_i,a_i) - r_i - \gamma \max_{a'\in\Acal} f'(s'_i, a') \right)^2 - \left( \Tcal {f'}(s_i,a_i) - r_i - \gamma \max_{a'\in\Acal} f'(s_i', a') \right)^2.
+\end{align*}  
+First note that:
+\begin{align*}
+| z^f_i | \leq  \vmax^2,
+\end{align*} which comes from the assumption that $f(s,a) \in [ 0, \vmax]$ for all $s,a, f$.
+
+
+First note that:
+\begin{align*}
+& \EE_{s_i,a_i \sim \mu, s_i' \sim P(\cdot | s_i,a_i)}\left [  z^f_i  \right] \\
+& = \EE_{s_i,a_i \sim \mu, s_i' \sim P(\cdot | s_i,a_i)} \left( f(s_i,a_i) - \Tcal f'(s_i,a_i) \right) \left( f(s_i,a_i) + \Tcal f'(s_i,a_i) - 2 (r_i + \gamma \max_{a'\in \Acal} f'(s_i', a') )  \right)\\
+& =  \EE_{s_i,a_i \sim \mu} ( f(s_i,a_i) - \Tcal f'(s_i,a_i) ) \left( f(s_i,a_i) + \Tcal f'(s_i,a_i) - 2\left( r_i + \EE_{ s_i' \sim P(\cdot | s_i,a_i)}\max_{a'} f'(s_i', a') \right)\right) \\
+& = \EE_{s_i,a_i\sim \mu} \left( f(s_i,a_i) - \Tcal f'(s_i,a_i) \right)^2  =  \EE_{s,a\sim \mu} \left( f(s,a) - \Tcal f'(s,a) \right)^2,
+\end{align*} where the third equality uses the definition of Bellman operator, i.e., that $r_i + \EE_{ s_i' \sim P(\cdot | s_i,a_i)}\max_{a'} f'(s_i', a')  = \Tcal f'(s_i,a_i)$.
+
+Now we calculate the second moment of $z^f_i$. 
+\begin{align*}
+& \EE_{s_i,a_i \sim \mu, s_i' \sim P(\cdot | s_i,a_i)}\left [  (z^f_i)^2  \right] \\
+ & =  \EE_{s_i,a_i \sim \mu, s_i' \sim P(\cdot | s_i,a_i)} \left[ (f(s_i,a_i) - \Tcal f'(s_i,a_i))^2 \left( f(s_i,a_i) + \Tcal f'(s_i,a_i) - 2(r_i + \gamma \max_{a'} f'(s'_i, a') )  \right)^2   \right]\\
+ &  \leq   4 \vmax^2 \EE_{s_i,a_i \sim \mu} \left[ (f(s_i,a_i) - \Tcal f'(s_i,a_i))^2 \right] \\
+ & =  4 \vmax^2 \EE_{s,a \sim \mu} \left[ (f(s,a) - \Tcal f'(s,a))^2 \right] 
+\end{align*} where in the last inequality, we again use the assumption that $f(s,a) \in [0, \vmax]$ for all $s,a,f$.
+
+Now we can use Bernstein's inequality to bound $ \EE_{s,a\sim \mu} \left( f(s,a) - \Tcal f'(s,a) \right)^2 - \frac{1}{n} \sum_{i=1}^n z_i $. Together with a union bound over all $f\in \Fcal$, we have that with probability at least $1-\delta$, for any $f\in \Fcal$:
+\begin{align*}
+\EE_{s,a\sim \mu} \left( f(s,a) - \Tcal f'(s,a) \right)^2 - \frac{1}{n} \sum_{i=1}^n z^f_i \leq \sqrt{ \frac{ 8\vmax^2 \EE_{s,a \sim \mu} \left[ (f(s,a) - \Tcal f'(s,a))^2 \right]   \ln(|\Fcal|/\delta) }{n}  } + \frac{ 4  \vmax^2 \ln(|\Fcal|/\delta) }{3n}.
+\end{align*}
+Set $f = \hat{f}$, and use the fact that $\hat{f}$ is the minimizer of the least square, i.e.,  $\frac{1}{n}\sum_{i=1}^n z_i^{\hat{f}} \leq \frac{1}{n} \sum_{i=1}^n z_i^{\Tcal f'} = 0$, we have:
+\begin{align*}
+\EE_{s,a\sim \mu} \left( \hat{f}(s,a) - \Tcal f'(s,a) \right)^2 \leq \sqrt{ \frac{ 8\vmax^2 \EE_{s,a \sim \mu} \left[ (\hat{f}(s,a) - \Tcal f'(s,a))^2 \right]   \ln(|\Fcal|/\delta) }{n}  } + \frac{ 4  \vmax^2 \ln(|\Fcal|/\delta) }{3n}.
+\end{align*}
+Solve for $\EE_{s,a\sim \mu} \left( \hat{f}(s,a) - \Tcal f'(s,a) \right)^2$, we get:
+\begin{align*}
+\EE_{s,a\sim \mu} \left( \hat{f}(s,a) - \Tcal f'(s,a) \right)^2 \leq \left( \sqrt{2} + \sqrt{10/3} \right)^2 \frac{\vmax^2 \ln (|\Fcal| / \delta)}{n}.
+\end{align*}
+
+Note that the above result holds for a fixed $f' \in \Fcal$. Apply union bound over all $f'\in \Fcal$, we can conclude the proof.
+%We denote $\ell_{\Dcal}(; f')$ and $\ell(f; f')$ as follows. 
+%\begin{align*}
+%&\ell_{\Dcal}(f; f') := \frac{1}{n} \sum_{i=1}^n \left( f(s_i,a_i) - r_i - \gamma \max_{a'\in\Acal} f'(s_i',a')  \right)^2, \\
+%& \ell(f; f') = \EE_{s,a\sim \nu, s' \sim P(\cdot | s,a)}  \left( f(s,a) - r(s,a) - \gamma \max_{a'\in\Acal} f'(s',a')  \right)^2
+%\end{align*}
+\end{proof}
+
+Note that the above lemma and the proof show that more generally, we can obtain a $O(1/n)$ generalization error (as opposed to the common $O(1/\sqrt{n})$) for square loss under the realizability assumption. 
+
+
+\section{Fitted policy iteration}
+
+
+
+\section{Bibliographic Remarks and Further Readings}\label{bib:offline}
+
+The authors graciously acknowledge Akshay Krishnamurthy for sharing
+the lecture notes from which this chapter is based on.  
+
+The fitted Q-iteration sample complexity analysis is originally due to
+\cite{munos2003error, munos2008finite,antos2008learning}, under the
+concentrability based assumptions.  More generally, the offline RL
+literature~\citep{munos2003error, szepesvari2005finite,
+  antos2008learning, munos2008finite, tosatto2017boosted,
+  chen2019information, xie2020q} largely analyzes the sample
+complexity of approximate dynamic programming-based approaches under
+either of the following two categories of assumptions: (i) density
+based assumptions on the state-action space, where it is assumed there
+is low distribution shift with regards to the offline data collection
+distribution (e.g. concentrability based) (ii) representation
+conditions that assumes some given linear function class satisfies a
+completion conditions (e.g. Assumption~\ref{assump:complete}
+considered here), along with with some coverage assumption over the
+feature space (rather than coverage over the state-action space). 
+
+With regards to the simpler question of just policy evaluation ---
+estimating the value of a given policy with offline data ---
+\cite{duan_offline} provide minimax optimal rates.  With regards to
+\emph{necessary} conditions for sample efficient offline RL,
+~\cite{wang2020statistical} proves that offline RL is impossible,
+under only the weaker assumptions of realizability and feature
+coverage. In particular, the latter result shows how fitted
+Q-iteration can have exponential error amplification; furthermore, it
+shows that substantially stronger assumptions are required for offline
+RL algorithms to be statistically efficient (such as the assumptions
+considered in this chapter). 

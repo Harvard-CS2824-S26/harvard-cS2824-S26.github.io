@@ -1,0 +1,99 @@
+\chapter*{Notation}
+\addcontentsline{toc}{chapter}{Notation}
+
+This section collects notation and conventions that will be used throughout the book.
+
+\paragraph{General Mathematical Notation}
+\begin{itemize}
+\item For an integer $K\ge 1$, we slightly abuse notation and use 0-based indexing:
+  \[
+    [K] := \{0,1,2,\ldots,K-1\}.
+  \]
+
+\item We use $\mathds{1}\{\mathcal{E}\}$ to denote the indicator function for an event $\mathcal{E}$,
+  which takes value $1$ if $\mathcal{E}$ is true and $0$ otherwise.
+
+\item We use $\tilde{O}(\cdot)$ notation to hide polylogarithmic factors; i.e., $f(x) = \tilde{O}(g(x))$
+  if $f(x) = O(g(x) \cdot \text{poly}(\log x))$. Unless specified otherwise, $\log$ denotes the natural logarithm.
+
+\item For a set $\mathcal{X}$, let $\Delta(\mathcal{X})$ denote the set of probability
+  distributions over $\mathcal{X}$.
+\end{itemize}
+
+\paragraph{Vectors and Norms}
+\begin{itemize}
+\item For a vector $v$, the expressions $(v)^2$, $\sqrt{v}$, and $|v|$ denote the
+  component-wise square, square root, and absolute value operations.
+
+\item Inequalities between vectors are understood elementwise. For vectors $v, v'$,
+  we write $v \le v'$ if $v(j)\le v'(j)$ for all coordinates $j$.
+
+\item For a vector $v$, we refer to its $j$-th component as either $v(j)$ or $[v]_j$.
+
+\item For a vector $x$ and a matrix $M$, unless stated otherwise, $\|x\|$ and $\|M\|$
+  denote the Euclidean and spectral norms, respectively. We use $\|x\|_M :=
+  \sqrt{x^\top M x}$ (with dimensions understood from context).
+
+\item We denote the $\ell_\infty$-norm (max norm) by $\|x\|_\infty := \max_i |x_i|$.
+  (Note: In the context of value functions $V$ and $Q$, contraction arguments typically rely on the $\ell_\infty$-norm).
+\end{itemize}
+
+\paragraph{Probability}
+\begin{itemize}
+\item For a real-valued function $f$ and a distribution $\mathcal{D}$, define the variance as
+\[
+\textrm{Var}_{\mathcal{D}}(f) := \E_{x\sim \mathcal{D}}[f(x)^2] - \big(\E_{x\sim \mathcal{D}}[f(x)]\big)^2.
+\]
+\end{itemize}
+
+\paragraph{Reinforcement Learning Context}
+\begin{itemize}
+\item We write $s\in\Scal$ for states and $a\in\Acal$ for actions. Rewards are real-valued; when
+  convenient we treat the reward function as a vector $r\in\R^{|\Scal||\Acal|}$ indexed by $(s,a)$.
+
+\item The discount factor is $\gamma\in[0,1)$; for a policy $\pi$, the (discounted) value function is
+  $V^\pi:\Scal\to\R$ and the action-value function is $Q^\pi:\Scal\times\Acal\to\R$.
+
+\item We denote a \emph{history} (or \emph{trajectory} prefix) at time $t$ as $\tau_t := (s_0, a_0, r_0, \ldots, a_{t-1}, r_{t-1}, s_t)$, which represents the information available to the agent at decision time $t$. We let $\Hcal$ denote the set of all such finite histories.
+  
+\item We overload notation so that for a distribution $\mu$ over $\Scal$,
+\[
+V^\pi(\mu) := \E_{s\sim \mu} \left[V^\pi(s)\right].
+\]
+
+\item We overload notation and let $P$ also denote a matrix of size $|\Scal||\Acal|\times |\Scal|$
+  with entries $P_{(s,a),s'} := P(s' \mid s,a)$. We also define $P^\pi$ to be the transition matrix on
+  state-action pairs induced by a deterministic policy $\pi$, namely
+  \[
+  P^\pi_{(s,a),(s',a')} :=
+  \begin{cases}
+    P(s' \mid s,a) & \text{if } a'=\pi(s'),\\
+    0 & \text{if } a'\neq \pi(s').
+  \end{cases}
+  \]
+  With this notation,
+\begin{align*}
+  Q^\pi & = r + \gamma P V^\pi, \\
+  Q^\pi & = r + \gamma P^\pi Q^\pi, \\
+  Q^\pi & = (I-\gamma P^\pi)^{-1} r.
+\end{align*}
+
+\item For a vector $Q \in \R^{|\Scal||\Acal|}$, define the greedy policy and its induced value as
+\begin{eqnarray*}
+  \pi_Q(s) &:=& \argmax_{a \in \Acal} Q(s, a), \\
+  V_Q(s) &:=& \max_{a\in\Acal} Q(s,a).
+\end{eqnarray*}
+
+\item For a vector $Q \in \R^{|\Scal||\Acal|}$, the \emph{Bellman optimality operator}
+  $\Tcal: \R^{|\Scal||\Acal|} \to \R^{|\Scal||\Acal|}$ is defined by
+\begin{align}
+\Tcal Q := r + \gamma P V_Q \, .
+\end{align}
+
+\item For a stationary policy $\pi$, the \emph{Bellman evaluation operator}
+  $\Tcal^\pi: \R^{|\Scal||\Acal|} \to \R^{|\Scal||\Acal|}$ is defined by
+  \[
+  \Tcal^\pi Q := r + \gamma P^\pi Q.
+  \]
+
+\end{itemize}

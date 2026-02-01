@@ -1,0 +1,655 @@
+\chapter{Multi-Armed \& Linear Bandits}
+\label{chap:bandits}
+
+For the case, where $\gamma=0$ (or $H=1$ in the undiscounted case),
+the problem of learning in an unknown MDP reduce to the multi-armed
+bandit problem.  The basic algorithms and proof methodologies here are
+important to understand in their own right, due to that we will have
+to extend these with more sophisticated variants to handle the
+exploration-exploitation tradeoff in the more challenging
+reinforcement learning problem.
+
+
+%notation
+\newcommand{\decset}{D}
+\newcommand{\dec}{x}
+\newcommand{\muhat}{\widehat{\mu}}
+\newcommand{\mutilde}{\widetilde{\mu}}
+
+This chapter follows analysis of the LinUCB algorithm
+from the original proof in~\cite{dani2008stochastic}, with a
+simplified concentration analysis due to~\cite{abbasi2011improved}.
+
+Throughout this chapter, we assume reward is stochastic. 
+
+\section{The $K$-Armed Bandit Problem}
+
+The setting is where we have $K$ decisions (the ``arms''), where when
+we play arm $a\in \{1,2,\ldots K\}$ we obtain a random reward $r_a \in [-1,1]$ from $R(a) \in \Delta([-1,1])$ which
+has mean reward:
+\[
+\mathbb{E}_{r_a\sim R(a) }[r_a] = \mu_a
+\]
+where it is easy to see that $\mu_a\in [-1,1]$. 
+
+Every iteration $t$, the learner will pick an arm $I_t \in [1,2,\dots K]$.  
+Our cumulative regret is defined as:
+\[
+R_T = T \cdot \max_i \mu_i - \sum_{t=0}^{T-1} \mu_{I_t}
+\]
+We denote $a^\star = \argmax_{i} \mu_i$ as the optimal arm. We define gap $\Delta_a = \mu_{a^\star} - \mu_a$ for any arm $a$. 
+
+
+\begin{theorem}
+There exists an algorithm such that with probability at least $1-\delta$,  we have:
+\begin{align*}
+R_T  = O\left( \min\left\{ \sqrt{KT \cdot \ln(TK/\delta)}, \; \sum_{a\neq a^\star} \frac{\ln(TK/\delta)}{ \Delta_a }   \right\} + K \right).
+\end{align*}
+\end{theorem}
+
+\subsection{The Upper Confidence Bound (UCB) Algorithm}
+
+\begin{algorithm}[h]
+\begin{algorithmic}[1]
+\State Play each arm once and denote received reward as $r_a$ for all $a\in \{1,2,\dots K\}$
+%\State Set $n^i_{1} = 1$ for all $i\in [K]$
+\For{$t = 1 \to T-K$}
+    %\State Compute $\hat{\mu}^{t-1}_{{i}}$ for all $i\in [K]$
+    \State Execute arm  $I_t = \arg\max_{i\in [K]} \left(\hat{\mu}^{t}_i + \sqrt{\frac{\log(TK/\delta)}{N^t_i}}\right)$
+    \State Observe $r_t := r_{I_t}$
+    %\State $n_{I_t, t} = n_{I_t, t-1} +  1$
+\EndFor
+\end{algorithmic}
+\caption{UCB}
+\label{alg:ucb}
+\end{algorithm}
+
+We summarize the upper confidence bound (UCB) algorithm in Alg.~\ref{alg:ucb}. For simplicity, we allocate the first $K$ rounds to pull each arm once. 
+
+where every iteration $t$,  we maintain counts of each arm:
+\begin{align*}
+N^t_a = 1 + \sum_{i=1}^{t-1}  \mathbf{1}\{I_i= a\},
+\end{align*} where $I_t$ is the index of the arm that is picked by the algorithm at iteration $t$. We main the empirical mean for each arm as follows:
+\begin{align*}
+\widehat{\mu}^t _a = \frac{1}{N^t_a} \left( r_a + \sum_{i=1}^{t-1} \mathbf{1}\{ I_i = a\} r_i\right).
+\end{align*} Recall that $r_a$ is the reward of arm $a$ we got during the first $K$ rounds.
+
+We also main the upper confidence bound for each arm as follows:
+\begin{align*}
+\widehat{\mu}^t_a + 2 \sqrt{\frac{ \ln(T K/ \delta) }{ N^t_a}}.
+\end{align*}
+The following lemma shows that this is a valid upper confidence bound with high probability. 
+\begin{lemma}[Upper Confidence Bound]
+For all $t\in [1,\dots, T]$ and $a \in [1,2,\dots K]$, we have that with probability at least $1-\delta$, 
+\begin{align}
+\label{eq:event_MAB}
+\left\lvert \widehat\mu^t_a - \mu_a    \right\vert \leq 2 \sqrt{ \frac{\ln (TK/\delta) }{ N^t_a } }.
+\end{align}
+\end{lemma}The proof of the above lemma uses Azuma-Hoeffding's inequality  (Theorem~\ref{thm:Azuma}) for each arm $a$ and iteration $t$ and then apply a union bound over all $T$ iterations and $K$ arms. The reason one needs to use Azuma-Hoeffding's inequality is that here the number of trials of arm $a$, i.e. $N^t_a$, itself is a random variable while the classic Hoeffding's inequality only applies to the setting where the number of trials is a fixed number.
+
+\begin{proof} We first consider a fixed arm $a$. Let us define the following random variables, $X_0 = r_a - \mu_a, X_1 = \mathbf{1}\{I_1 = a\} ( r_1  - \mu_a), X_2 = \mathbf{1}\{I_2 = a\} ( r_2 - \mu_a), \dots, X_i = \mathbf{1}\{ I_{i} = a \} (r_{i} - \mu_a), \dots$.
+
+Regarding the boundedness on these random variables, we have that for $i$ where $\mathbf{1}\{I_{i} = a\} = 1$, we have $|X_i | \leq 1$, and for $i$ where $\mathbf{1}\{I_{i} = a\} = 0$, we have $|X_i|  = 0$.  Now, consider $\mathbb{E}\left[ X_i | \Hcal_{< i} \right]$, where $\Hcal_{< i}$ is all history up to but not including iteration $i$. Note that we have $\mathbb{E}\left[ X_i | \Hcal_{<i} \right] = 0$ since condition on history $\Hcal_{<i}$, $\mathbf{1}\{I_i = a\}$ is a deterministic quantity (i.e., UCB algorithm determines whether or not to pull arm $a$ at iteration $i$ only based on the information from $\Hcal_{<i}$). Thus, we can conclude that $\{X_i\}_{i=0}$ is a Martingale difference sequence.  Via Azuma-Hoeffding's inequality, we have that with probability at least $1-\delta$, for any fixed $t$, we have:
+\begin{align*}
+\left\lvert \sum_{i=0}^{t-1} X_i  \right\rvert = \left\lvert N_a^t \widehat\mu_a^t - N_a^t \mu_a  \right\rvert \leq 2\sqrt{ \ln(1/\delta) N^t_a },
+\end{align*} where we use the fact that $\sum_{i=0}^{t-1} | X_i |^2 \leq N^t_a$.
+Divide $N_a^t$ on both side, we have:
+\begin{align*}
+\left\lvert \widehat\mu_a^t - \mu_a  \right\rvert \leq 2\sqrt{ \ln(1/\delta) / N^t_a }
+\end{align*}
+Apply union bound over all $0\leq t \leq T$ and $a\in \{1,\dots, K\}$, we have that with probability $1-\delta$, for all $t, a$:
+\begin{align*}
+\left\lvert \widehat\mu_a^t - \mu_a  \right\rvert \leq 2\sqrt{ \ln(1/\delta) / N^t_a } \leq 2\sqrt{ \ln(TK/\delta) / N^t_a }
+\end{align*}
+This concludes the proof. 
+\end{proof}
+
+
+Now we can conclude the proof of the main theorem. 
+
+\begin{proof}
+Below we conditioned on the above inequality~\ref{eq:event_MAB} holds. This gives us the following optimism:
+\begin{align*}
+\mu_a \leq \widehat\mu^t_a + 2 \sqrt{ \frac{\ln (TK/\delta) }{ N^t_a } }, \forall a, t.
+\end{align*}
+
+Thus, we can upper bound the regret as follows:
+\begin{align*}
+\mu_{a^\star} - \mu_{I_t} \leq  \widehat\mu^t_{I_t} + 2 \sqrt{ \frac{\ln (TK/\delta) }{ N^t_{I_t} } } - \mu_{I_t} \leq 4 \sqrt{ \frac{\ln (TK/\delta) }{ N^t_{I_t} } }.
+\end{align*}
+Sum over all iterations, we get:
+\begin{align*}
+& \sum_{t=0}^{T-1} \mu_{a^\star} - \mu_{I_t} \leq 4 \sqrt{\ln(TK/\delta)} \sum_{t=0}^{T-1}  \sqrt{ \frac{ 1}{ N^t_{I_t} } } \\
+& = 4 \sqrt{\ln(TK/\delta)}  \sum_{a } \sum_{i=1}^{ N^{T}_a } \frac{1}{\sqrt{i}} \leq 8 \sqrt{\ln(TK/\delta)}  \sum_{a } \sqrt{N^T_a}  \leq 8 \sqrt{\ln(TK/\delta)} \sqrt{ K \sum_a N^T_a} \\
+& \leq 8 \sqrt{\ln(TK/\delta)}  \sqrt{KT}.
+\end{align*} 
+Note that our algorithm has regret $K$ at the first K rounds. 
+
+On the other hand, if for each arm $a$, the gap $\Delta_a > 0$, then, we must have:
+\begin{align*}
+N^T_a \leq \frac{4 \ln (TK/\delta)}{ \Delta_a^2}.
+\end{align*} which is because after the UCB of an arm $a$ is below $\mu_{a^\star}$, UCB algorithm will never pull this arm $a$ again (the UCB of $a^\star$ is no smaller than $\mu_{a^\star}$).  
+
+Thus for the regret calculation, we get:
+\begin{align*}
+& \sum_{t=0}^{T-1} \mu_{a^\star} - \mu_{I_t} \leq  \sum_{a \neq a^\star} N^T_a \Delta_a \leq \sum_{a\neq a^\star} \frac{4 \ln(TK/\delta)}{ \Delta_a }.
+\end{align*}
+
+Together with the fact that Inequality~\ref{eq:event_MAB} holds with probability at least $1-\delta$, we conclude the proof. 
+\end{proof}
+
+
+
+
+\section{Linear Bandits: Handling Large Action Spaces}
+
+Let $D \subset \R^d$ be a compact (but otherwise arbitrary) set of
+decisions. On each round, we must choose a decision $x_t \in D$. Each such
+choice results in a reward $r_t \in [-1, 1]$.
+
+We assume that, regardless of the history $\mathcal{H}$ of
+decisions and observed rewards, the conditional
+expectation of $r_t$ is a fixed linear function, i.e. 
+for all $x \in D$,
+\[
+\E[r_t|x_t=x] = \mu^\star \cdot x \in [-1, 1],
+\]
+where $x \in D$ is arbitrary. Here, observe that we have assumed the
+mean reward for any decision is bounded in $[-1, 1]$.
+Under these assumptions, the \emph{noise sequence},
+\[
+\eta_t = r_t - \mu^\star \cdot x_t  
+\]
+is a martingale difference sequence.
+
+The is problem is essentially a bandit version of a fundamental geometric 
+optimization problem, in which the agent's
+feedback on each round $t$ is only the observed reward
+$r_t$ and where the agent does not know $\mu^\star$ apriori.
+
+If $x_0, \ldots x_{T-1}$ are the decisions made in the game, then 
+define the \emph{cumulative regret} by
+\[
+R_T = T \mu^\star\cdot x^\star - \sum_{t=0}^{T-1} \mu^\star\cdot x_t
+%R_T = \mu^\star\cdot x^\star - \sum_{t=0}^{T-1} r_t
+\]
+where $x^\star \in D$ is an optimal decision for $\mu^\star$, i.e.
+\[
+x^\star \in \argmax_{x\in D} \mu^\star \cdot x
+\]
+which exists since $D$ is compact. Observe that if the mean $\mu^\star$ were
+known, then the optimal strategy would be to play $x^\star$ every
+round. 
+Since the expected loss for each decision $x$ equals
+$\mu^\star\cdot x$, the cumulative regret is just the difference
+between the expected loss of the optimal algorithm and the expected
+loss for the actual decisions $x_t$. By the Hoeffding-Azuma
+inequality (see Lemma~\ref{thm:Azuma}), the observed reward $\sum_{t=0}^{T-1} r_t$ will be close
+to their (conditional) expectations $\sum_{t=0}^{T-1} \mu^\star\cdot x_t$.
+
+Since the sequence of
+decisions $x_1, \dots, x_{T-1}$ may depend on the particular
+sequence of random noise encountered, $R_T$ is a random variable. Our
+goal in designing an algorithm is to keep $R_T$ as small as possible.
+
+\subsection{The LinUCB algorithm}
+
+\begin{algorithm}[!t]
+	\begin{algorithmic}[1]	
+		\Require $\lambda$, $\beta_t$
+                %\State Initialize  $B_0$ to be any set containing $W^\star$.
+		\For{$t = 0,1 \dots $}
+			\State \label{alg:ucb_step} Execute 
+\[
+x_t = \argmax_{x\in D}\max_{\mu\in \textsc{Ball}_t} \mu\cdot x 
+\]
+and observe the reward $r_t$.
+\State Update $\textsc{Ball}_{t+1}$ (as specified in Equation~\ref{eq:ball}).
+\EndFor
+\end{algorithmic}
+  \caption{The Linear UCB algorithm}
+\label{alg:linUCB}
+\end{algorithm}
+
+LinUCB is based on ``optimism in the face of uncertainty,'' which is
+described in Algorithm~\ref{alg:linUCB}. At episode $t$, we use all
+previous experience to define an uncertainty region (an ellipse) $\textsc{Ball}_t$.  The
+center of this region, $\widehat{\mu}_t$, is the solution of the
+following regularized least squares problem:
+\begin{align*}%\label{eq:regression}
+\widehat{\mu}_t &= \arg\min_{\mu} \sum_{\tau = 0}^{t-1}
+\| \mu \cdot x_\tau - r_\tau \|_2^2 + \lambda\|\mu\|_2^2\\
+&= \Sigma_t^{-1}\sum_{\tau = 0}^{t-1}r_\tau x_\tau,
+\end{align*}
+where $\lambda$ is a parameter and where
+\[
+\Sigma_t = \lambda I + \sum_{\tau = 0}^{t-1}x_\tau x_\tau^\top,
+\, \mathrm{with } \, \, \, \Sigma_0 = \lambda I.
+\] 
+The shape of the region $\textsc{Ball}_t$ is defined through the
+feature covariance $\Sigma_t$.
+
+Precisely, the uncertainty region, or confidence ball, is defined as:
+\begin{align}\label{eq:ball}
+\textsc{Ball}_{t} = \left\{ \mu \vert 
+(\widehat \mu_t - \mu)^\top\Sigma_t(\widehat \mu_t - \mu)
+%\mu \Big\vert \left\| \mu - \widehat \mu_t \right\|^2_{\Sigma_t}
+  \leq \beta_t \right\}, 
+\end{align}
+%where we use the notation $\|x\|^2_A = x^\top A x$ (for a vector $x$
+%and matrix $A$ of appropriate dimensions) and 
+where $\beta_t$ is a parameter of the algorithm.
+
+%\begin{align}\label{eq:beta}
+%\beta^t := C_1\bigg({\lambda}\Sigma^2 + \Sigma^2\Big( d_{\mathcal{X}} 
+%+ \log\left(t \det(\Sigma^t)/\det(\Sigma^0)  \right)
+%  \Big) \bigg),
+%\end{align}
+%with $C_1$ being a parameter of the algorithm. 
+
+\paragraph{Computation.} Suppose that we have an efficient linear
+optimization oracle, i.e. that we can efficiently solve the problem:
+\[
+\max_{x\in D} \nu\cdot x
+\]
+for any $\nu$. Even with this,  Step~\ref{alg:ucb_step} of 
+LinUCB may not be computationally tractable. For example, suppose
+that $D$ is provided to us as a polytope, then the above oracle can
+be efficiently computed using linear programming, while LinUCB is an
+NP-hard optimization. Here, we can actually use a wider confidence
+region, where we can keep track of $\ell_1$ ball which contains
+$\textsc{Ball}_t$. See Section~\ref{bib:bandits} for further reading.
+ 
+\subsection{Upper and Lower Bounds}
+
+Our main result here is that we have sublinear regret with only a
+polynomial dependence on the dimension $d$ and, importantly, no
+dependence on the cardinality of the decision space $D$, i.e. on $|D|$.
+
+\begin{theorem}~\label{theorem:sqrtregret}
+Suppose that the expected costs are bounded, in magnitude, by $1$,
+i.e. that  $|\mu^\star\cdot x| \leq 1$ for all $x\in
+D$; that $\|\mu^\star\|\leq W$ and $\|x\|\leq B$ for all $x\in
+D$; and that the noise $\eta_t$ is $\sigma^2$ sub-Gaussian~\footnote{Roughly, this assumes the tail probabilities of $\eta_t$ decay no more
+  slowly than a Gaussian distribution.  See
+  Definition~\ref{def:sub-gauss}.}. 
+Set 
+\[
+\lambda =\sigma^2/W^2, \ \ \beta_t := \sigma^2\Big(2
++ 4 d\log\left( 1 + \frac{tB^2W^2}{ d} \right)
++8   \log(4/ \delta)\Big).
+\]
+We have that with probability greater
+than $1-\delta$, that (simultaneously) for all $T\geq 0$, 
+\[
+R_T \leq c \sigma \sqrt{T} \left( d\log\left( 1 + \frac{TB^2W^2}{ d\sigma^2} \right)
++   \log(4/ \delta) \right)
+\]
+where $c$ is an absolute constant. In other words, we have that $R_T$
+is $\tilde O(d \sqrt{T})$ with high probability.
+\end{theorem}
+
+The following shows that no algorithm can (uniformly) do better. 
+\begin{theorem}
+(Lower bound) There exists a distribution over linear bandit problems
+(i.e. a distribution over $\mu$)  with the rewards being
+bounded by $1$, in magnitude, and $\sigma^2\leq 1$,  such that for every (randomized) algorithm, we have for
+$n\geq \max\{256, d^2/16\}$, 
+\[
+\E_\mu \ \E R_T \geq \frac{1}{2500} d \sqrt{T}.
+\]
+where the inner expectation is with respect to randomness in the
+problem and the algorithm.
+\end{theorem}
+
+We will only prove the upper bound (See Section~{bib:bandits}).
+
+\paragraph{LinUCB and $D$-optimal design.}
+Let us utilize the $D$-optimal design to improve the dependencies in
+Theorem~\ref{theorem:sqrtregret}.
+Let $\Sigma_D$ denote the $D$-optimal design matrix from
+Theorem~\ref{them:design_rho}.  Consider the coordinate transformation:
+\[
+\tilde x =  \Sigma_D^{-1/2} x, \ \  \widetilde \mu^\star =  \Sigma_D^{1/2} \mu^\star.
+\]
+Observe that $
+\widetilde \mu^\star \cdot \widetilde x = \mu^\star \cdot x $, so we
+still have a linear expected reward function in this new coordinate systems. 
+Also, observe that
+$
+\|\tilde x\| = \|x\|_{\Sigma_D} \leq d$, which is a property of the $D$-optimal
+design, and that
+\[
+\|\widetilde \mu^\star\| =
+\| \mu^\star\|_{\Sigma_D} =
+ \sqrt{ (\mu^\star)^\top \Sigma_D\mu^\star}
+= \sqrt{ \E_{x\sim \rho} [(\mu^\star \cdot x)^2]}
+\leq 1,
+\]
+where the last step uses our assumption that the rewards are bounded,
+in magnitude, by $1$.
+
+The following corollary shows that, without loss of generality, we 
+we can remove the dependencies on $B$ and $W$ from the previous
+theorem, due to that $B\leq \sqrt{d}$ and $W\leq 1$ when working under
+this coordinate transform.
+
+\begin{corollary}
+Suppose that the expected costs are bounded, in magnitude, by $1$,
+i.e. that  $|\widetilde \mu^\star\cdot \widetilde x| \leq 1$ for all $x\in
+D$ and that the noise $\eta_t$ is $\sigma^2$ sub-Gaussian. Suppose 
+linUCB is implemented in the $\widetilde x$ coordinate system, as
+described above, with the following settings of the parameters.
+\[
+\lambda =\sigma^2, \ \ \beta_t := \sigma^2\Big(2
++ 4 d\log\left( 1 + t\right)
++8   \log(4/ \delta)\Big).
+\]
+We have that with probability greater
+than $1-\delta$, that (simultaneously) for all $T\geq 0$, 
+\[
+R_T \leq c \sigma \sqrt{T} \left( d\log\left( 1 + \frac{T}{\sigma^2} \right)
++   \log(4/ \delta) \right)
+\]
+where $c$ is an absolute constant. 
+\end{corollary}
+
+\section{LinUCB Analysis}
+
+In establishing the upper bounds there are two main propositions from
+which the upper bounds follow. The first is in showing that the
+confidence region is appropriate. 
+
+\begin{proposition} \label{proposition:confidence} 
+(Confidence) Let $\delta>0$.  We have that
+%\item For ConfidenceBall$_2$,
+\[
+\Pr(\forall t, \, \mu^\star \in \textsc{Ball}_t ) \ge 1 - \delta.
+\]
+\end{proposition}
+
+Section~\ref{sec:confidence} is devoted to
+establishing this confidence bound.  
+In essence, the proof seeks to understand the
+growth of the quantity $(\muhat_t - \mu^\star)^\top \Sigma_t (\muhat_t -
+\mu^\star)$.
+
+The second main step in analyzing LinUCB
+is to show that as long as the aforementioned high-probability event holds,
+we have some control on the growth of the regret. Let us define
+\begin{align*}
+%\overline{R}_T &= \mu^\star\cdot x^\star - \sum_{t=0}^{T-1} \mu^\star\cdot x_t\\
+\mathrm{regret}_t &= \mu^\star \cdot \dec^{*} - \mu^\star \cdot \dec_t 
+\end{align*}
+which denotes the instantaneous regret.
+% with respect to
+%the conditional expectation $E[r_t|x_t]$. Observe $E[\overline{R}_T]=E[R_T]$.
+
+The following bounds the sum of the squares of instantaneous regret.
+\begin{proposition}\label{proposition:l2regretbd}
+(Sum of Squares Regret Bound) Suppose that $\|x\|\leq B$ for $x\in
+D$. Suppose $\beta_t$ is increasing and that $\beta_t\geq 1$.
+For LinUCB, if $\mu^\star \in \textsc{Ball}_t$ for all $t$, then 
+\[
+\sum_{t=0}^{T-1} \mathrm{regret}_t^2  \le %4n \beta_T \ln T  
+8\beta_T d\log\left( 1 + \frac{TB^2}{ d \lambda } \right)
+\]
+\end{proposition}
+
+This is proven in Section~\ref{sec:regret}. The
+idea of the proof involves a potential function argument on the log
+volume (i.e. the log determinant) of the ``precision matrix'' $\Sigma_t$
+(which tracks how accurate our estimates of $\mu^\star$ are in each
+direction). The proof involves relating the growth of this volume to
+the regret.
+
+Using these two results we are able to prove our upper bound as
+follows:
+
+\begin{proof}[Proof of Theorem~\ref{theorem:sqrtregret}]
+By Propositions~\ref{proposition:confidence} and
+\ref{proposition:l2regretbd} along with
+the Cauchy-Schwarz 
+inequality, we have, with probability at least $1-\delta$,
+\begin{align*}
+&R_T = \sum_{t=0}^{T-1} \mathrm{regret}_t
+\le \sqrt{ T \sum_{t=0}^{T-1} \mathrm{regret}_t^2 }
+\le \sqrt{8T\beta_T d\log\left( 1 + \frac{TB^2}{ d \lambda } \right)}.
+\end{align*}
+The remainder of the proof follows from using our chosen value of
+$\beta_T$ and algebraic manipulations (that $2ab \leq a^2+b^2$).
+\end{proof}
+
+We now provide the proofs of these two propositions.
+
+\subsection{Regret Analysis}
+\label{sec:regret}
+
+In this section, we prove Proposition~\ref{proposition:l2regretbd}, which says 
+that the sum of the squares of the instantaneous regrets of the 
+algorithm is small, assuming the evolving confidence balls
+always contain the true mean $\mu^\star$.
+An important observation is that on any round $t$ in which $\mu^\star  \in \textsc{Ball}_t$, the 
+instantaneous regret is at most the ``width'' of the ellipsoid
+in the direction of the chosen decision.
+Moreover, the algorithm's choice of
+decisions forces the ellipsoids to shrink at a rate that ensures that the 
+sum of the squares of the widths is small. 
+We now formalize this. 
+
+Unless explicitly stated, all norms refer to the $\ell_2$ norm.
+
+\begin{lemma} \label{lemma:width}
+Let $\dec \in \decset$. If $\mu \in \textsc{Ball}_t$ and $\dec \in \decset$. Then 
+\[
+|(\mu - \muhat_t)^\top \dec| \le \sqrt{\beta_t \dec^\top \Sigma_t^{-1}\dec}
+\]
+\end{lemma}
+
+\begin{proof}  
+%$\Sigma_t$ is a symmetric positive definite matrix. Hence $\Sigma_t^{1/2}$ is a 
+%well-defined symmetric positive definite (and hence invertible) matrix. 
+By
+Cauchy-Schwarz, we have:
+\begin{align*}
+&|(\mu - \muhat_t)^\top \dec| = 
+|(\mu - \muhat_t)^\top  \Sigma_t^{1/2}\Sigma_t^{-1/2}\dec| 
+= |(\Sigma_t^{1/2}(\mu - \muhat_t))^\top \Sigma_t^{-1/2}\dec| \\
+&\quad \le \| \Sigma_t^{1/2}(\mu - \muhat_t) \| \|\Sigma_t^{-1/2}\dec\| 
+= \|\Sigma_t^{1/2}(\mu - \muhat_t)\| 
+\sqrt{\dec^\top  \Sigma_t^{-1} \dec} 
+\le \sqrt{\beta_t \dec^\top \Sigma_t^{-1}\dec} 
+\end{align*}
+where the last inequality holds since $\mu \in \textsc{Ball}_t$. 
+\end{proof}
+
+
+
+Define
+\[
+w_t := \sqrt{\dec_t^\top  \Sigma_t^{-1} \dec_t}
+\]
+which we interpret as the ``normalized width'' at time $t$ in the direction of the chosen decision.
+We now see that the width, $2 \sqrt{\beta_t} w_t$, 
+is an upper bound for the instantaneous regret.
+
+\begin{lemma} \label{lem:regretvswidth}
+Fix $t\le T$. If $\mu^\star  \in \textsc{Ball}_t$ and $\beta_t\geq 1$, then
+\[
+\mathrm{regret}_t \le 2\min{(\sqrt{\beta_t} w_t , 1)}
+\le 2 \sqrt{\beta_T}\min{(w_t , 1)}
+\]
+\end{lemma}
+
+\begin{proof}
+Let $\mutilde\in \textsc{Ball}_t$ denote the vector which  minimizes
+the dot product $\mutilde^\top  \dec_t$.  By the choice of
+$\dec_t$, we have
+\[
+\mutilde^\top \dec_t 
+=\max_{\mu \in \textsc{Ball}_t} \mu^\top  \dec_t
+= \max_{\dec\in \decset}\max_{\mu \in \textsc{Ball}_t} \mu^\top  \dec
+\ge (\mu^\star)^\top  \dec^{*},
+\]
+where the inequality used the hypothesis $\mu^\star  \in \textsc{Ball}_t$.
+Hence, 
+\begin{align*}
+&\mathrm{regret}_t =  (\mu^\star)^\top  \dec^{*} -(\mu^\star)^\top  \dec_t
+\le ( \mutilde - \mu^\star   )^\top  \dec_t \\
+&\quad \quad =  (\mutilde-\muhat_t )^\top \dec_t + (\muhat_t-\mu^\star)^\top \dec_t 
+\le 2\sqrt{\beta_t} w_t
+\end{align*}
+where the last step follows from Lemma~\ref{lemma:width}
+since $\mutilde$ and $\mu^\star $ are in $\textsc{Ball}_t$. Since $r_t \in [-1, 1]$,
+$\mathrm{regret}_t$ is always at most $2$ and the first inequality follows. 
+The final inequality is due to that $\beta_t$ is increasing and larger than $1$.
+\end{proof}
+
+
+The following two lemmas prove useful in 
+showing that we can treat the log determinant as a
+potential function, where can bound the sum of widths independently of
+the choices made by the algorithm.
+
+\begin{lemma} \label{lem:volumechange}
+We have:
+\[
+\det \Sigma_{T} = \det \Sigma_{0}\prod_{t = 0}^{T-1} (1 + w_t^2).
+\]
+\end{lemma}
+
+\begin{proof}
+By the definition of $\Sigma_{t+1}$, we have
+\begin{align*}
+&\det \Sigma_{t+1}  = \det (\Sigma_t + \dec_t \dec_t^\top )
+ = \det ( \Sigma_t^{1/2} (I + \Sigma_t^{-1/2}\dec_t \dec_t^\top \Sigma_t^{-1/2}) \Sigma_t^{1/2}) \\
+& \quad = \det(\Sigma_t) \det (I + \Sigma_t^{-1/2}\dec_t (\Sigma_t^{-1/2}\dec_t)^\top ) 
+ = \det(\Sigma_t) \det(I + v_t v_t^\top ),
+\end{align*}
+where $v_t := \Sigma_t^{-1/2}\dec_t$. 
+Now observe that $v_t^\top v_t = w_t^2$ and
+\[
+(I  + v_t v_t^\top  ) v_t = v_t + v_t(v_t^\top v_t) = (1+ w_t^2) v_t
+\]
+Hence $(1+ w_t^2)$ is an eigenvalue of $I  + v_t v_t^\top $. Since
+$v_tv_t^\top $ is a rank one matrix, all other eigenvalues 
+of $I + v_t v_t^\top $ equal 1.
+Hence, $\det (I  + v_t v_t^\top  )$ is $(1+ w_t^2)$, 
+implying
+$\det \Sigma_{t+1} = (1 + w_t^2) \det \Sigma_t$.
+%Recalling that $\Sigma_{1}$ is the identity matrix, 
+The result follows by induction.
+\end{proof}
+
+
+
+\begin{lemma}\label{lem:detA}
+(``Potential Function'' Bound) For any sequence $x_0, \ldots x_{T-1}$ such that, for $t<T$,
+$\|x_t\|_2 \leq B$, we have: 
+\begin{align*}
+\log\Big(\det \Sigma_{T-1}/\det \Sigma_{0}\Big) = \log\det\left( I + \frac{1}{\lambda} \sum_{t=0}^{T-1}x_t x_t^{\top}\right)
+\leq  d\log\left( 1 + \frac{TB^2}{ d \lambda } \right).
+\end{align*}
+\end{lemma}
+\begin{proof}
+Denote the eigenvalues of $ \sum_{t=0}^{T-1}x_t x_t^{\top}$ as
+$\sigma_1, \dots \sigma_d$, and note:
+\begin{align*}
+\sum_{i=1}^d \sigma_i = \mathrm{Trace}\left( \sum_{t=0}^{T-1}x_t x_t^{\top}  \right) 
+= \sum_{t=0}^{T-1}\|x_t\|^2 \leq T B^2.
+\end{align*} 
+Using the AM-GM inequality,
+\begin{align*}
+&\log\det\left( I + \frac{1}{\lambda} \sum_{t=0}^{T-1}x_t x_t^{\top}\right) = \log\left( \prod_{i=1}^d \left(1 + \sigma_i / \lambda \right) \right) \\
+&= d\log\left( \prod_{i=1}^d \left(1 + \sigma_i / \lambda \right)
+  \right)^{1/d} 
+\leq d\log\left( \frac{1}{d}\sum_{i=1}^d \left(1 + \sigma_i / \lambda \right) \right) 
+\leq d \log\left( 1 + \frac{ TB^2  }{d\lambda}  \right),
+\end{align*} 
+which concludes the proof. 
+\end{proof}
+
+Finally, we are ready to prove that if $\mu^\star $ always stays within the
+evolving confidence region, then our regret is under control.
+
+\begin{proof}[Proof of Proposition~\ref{proposition:l2regretbd}]
+Assume that $\mu^\star  \in \textsc{Ball}_t$ for all $t$. We have that:
+\begin{align*}
+&\sum_{t=0}^{T-1} \mathrm{regret}_t^2 
+\le \sum_{t=0}^{T-1} 4\beta_t \min (w_t^2, 1)
+\le 4\beta_T \sum_{t=0}^{T-1}  \min (w_t^2, 1)\\
+&\quad\quad \le 8\beta_T \sum_{t=0}^{T-1}  \ln(1+w_t^2) 
+\le 8\beta_T \log\Big(\det \Sigma_{T-1}/\det \Sigma_{0}\Big)
+=8\beta_T d\log\left( 1 + \frac{TB^2}{ d \lambda } \right)
+\end{align*}
+where the first inequality follow from By
+Lemma~\ref{lem:regretvswidth}; the second from that $\beta_t$ is an
+increasing function of $t$; the third uses that for $0 \le y \le 1$,
+$\ln(1 + y) \ge y/2$; the final two inequalities follow by
+Lemmas~\ref{lem:volumechange} and~\ref{lem:detA}. 
+\end{proof}
+
+
+\subsection{Confidence Analysis}
+\label{sec:confidence}
+
+\begin{proof}[Proof of Proposition~\ref{proposition:confidence}]
+Since $r_\tau=x_\tau \cdot\mu^\star +\eta_\tau $, we have:
+\begin{align*}
+&\widehat \mu_t - \mu^\star 
+= \Sigma_t^{-1}\sum_{\tau = 0}^{t-1}r_\tau x_\tau- \mu^\star 
+= \Sigma_t^{-1}\sum_{\tau = 0}^{t-1} x_\tau (x_\tau \cdot\mu^\star +\eta_\tau)- \mu^\star \\
+&= \Sigma_t^{-1}\left( \sum_{\tau = 0}^{t-1} x_\tau (x_\tau)^\top  \right) \mu^\star 
+- \mu^\star 
++\Sigma_t^{-1}\sum_{\tau = 0}^{t-1} \eta_\tau x_\tau
+= \lambda \Sigma_t^{-1}\mu^\star 
++\Sigma_t^{-1}\sum_{\tau = 0}^{t-1} \eta_\tau x_\tau
+\end{align*}
+For any $0<\delta_t<1$, using Lemma~\ref{lemma:self_norm}, it
+holds with probability at least $1-\delta_t$, 
+\begin{align*}
+% \left\| \widehat \mu_t - \mu^\star    \right\|_{\Sigma_t^{-1}}
+\sqrt{(\widehat \mu_t - \mu^\star)^\top\Sigma_t(\widehat \mu_t - \mu^\star)}
+&=\|(\Sigma_t)^{1/2}(\widehat \mu_t - \mu^\star)\|\\
+&\leq \left\| \lambda \Sigma_t^{-1/2}\mu^\star  \right\|
++ \left\| \Sigma_t^{-1/2}\sum_{\tau = 0}^{t-1} \eta_\tau x_\tau \right\| \\
+& \leq \sqrt{\lambda}\|\mu^\star\| 
++ \sqrt{2 \sigma^2\log\left(\det(\Sigma_t)\det(\Sigma^0)^{-1} / \delta_t \right) }.
+\end{align*} 
+where we have also used the triangle inequality and that $\|
+\Sigma_t^{-1}\| \leq 1/\lambda$.
+%Therefore, $\mathrm{Pr}( \overline{\mathcal{E}}_{t,cb}) \leq \delta_t$.
+
+We seek to lower bound $\Pr(\forall t, \, \mu^\star \in
+\textsc{Ball}_t )$. 
+Note that at $t=0$, by our choice of $\lambda$,  we have that $\textsc{Ball}_{0}$ 
+contains $W^\star$, so  $\mathrm{Pr}( \mu^\star \notin
+\textsc{Ball}_0)=0$.
+For $t\geq 1$, let us assign failure probability $\delta_t= (3/\pi^2)/t^2 \delta$ for the
+$t$-th event, which, using the above, gives us an upper bound on the sum failure
+probability as 
+\[
+1-\Pr(\forall t, \, \mu^\star \in \textsc{Ball}_t ) 
+= \Pr(\exists t, \, \mu^\star \notin \textsc{Ball}_t )
+\leq \sum_{t=1}^{\infty} \mathrm{Pr}( \mu^\star \notin \textsc{Ball}_t) 
+<\sum_{t=1}^{\infty} (1/t^2) 
+(3/\pi^2) \delta = \delta/2.
+\]
+This along with Lemma~\ref{lem:detA}  completes the proof.
+\end{proof}
+
+
+
+\section{Bibliographic Remarks and Further Readings}\label{bib:bandits}
+
+The orignal multi-armed bandit model goes to
+back to~\cite{Rob52}. The linear bandit model was first introduced in
+~\cite{abelong}. Our analysis of the LinUCB algorithm
+follows from the original proof in~\cite{dani2008stochastic}, with a
+simplified concentration analysis due to
+~\cite{abbasi2011improved}. The first sublinear regret bound here was
+due to ~\cite{Auer02}, which used a more complicated algorithm. 
+
+The lower bound we present is also due to~\cite{dani2008stochastic},
+which also shows that LinUCB is minimax optimal.
+

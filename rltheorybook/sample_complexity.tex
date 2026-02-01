@@ -1,0 +1,862 @@
+\chapter{Sample Complexity with a Generative Model}
+\label{chap:generative}
+
+\iffalse
+Much of reinforcement learning is concerned with finding a near
+optimal policy (or obtaining near optimal reward) in settings where
+the MDPs is not known to the learner. We will study these questions
+in a few different contexts.
+%, when we are in an \emph{episodic
+%setting} and when we have access to a \emph{generative model}.
+
+\paragraph{The Episodic Setting.}
+In the episodic setting, in every episode, the
+learner acts for some finite number of steps, starting from a fixed starting state
+$s_0\sim \mu$, the learner observes the trajectory, and the state
+resets to $s_0\sim \mu$.  This episodic
+model of feedback is applicable to both the finte-horizon and infinite
+horizon settings.
+\begin{itemize}
+\item (Finite Horizon MDPs) Here, each episode lasts for $H$-steps,
+  and then the state is reset to $s_0\sim \mu$.
+\item (Infinite Horizon MDPs) Even for infinite horizon MDPs it is
+  natural to work in an episodic model for learning, where each
+  episode terminates after a finite number of steps. Here, it is often
+  natural to assume either the agent can terminate the episode at will
+  or that the episode will terminate at each step with probability
+  $1-\gamma$. After termination, we again assume that the state is
+  reset to  $s_0\sim \mu$.  Note that, if each step in an episode is terminated with probability
+  $1-\gamma$, then the observed cumulative reward in an episode of a policy
+  provides an unbiased estimate of the infinite-horizon, discounted
+  value of that policy.
+\end{itemize}
+In this setting, we are often interested in either the number
+of episodes it takes to find a near optimal policy, which is a PAC (probably,
+approximately correct) guarantee, or we are interested in a regret
+guarantee (which we will study in
+Chapter~\ref{chap:tabular_exploration}).  Both of these questions are
+with regards to statistical complexity (i.e. the sample complexity) of learning.
+
+The episodic setting is challenging in that the agent has to engage in
+some exploration in order to gain information at the relevant
+state. As we shall see in Chapter~\ref{chap:tabular_exploration}, this
+exploration must be strategic, in the sense that simply behaving
+randomly will not lead to information being gathered quickly
+enough. It is often helpful to study the statistical
+complexity of learning in a more abstract sampling model, a
+generative model, which allows to avoid having to directly address
+this exploration issue. Furthermore, this sampling model is natural in
+its own right. 
+
+\paragraph{The generative model setting.} A \emph{generative model}
+provides us with a sample $s'\sim P(\cdot|s, a)$ upon input of a state
+action pair $(s,a)$. Let us consider the most naive approach to learning (when
+we have access to a generative model):
+ suppose we call our
+simulator $N$ times at each state action pair. Let $\widehat P$ be our
+empirical model, defined as follows:
+\[
+\widehat P(s'|s,a) =  \frac{\textrm{count}(s',s,a)}{N}
+\]
+where $\textrm{count}(s',s,a)$ is the number of times the state-action
+pair $(s,a)$ transitions to state $s'$. As the $N$ is the number of
+calls for each state action pair, the total number of
+calls to our generative model is $|\Scal||\Acal|N$. As before, we can
+view $\widehat P$ as a matrix of size $|\Scal||\Acal| \times |\Scal|$.
+
+\paragraph{The offline RL setting.} The \emph{offline RL setting} is
+where the agent has access to an offline dataset, say generated under
+some policy (or collection of policies). In the simplest of these
+settings, we may assume our dataset is of the form $\{(s,a,s',r)\}$
+where $r$ is the reward (corresponding to $r(s,a)$ if the reward is
+deterministic, and $s'\sim P(\cdot|s, a)$. Furthermore, we may assume
+that the $s,a$ pairs in this dataset were sampled i.i.d. from some
+fixed distribution $\nu$ over $\Scal \times \Acal$.
+\fi
+
+This chapter begins our study of the sample complexity, where we focus on the (minmax)
+number of transitions we need to observe in order to accurately
+%optimal sample complexity of estimating 
+estimate $Q^\star$ or in order to find a near
+optimal policy.
+% (i.e. the number of calls we must make to the
+%generative model in order to accurately estimate $Q^\star$).
+We assume that we have access to a generative model (as defined in Section~\ref{sec:sampling_models}) and
+that the reward function is deterministic (the latter is often a mild
+assumption, due to that much of the difficulty in RL is
+due to the uncertainty in the transition model $P$).  
+%This will also
+%not effect the minmax sample complexity.
+
+This chapter follows the results due to ~\cite{azar2013minimax}, along
+with some improved rates due to~\cite{pmlr-v125-agarwal20b}.  One of
+the key observations in this chapter is that we can find a near
+optimal policy using a number of observed transitions that is
+\emph{sublinear} in the model size, i.e. use a number of samples that
+is smaller than $O(|\Scal|^2|\Acal|)$. In other words, we do not need
+to learn an accurate model of the world in order to learn to act near optimally.
+
+
+\paragraph{Notation.} We define $\widehat M$ to be the empirical MDP that is identical to
+the original $M$, except that it uses $\widehat P$ instead of $P$ for
+the transition model. When clear from context, we drop the subscript
+on $M$ on the values, action values (and one-step variances and
+variances which we define later). We let $\widehat V^\pi$, $\widehat Q^\pi$,
+$\widehat Q^\star$, and $\widehat \pi^\star$ denote the value function, state-action value
+function, optimal state-action value, and optimal policy in $\widehat
+M$, respectively.
+
+
+%\section{Sample Complexity}
+
+\section{Warmup: a naive model-based approach}
+
+A central question in this chapter is:
+\emph{Do we require an accurate model of the world in order to find a near
+optimal policy?}
+Recall that a generative model takes as input a state
+action pair $(s,a)$ and returns a sample $s'\sim P(\cdot|s, a)$ and
+the reward $r(s,a)$ (or a sample of the reward if the rewards are stochastic).
+Let us consider the most naive approach to learning (when
+we have access to a generative model):
+ suppose we call our
+simulator $N$ times at each state action pair. Let $\widehat P$ be our
+empirical model, defined as follows:
+\[
+\widehat P(s'|s,a) =  \frac{\textrm{count}(s',s,a)}{N}
+\]
+where $\textrm{count}(s',s,a)$ is the number of times the state-action
+pair $(s,a)$ transitions to state $s'$. As the $N$ is the number of
+calls for each state action pair, the total number of
+calls to our generative model is $|\Scal||\Acal|N$. As before, we can
+view $\widehat P$ as a matrix of size $|\Scal||\Acal| \times |\Scal|$.
+
+%Let us start
+%with a naive approach that estimates $P$ accurately and then use our estimated
+%model $\widehat P$ for planning.
+
+Note that since $P$ has a $|\Scal|^2|\Acal|$ parameters, we would
+expect that observing $O(|\Scal|^2|\Acal|)$ transitions is sufficient to
+provide us with an accurate model.  The following proposition shows
+that this is the case.
+
+\begin{proposition}
+There exists an absolute constant $c$ such that the following
+holds. Suppose $\eps \in \big(0,\frac{1}{1-\gamma}\big)$ and that we obtain
+\[
+\textrm{\# samples from generative model }  = |\Scal||\Acal| N\geq \frac{\gamma}{(1-\gamma)^4}\frac{|\Scal|^2|\Acal|\log(c|\Scal||\Acal|/\delta)}{\eps^2}
+\]
+where we uniformly sample every state action pair. Then, with
+probability greater than $1-\delta$, we have:
+\begin{itemize}
+\item (Model accuracy) The transition model has error bounded as:
+\[
+\max_{s,a} \|P(\cdot|s,a)-\widehat P(\cdot|s,a)\|_1 \leq (1-\gamma)^2
+\eps \,.
+\]
+\item (Uniform value accuracy) For all policies $\pi$,
+\[
+\|Q^\pi -\widehat Q^\pi \|_\infty \leq \eps
+\]
+\item (Near optimal planning) Suppose that $\widehat\pi$ is the
+  optimal policy in $\widehat M$. We have that:
+\[
+\|\widehat Q^\star - Q^\star\|_\infty \leq \eps, \ \textrm{ and } \
+\| Q^{\widehat\pi} - Q^\star\|_\infty \leq 2\eps.
+\]
+\end{itemize}
+\end{proposition}
+
+Before we provide the proof, the following lemmas will be helpful throughout:
+
+\begin{lemma}\label{lemma:simulation}
+(Simulation Lemma)  For all $\pi$ we have that:
+  \begin{eqnarray*}
+  Q^\pi -\widehat Q^\pi
+    &=& \gamma(I-\gamma\widehat P^{\pi})^{-1} (P-\widehat P ) V^\pi
+  \end{eqnarray*}
+\end{lemma}
+
+\begin{proof}
+Using our matrix equality for $Q^\pi$ (see
+Equation~\ref{eq:policy_value_matrix_form}), we have:
+\begin{eqnarray*}
+  Q^\pi -\widehat Q^\pi
+  &=& (I-\gamma P^{\pi})^{-1}r
+ -  (I-\gamma\widehat P^{\pi})^{-1} r \\
+  &=& (I-\gamma\widehat P^{\pi})^{-1} ((I-\gamma\widehat P^{\pi})
+ - (I-\gamma P^{\pi}) ) Q^\pi\\
+  &=& \gamma(I-\gamma\widehat P^{\pi})^{-1} (P^{\pi}-\widehat P^{\pi}
+      ) Q^\pi\\
+  &=& \gamma(I-\gamma\widehat P^{\pi})^{-1} (P-\widehat P ) V^\pi
+\end{eqnarray*}
+which proves the claim. 
+\end{proof}
+
+\begin{lemma}\label{lemma:gamma_factor}
+For any policy $\pi$, MDP $M$ and vector $v \in
+\R^{|\Scal|\times|\\Acal|}$, we have $\norm{(I-\gamma P^\pi)^{-1}
+  v}_\infty \leq \norm{v}_\infty/(1-\gamma)$. 
+\label{lemma:horizon}
+\end{lemma}
+
+\begin{proof}
+	Note that $v=(I - \gamma P^\pi)(I - \gamma P^\pi)^{-1}  v = (I - \gamma P^\pi) w$, where
+	$w = (I - \gamma P^\pi)^{-1}  v$.
+	By triangle inequality, we have
+	\begin{align*}
+	\norm{v}_\infty= \norm{(I - \gamma P^\pi) w}_\infty &\geq \norm{w}_\infty - \gamma \norm{P^\pi w}_\infty \geq \norm{w}_\infty - \gamma \norm{w}_\infty,
+	\end{align*}
+	%
+	where the final inequality follows since $P^\pi w$ is an average of the elements of $w$ by the definition of $P^\pi$ so that $\norm{P^\pi w}_\infty \leq \norm{w}_\infty$. Rearranging terms completes the proof.
+\end{proof}
+
+Now we are ready to complete the proof of our proposition.
+
+\begin{proof}
+Using the concentration of a distribution in the $\ell_1$ norm
+(Lemma~\ref{app:discrete}), we have that for a fixed $s,a$ that, with
+probability greater than $1-\delta$, we have:
+\[
+\|P(\cdot|s,a)-\widehat P(\cdot|s,a)\|_1 \leq c\sqrt{\frac{|\Scal|\log(1/\delta)}{m}}
+\]
+where $m$ is the number of samples used to estimate $\widehat
+P(\cdot|s,a)$. The first claim now follows by the union bound (and
+redefining $\delta$ and $c$ appropriately).
+
+For the second claim, we have that:
+\begin{align*}
+\|Q^\pi -\widehat Q^\pi\|_\infty&=
+\|\gamma(I-\gamma\widehat P^{\pi})^{-1} (P-\widehat P ) V^\pi\|_\infty
+\leq \frac{\gamma}{1-\gamma}\|(P-\widehat P ) V^\pi\|_\infty\\
+&\leq \frac{\gamma}{1-\gamma} \left(\max_{s,a} \|P(\cdot|s,a)-\widehat P(\cdot|s,a)\|_1\right)\| V^\pi\|_\infty
+\leq \frac{\gamma}{(1-\gamma)^2} \max_{s,a} \|P(\cdot|s,a)-\widehat P(\cdot|s,a)\|_1
+\end{align*}
+where the penultimate step uses Holder's inequality. The second claim
+now follows.
+
+\iffalse
+For the final claim, by definition we have $\widehat Q^\star=\widehat
+Q^{\widehat\pi} $.  Using the optimality of $\widehat\pi $ in
+$\widehat M$ and $\pi^\star$ in $M$, we have that:
+\[
+\widehat Q^\star - Q^\star\leq
+\widehat Q^\star - Q^{\widehat\pi} =
+\widehat Q^{\widehat\pi} - Q^{\widehat\pi}\leq \epsilon
+\]
+and that
+\[
+\widehat Q^\star - Q^\star=
+\widehat Q^{\widehat\pi} - Q^\star
+\geq \widehat Q^{\pi^\star} - Q^\star \geq -\eps,
+\]
+which proves the first inequality. The second inequality is proved
+along similar lines.
+\fi
+
+For the final claim, first observe that $ |\sup_x f(x)-\sup_xg(x)|
+\leq \sup_x |f(x)-g(x)|$, where $f$ and $g$ are real valued
+functions.  This implies:
+\[
+|\widehat Q^\star(s,a) - Q^\star(s,a)|=
+|\sup_\pi\widehat Q^\pi(s,a) - \sup_\pi Q^\pi(s,a)|\leq
+\sup_\pi|\widehat Q^\pi(s,a) - Q^\pi(s,a)|\leq \eps
+\]
+which proves the first inequality. The second inequality is left as
+an exercise to the reader.
+\end{proof}
+
+
+
+
+\section{Sublinear Sample Complexity}
+In the previous approach, we are able to accurately estimate the value of \emph{every} policy in the
+unknown MDP $M$. However, with regards to planning, we only need an
+accurate estimate $\widehat Q^\star$ of $Q^\star$, which we may hope
+would require less samples. Let us now see that the model based approach can be refined to obtain
+minmax optimal sample complexity, which we will see is sublinear in
+the model size.
+
+We will state our results in terms of $N$, and recall that $N$ is the \# of calls to the generative models per state-action pair, so that:
+\[
+\textrm{\# samples from generative model } = |\Scal||\Acal| N .
+\]
+
+Let us start with a crude bound on the optimal action-values, which
+provides a sublinear rate. In the next section, we will improve upon
+this to obtain the minmax optimal rate.
+
+\begin{proposition}\label{proposition:crude}
+  (Crude Value Bounds) Let $\delta\geq 0$. With probability greater than $1-\delta$,
+  \begin{eqnarray*}
+    \|Q^\star-\widehat Q^\star\|_\infty &\leq&\Delta_{\delta,N} \\
+    \|Q^\star-\widehat Q^{\pi^\star}\|_\infty &\leq&\Delta_{\delta,N} ,
+  \end{eqnarray*}
+  where:
+  \[
+\Delta_{\delta,N} := \frac{\gamma}{(1-\gamma)^2}
+\sqrt{\frac{2\log(2|\Scal||\Acal|/\delta)}{ N}}
+  \]
+\end{proposition}
+
+Note that the first inequality above shows a sublinear rate on
+estimating the value function.  Ultimately, we are interested in the value $V^{\widehat \pi^\star}$
+when we execute $\widehat \pi^\star$, not just an estimate
+$\widehat Q^\star$ of $Q^\star$. Here, by
+Lemma~\ref{lemma:Q_to_policy}, we lose an additional horizon
+factor and have:
+\[
+\|Q^\star-\widehat Q^{\widehat \pi^\star}\|_\infty \leq \frac{1}{1-\gamma}\Delta_{\delta,N} .
+\]
+As we see in Theorem~\ref{thm:sample_complexity}, this is improvable.
+
+Before we provide the proof, the following lemma will be helpful throughout.
+
+\begin{lemma}\label{lemma:component}
+(Component-wise Bounds)  We have that:
+  \begin{eqnarray*}
+    Q^\star-\widehat Q^\star
+    &\leq& \gamma (I-\gamma \widehat P^{\pi^\star})^{-1}(P-\widehat P) V^\star\\
+    Q^\star-\widehat Q^\star
+    &\geq& \gamma (I-\gamma \widehat P^{\widehat \pi^\star})^{-1}(P-\widehat P) V^\star
+  \end{eqnarray*}
+\end{lemma}
+
+\begin{proof}
+For the first claim, the optimality of $\pi^\star$ in $M$ implies:
+\begin{align*}
+  Q^\star-\widehat Q^\star
+  = Q^{\pi^\star} -  \widehat Q^{\widehat \pi^\star}
+  \leq Q^{\pi^\star} -  \widehat Q^{\pi^\star}
+  = \gamma (I-\gamma \widehat P^{\pi^\star})^{-1}(
+ P-\widehat P ) V^\star ,
+\end{align*}
+where we have used Lemma~\ref{lemma:simulation} in the final step. This
+proves the first claim. 
+
+For the second claim,
+\begin{eqnarray*}
+  Q^\star-\widehat Q^\star
+  &=& Q^{\pi^\star} -  \widehat Q^{\widehat \pi^\star}\\
+%  &\leq& Q^{\pi^\star} -  \widehat Q^{\pi^\star}\\
+  &=& (1-\gamma) \left( (I-\gamma P^{\pi^\star})^{-1}r
+ -  (I-\gamma\widehat P^{\widehat \pi^\star})^{-1} r \right) \\
+  &=& (I-\gamma \widehat P^{\pi^\star})^{-1}((I-\gamma\widehat P^{\widehat \pi^\star})
+ - (I-\gamma P^{\pi^\star}) ) Q^\star\\
+  &=& \gamma (I-\gamma \widehat P^{\pi^\star})^{-1}(
+ P^{\pi^\star}-\widehat P^{\widehat \pi^\star} ) Q^\star\\
+  &\geq& \gamma (I-\gamma \widehat P^{\pi^\star})^{-1}(
+ P^{\pi^\star}-\widehat P^{ \pi^\star} ) Q^\star\\
+  &=& \gamma (I-\gamma \widehat P^{\pi^\star})^{-1}(
+ P-\widehat P ) V^\star\, ,
+\end{eqnarray*}
+where the inequality follows from $\widehat P^{\widehat \pi^\star} 
+Q^\star \leq \widehat P^{\pi^\star}  Q^\star$, due to the optimality
+of $\pi^\star$. This proves the second claim.
+\end{proof}
+
+\begin{proof}
+Following from the simulation lemma (Lemma~\ref{lemma:simulation}) and
+Lemma~\ref{lemma:gamma_factor}, we have:
+\[
+\|Q^\star - \widehat Q^{\pi^\star}\|_\infty \leq
+\frac{\gamma}{1-\gamma} \|(P - \widehat P) V^\star\|_\infty .
+\]
+Also, the previous lemma, implies that:
+\[
+\|Q^\star - \widehat Q^{\star}\|_\infty \leq \frac{\gamma}{1-\gamma} \|(P - \widehat P) V^\star\|_\infty
+\]
+By applying Hoeffding's inequality and the union bound,
+\[
+\|(P - \widehat P) V^\star\|_\infty
+=
+\max_{s,a}|\EE_{s' \sim P(\cdot|s, a)}[V^\star(s')]
+-\EE_{s' \sim \widehat P(\cdot|s, a)}[V^\star(s')] |
+\leq
+\frac{1}{1-\gamma}\sqrt{\frac{2\log(2|\Scal||\Acal|/\delta)}{N}}
+\]
+which holds with probability greater than $1-\delta$.  This completes
+the proof.
+\end{proof}
+
+\section{Minmax Optimal Sample Complexity (and the Model Based Approach)}
+
+We now see that the model based approach is minmax optimal, for both
+the discounted case and the finite horizon setting. 
+
+\subsection{The Discounted Case}
+
+\paragraph{Upper bounds.} The following theorem refines our crude bound on $\widehat Q^\star$.
+
+\begin{theorem}\label{thm:sample_complexity}
+For $\delta\geq 0$ and for an appropriately chosen absolute constant  $c$, we have that:
+\begin{itemize}
+\item (Value estimation) With probability greater than $1-\delta$,
+\[
+\|Q^\star-\widehat Q^\star\|_\infty \leq
+\gamma\sqrt{\frac{c}{(1-\gamma)^3}\frac{\log(c|\Scal||\Acal|/\delta)}{N}}
++\frac{c \gamma}{(1-\gamma)^3}
+\frac{\log(c|\Scal||\Acal|/\delta)}{N}\, .
+\]
+\item (Sub-optimality) If $N\geq \frac{1}{(1-\gamma)^2}$,
+then with probability greater than $1-\delta$, 
+\[
+\|Q^\star-Q^{\widehat \pi^\star}\|_\infty \leq
+\gamma\sqrt{\frac{c}{(1-\gamma)^3}\frac{\log(c|\Scal||\Acal|/\delta)}{N}}.
+\]
+\end{itemize}
+\end{theorem}
+
+This immediately provides the following corollary.
+\begin{corollary}\label{corollary:eps}
+Provided that $\eps\leq 1$ and that
+\[
+%N\geq \frac{c}{(1-\gamma)^3}\frac{|\Scal||\Acal|\log(c|\Scal||\Acal|/\delta)}{\eps^2} ,
+%N\geq \frac{c}{(1-\gamma)^3}\frac{\log(c|\Scal||\Acal|/\delta)}{\eps^2} ,
+\textrm{\# samples from generative model }  = |\Scal||\Acal| N\geq
+\frac{c |\Scal||\Acal|}{(1-\gamma)^3}\frac{\log(c|\Scal||\Acal|/\delta)}{\eps^2} ,
+\]
+then with probability greater than $1-\delta$, 
+\[
+\|Q^\star-\widehat Q^\star\|_\infty \leq \eps.
+\]
+%Note that this implies $\|Q^\star-Q^{\widehat \pi^\star}\|_\infty
+%\leq \eps/(1-\gamma).$ 
+Furthermore, 
+provided that $\eps\leq \sqrt{\frac{1}{1-\gamma}}$ and that
+\[
+%N\geq \frac{c}{(1-\gamma)^3}\frac{|\Scal||\Acal|\log(c|\Scal||\Acal|/\delta)}{\eps^2} ,
+%N\geq \frac{c}{(1-\gamma)^3}\frac{\log(c|\Scal||\Acal|/\delta)}{\eps^2} ,
+\textrm{\# samples from generative model }  = |\Scal||\Acal| N\geq
+\frac{c |\Scal||\Acal|}{(1-\gamma)^3}\frac{\log(c|\Scal||\Acal|/\delta)}{\eps^2} ,
+\]
+then with probability greater than $1-\delta$, 
+\[
+\|Q^\star-Q^{\widehat \pi^\star}\|_\infty \leq \eps.
+\]
+\end{corollary}
+
+\iffalse
+Ultimately, we are interested in the value $V^{\widehat \pi^\star}$
+when we execute $\widehat \pi^\star$, not just an estimate
+$\widehat Q^\star$ of $Q^\star$. The above corollary is not
+sharp with regards to finding a near optimal policy. The following
+Theorem shows that in fact both value estimation and policy estimation
+have the same rate.
+
+\begin{theorem}\label{thm:policy}
+Provided that $\eps\leq \sqrt{\frac{1}{1-\gamma}}$,  we have that if
+\[
+%N\geq \frac{c}{(1-\gamma)^3}\frac{|\Scal||\Acal|\log(c|\Scal||\Acal|/\delta)}{\eps^2} ,
+N\geq \frac{c}{(1-\gamma)^3}\frac{\log(c|\Scal||\Acal|/\delta)}{\eps^2} ,
+\]
+then with probability greater than $1-\delta$, then
+\[
+\|Q^\star-Q^{\widehat \pi^\star}\|_\infty \leq \eps, \textrm{ and } \|Q^\star-\widehat Q^\star\|_\infty \leq \eps.
+\]
+\end{theorem}
+
+
+We state this improved theorem without proof due to it being more
+involved, and only prove Theorem~\ref{thm:sample_complexity}. See
+Section~\ref{bib:sample_complexity} for further discussion. 
+\fi
+
+We only prove the first claim in Theorem~\ref{thm:sample_complexity}
+on the estimation accuracy. With regards to the sub-optimality, note
+that Theorem~\ref {lemma:Q_to_policy} already implies a sub-optimality
+gap, though with an amplification of the estimation error by
+$2/(1-\gamma)$. The argument for the improvement provided in the
+second claim is more involved (See Section~\ref{bib:sample_complexity}
+for further discussion).
+
+
+
+\iffalse
+As we now discuss, this corollary does not achieve the minmax rate
+for the value of the policy.
+\paragraph{Improvements (Non-asymptotic rates).} 
+This bound on quality of  $\widehat \pi^\star$ is not sharp and can be improved upon.  With a more careful argument, the
+$(1-\gamma)^5$ can be reduced to only $(1-\gamma)^3$.  Also, even for
+estimating the value $Q^\star$, using $\widehat Q^\star$,  the bounds
+presented are only valid when $\eps\leq 1$, and we may hope to have a
+sharp rate even when $\eps\leq 1/(1-\gamma)$. See Section~\ref{bib:sample_complexity} for further discussion.
+\fi
+
+
+
+\paragraph{Lower Bounds.}
+
+Let us say that an estimation algorithm $\mathcal{A}$, which is a map
+from samples to an estimate $\widehat Q^\star$, is $(\eps,\delta)$-good on MDP
+$M$  if $\|Q^\star-\widehat Q^\star\|_\infty \leq \eps$ holds with
+probability greater than $1-\delta$.
+
+\begin{theorem}~\label{thm:lower_sample_complexity}
+There exists $\eps_0,\delta_0,c$ and a set
+of MDPs $\mathcal{M}$  such that
+for $\eps \in (0,\eps_0)$ and $\delta \in (0,\delta_0)$
+if algorithm $\mathcal{A}$ is $(\eps,\delta)$-good on all $M\in \mathcal{M}$, then
+$\mathcal{A}$ must use a number of samples that is lower bounded as follows
+\[
+\textrm{\# samples from generative model } \geq \frac{c}{(1-\gamma)^3}\frac{|\Scal||\Acal|\log(c|\Scal||\Acal|/\delta)}{\eps^2} \, .
+\]
+\end{theorem}
+
+In other words, this theorem shows that the model based approach
+minmax optimal.
+%\subsection{What about the Value of the Policy $\widehat \pi^\star$?}
+
+\iffalse
+\citet{azar2013minimax} shows that for
+sufficiently small $\eps$ --- for $\eps \leq c' (1-\gamma)/|\Scal|$
+(for an absolute constant $c'$) --- the additional $1/(1-\gamma)$ factor
+can be removed, where it becomes a lower order effect; this is an
+extremely stringent condition in that this amplification only becomes
+lower order when $\eps$ depends on the size of the state space.
+Furthermore, \citet{sidford2018vnear} provide a
+different algorithm, based on variance reduction, which removes the
+factor all together.
+\fi
+
+\subsection{Finite Horizon Setting}
+\label{sec:finite_horizon_sc}
+
+Recall the setting of finite horizon MDPs defined in
+Section~\ref{section:finite_horizon}. 
+Again, we can consider the most naive approach to learning (when
+we have access to a generative model):
+suppose we call our simulator $N$ times for every
+$(s,a,h)\in\Scal\times\Acal\times[H]$, i.e. 
+we obtain $N$ i.i.d. samples where $s'\sim P_h(\cdot|s, a)$, for every
+$(s,a,h)\in\Scal\times\Acal\times[H]$.  
+Note that the total number of observed transitions is $H|\Scal||\Acal|N$.
+
+
+\paragraph{Upper bounds.} The following theorem provides an upper
+bound on the model based approach.
+
+\begin{theorem}\label{thm:sample_complexity_finite}
+For $\delta\geq 0$ and
+with probability greater than $1-\delta$, we have that:
+\begin{itemize}
+\item (Value estimation) 
+\[
+\|Q_0^\star-\widehat Q_0^\star\|_\infty \leq
+cH \sqrt{\frac{\log(c|\Scal||\Acal|/\delta)}{N}}
++cH\frac{\log(c|\Scal||\Acal|/\delta)}{N}\, ,
+\]
+\item (Sub-optimality) 
+\[
+\|Q_0^\star-Q_0^{\widehat \pi^\star}\|_\infty \leq
+cH \sqrt{\frac{\log(c|\Scal||\Acal|/\delta)}{N}}
++cH\frac{\log(c|\Scal||\Acal|/\delta)}{N}\, ,
+\]
+\end{itemize}
+where $c$ is an absolute constant.
+\end{theorem}
+
+Note that the above bound requires $N$ to be $O(H^2)$ in order to achieve an
+$\eps$-optimal policy, while in the discounted case, we require $N$ to
+be $O(1/(1-\gamma)^3)$ for the same guarantee. While this may seem like an improvement by a
+horizon factor, recall that for the finite horizon case, $N$
+corresponds to observing $O(H)$ more transitions than in the
+discounted case.
+
+\paragraph{Lower Bounds.}
+
+In the minmax sense of Theorem~\ref{thm:lower_sample_complexity}, the
+previous upper bound provided by the model based approach for the finite horizon
+setting achieves the minmax optimal  sample complexity.
+
+\section{Analysis}
+
+We now prove (the first claim in) Theorem~\ref{thm:sample_complexity}.
+
+\subsection{Variance Lemmas}
+
+The key to the sharper analysis is to more sharply characterize the variance in our estimates.
+
+Denote the variance of any real valued $f$ under a distribution $\mathcal{D}$ as:
+\[
+\textrm{Var}_{\mathcal{D}}(f) := E_{x\sim \mathcal{D}}[f(x)^2] - (E_{x\sim \mathcal{D}}[f(x)])^2
+\]
+Slightly abusing the notation, for $V\in R^{|\Scal|}$, we define the vector $\mathrm{Var}_{P}(V)\in R^{|\Scal||\Acal|}$ as:
+\[
+\mathrm{Var}_{P}(V)(s,a) := \mathrm{Var}_{P(\cdot|s,a)}(V)
+\]
+Equivalently,
+\[
+\mathrm{Var}_{P}(V) = P (V)^2 - (P V)^2 \, .
+\]
+
+Now we characterize a relevant deviation in terms of the its variance.
+
+\begin{lemma}\label{lemma:bernstein}
+Let $\delta> 0$. With probability greater than $1-\delta$,
+\[
+|(P-\widehat P) V^\star|
+\leq \sqrt{\frac{ 2\log(2|\Scal||\Acal|/\delta)}{N}} \sqrt{\mathrm{Var}_{P}(V ^{\star})}
++\frac{1}{1-\gamma}\frac{2\log(2|\Scal||\Acal|/\delta)}{3N}\mathds{1}\, .
+\]
+\end{lemma}
+
+\begin{proof}
+The claims follows from Bernstein's inequality along with a
+union bound over all state-action pairs.
+\end{proof}
+
+The key ideas in the proof are in how we bound $\| (I-\gamma \widehat
+P^{\pi^\star})^{-1}\sqrt{\mathrm{Var}_{P}(V ^{\star})}\|_\infty$ and $\| (I-\gamma
+\widehat P^{\widehat \pi^\star})^{-1}\sqrt{\mathrm{Var}_{P}(V ^{\star})}\|_\infty$.
+
+It is helpful to define $\Sigma^\pi_M$ as the variance of the discounted reward, i.e.
+\[
+  \Sigma^\pi_M(s,a) := \E\left[\left(\sum_{t=0}^\infty \gamma^t r(s_t,a_t)-Q^\pi_M(s,a)\right)^2
+    \middle| s_0=s,a_0=a\right]
+\]
+where the expectation is induced under the trajectories induced by
+$\pi$ in $M$. It is straightforward  to verify that
+$\|\Sigma^\pi_M\|_\infty\leq \gamma^2/(1-\gamma)^2$.
+
+
+The following lemma shows that $\Sigma^\pi_M$ satisfies a Bellman
+consistency condition.
+
+\begin{lemma}
+(Bellman consistency of $\Sigma$) For any MDP $M$,
+%  \Sigma^\pi_M = \gamma^2 \sigma^{\pi}_M+\gamma^2 P^\pi \Sigma^\pi_M
+\begin{equation}\label{eq:bellman_var}
+\Sigma^\pi_M = \gamma^2 \mathrm{Var}_{P}(V^{\pi}_M)+\gamma^2 P^\pi \Sigma^\pi_M
+\end{equation}
+where $P$ is the transition model in MDP $M$.
+\end{lemma}
+% homework
+
+The proof is left as an exercise to the reader.
+
+\begin{lemma}\label{lemma:var_add}
+(Weighted Sum of Deviations) For any policy $\pi$ and MDP $M$,
+\[
+\Big\| (I-\gamma P^\pi)^{-1}\sqrt{\mathrm{Var}_{P}(V^{\pi}_M)}\Big\|_\infty
+%\leq \sqrt{\frac{2}{(1-\gamma)}\|\Sigma^\pi_M\|_\infty}
+\leq \sqrt{\frac{2}{(1-\gamma)^3} },
+\]
+where $P$ is the transition model of $M$.
+\end{lemma}
+
+\begin{proof}%[Proof of Lemma~\ref{lemma:var_add}]
+	Note that $(1-\gamma)(I-\gamma P^\pi)^{-1}$ is matrix whose rows
+	are a probability distribution. For a positive vector $v$ and
+	a distribution $\nu$ (where $\nu$ is vector of the same dimension of
+	$v$),  Jensen's inequality implies that $\nu \cdot\sqrt{ v}\leq
+	\sqrt{\nu \cdot v}$. This implies:
+	\begin{eqnarray*}
+		\| (I-\gamma P^\pi)^{-1}\sqrt{v}\|_\infty &=&
+		\frac{1 }{1-\gamma}\|(1-\gamma) (I-\gamma P^\pi)^{-1}\sqrt{v}\|_\infty\\
+		&\leq& \sqrt{\Big\|\frac{1}{1-\gamma} (I-\gamma P^\pi)^{-1} v\Big\|_\infty}\\
+		%&=& \sqrt{\|\frac{1}{1-\gamma}  (I+\gamma P)(I-\gamma^2 P)^{-1}v \|_\infty}\\
+		&\leq& \sqrt{\Big\|\frac{2 }{1-\gamma} (I-\gamma^2 P^\pi)^{-1}
+			v\Big\|_\infty}\, .
+	\end{eqnarray*}
+	where we have used that $\| (I-\gamma P^\pi)^{-1} v\|_\infty\leq 2\|
+	(I-\gamma^2 P^\pi)^{-1} v\|_\infty$ (which we will prove shortly).
+	The
+	proof is completed as follows: by Equation~\ref{eq:bellman_var}, $\Sigma_M^\pi= \gamma^2(I-\gamma^2
+	P^\pi)^{-1}\mathrm{Var}_{P}(V^{\pi}_M) $, so taking
+	$v=\mathrm{Var}_{P}(V^{\pi}_M)$ and using that
+	$\|\Sigma^\pi_M\|_\infty\leq \gamma^2/(1-\gamma)^2$ completes the proof.
+	
+	Finally, to see that $\| (I-\gamma P^\pi)^{-1} v\|_\infty\leq 2\|
+	(I-\gamma^2 P^\pi)^{-1} v\|_\infty$,
+	observe:
+	\begin{eqnarray*}
+		\| (I-\gamma P^\pi)^{-1} v\|_\infty &=&
+		\| (I-\gamma P^\pi)^{-1}(I-\gamma^2P^\pi) (I-\gamma^2P^\pi)^{-1} v\|_\infty \\
+		&=& \| (I-\gamma P^\pi)^{-1}\Big((1-\gamma)I +\gamma(I-\gamma P^\pi)\Big) (I-\gamma^2P^\pi)^{-1} v\|_\infty \\
+		&=&\| \Big( (1-\gamma) (I-\gamma P^\pi)^{-1} +\gamma I \Big) (I-\gamma^2P^\pi)^{-1} v\|_\infty \\
+		&\leq&(1-\gamma) \|(I-\gamma P^\pi)^{-1}(I-\gamma^2P^\pi)^{-1} v\|_\infty +\gamma \|(I-\gamma^2P^\pi)^{-1} v\|_\infty \\
+		&\leq& \frac{1-\gamma }{1-\gamma}\|(I-\gamma^2P^\pi)^{-1} v\|_\infty+\gamma\|(I-\gamma^2P^\pi)^{-1} v\|_\infty \\
+		&\leq& 2 \|(I-\gamma^2P^\pi)^{-1} v\|_\infty
+	\end{eqnarray*}
+	which proves the claim.
+\end{proof}
+
+\subsection{Completing the proof}
+
+\begin{lemma}\label{lemma:var_bound}
+Let $\delta\geq 0$. With probability greater than $1-\delta$, we have:
+\begin{align*}
+\mathrm{Var}_{P}(V ^{\star}) &\leq 2 \mathrm{Var}_{\widehat P}(\widehat V^{\pi^\star})+
+\Delta^\prime_{\delta,N}\mathds{1}\\
+\mathrm{Var}_{P}(V ^{\star})  &\leq 2 \mathrm{Var}_{\widehat P}(\widehat V ^{\star})+
+\Delta^\prime_{\delta,N} \mathds{1}
+\end{align*}
+where
+\[
+\Delta^\prime_{\delta,N} := \frac{1}{(1-\gamma)^2}\sqrt{\frac{18\log(6|\Scal||\Acal|/\delta)}{N}}
++\frac{1}{(1-\gamma)^4} \frac{4\log(6|\Scal||\Acal|/\delta)}{N}\, .
+\]
+\end{lemma}
+
+\begin{proof}
+  By definition,
+  \begin{eqnarray*}
+    \mathrm{Var}_{P}(V ^{\star})   &=& \mathrm{Var}_{P}(V ^{\star})  -\textrm{Var}_{\widehat P}(V^\star)+\textrm{Var}_{\widehat P}(V^\star)\\
+        &=&
+    P  (V^\star)^2 - (P  V^\star)^2
+    - \widehat P  (V^\star)^2 + (\widehat P  V^\star)^2
+    +\textrm{Var}_{\widehat P}(V^\star)\\
+        &=&
+    (P-\widehat P)  (V^\star)^2 - \left((P  V^\star)^2-
+(\widehat P  V^\star)^2\right)
++\textrm{Var}_{\widehat P}(V^\star)
+\end{eqnarray*}
+Now we bound each of these terms with Hoeffding's inequality and the union bound.  For the first term, with
+probability greater than $1-\delta$,
+\[
+\| (P-\widehat P) (V^\star)^2\|_\infty \leq \frac{1}{(1-\gamma)^2}\sqrt{\frac{2\log(2|\Scal||\Acal|/\delta)}{N}} \, .
+\]
+For the second term, again  with
+probability greater than $1-\delta$,
+\begin{align*}
+&\|(P  V^\star)^2- (\widehat P  V^\star)^2\|_\infty
+\leq \| P  V^\star+ \widehat P  V^\star \|_\infty\| P  V^\star- \widehat P  V^\star\|_\infty\\
+&\quad \leq \frac{2}{1-\gamma} \| (P-  \widehat P)  V^\star\|_\infty
+\leq  \frac{2}{(1-\gamma)^2}\sqrt{\frac{2\log(2|\Scal||\Acal|/\delta)}{N}} \, .
+\end{align*}
+where we have used that $(\cdot)^2$ is a component-wise operation in
+the second step.
+For the last term:
+\begin{eqnarray*}
+  \textrm{Var}_{\widehat P}(V^\star)&=&
+  \textrm{Var}_{\widehat P}(V^\star-\widehat V^{\pi^\star}+\widehat V^{\pi^\star})\\
+  &\leq&
+  2\textrm{Var}_{\widehat P}(V^\star-\widehat V^{\pi^\star})
+  +  2\textrm{Var}_{\widehat P}(\widehat V^{\pi^\star})\\
+&\leq& 2\|V^\star-\widehat V^{\pi^\star}\|_\infty^2 + 2
+       \mathrm{Var}_{\widehat P}(\widehat V^{\pi^\star})\\
+&=& 2 \Delta_{\delta,N}^2 + 2 \mathrm{Var}_{\widehat P}(\widehat V^{\pi^\star}) \, .
+\end{eqnarray*}
+where $\Delta_{\delta,N}$ is defined in Proposition~\ref{proposition:crude}.
+To obtain a cumulative probability of error less than $\delta$, we
+replace $\delta$ in the above claims with $\delta/3$.  Combining these
+bounds completes the proof of the first claim. The argument in the
+above display also implies that
+$\textrm{Var}_{\widehat P}(V^\star)\leq 2
+\Delta_{\delta,N}^2 + 2 \mathrm{Var}_{\widehat P}(\widehat V ^{\star}) $ which
+proves the second claim.
+\end{proof}
+
+Using Lemma~\ref{lemma:bernstein} and~\ref{lemma:var_bound}, we have the
+following corollary.
+
+\begin{corollary}\label{corollary:one}
+Let $\delta\geq 0$. With probability greater than $1-\delta$, we have:
+\begin{align*}
+|(P-\widehat P) V^\star|&
+\leq c\sqrt{\frac{\mathrm{Var}_{\widehat P}(\widehat V^{\pi^\star})\log(c|\Scal||\Acal|/\delta)}{N}}
++ \Delta^{\prime\prime}_{\delta,N} \mathds{1}\\
+|(P-\widehat P) V^\star|&
+\leq c\sqrt{\frac{\mathrm{Var}_{\widehat P}(\widehat V ^{\star})\log(c|\Scal||\Acal|/\delta)}{N}}
++ \Delta^{\prime\prime}_{\delta,N} \mathds{1} \, ,
+\end{align*}
+where
+\[
+\Delta^{\prime\prime}_{\delta,N} :=
+c \frac{1}{1-\gamma}\left(\frac{\log(c|\Scal||\Acal|/\delta)}{ N}\right)^{3/4}
++\frac{c}{(1-\gamma)^2} \frac{\log(c|\Scal||\Acal|/\delta)}{N}\, ,
+\]
+and where $c$ is an absolute constant.
+\end{corollary}
+
+\begin{proof}(of Theorem~\ref{thm:sample_complexity})
+The proof consists of bounding the terms in
+Lemma~\ref{lemma:component}. We have:
+\begin{eqnarray*}
+Q^\star-\widehat Q^\star
+  &\leq &
+\gamma \|(I-\gamma \widehat P^{\pi^\star})^{-1}(P-\widehat P) V^\star\|_\infty\\
+&\leq & c \gamma \sqrt{\frac{ \log(c|\Scal||\Acal|/\delta)}{N}}
+\| (I-\gamma \widehat P^{\pi^\star})^{-1}\sqrt{\mathrm{Var}_{\widehat P}(\widehat V^{\pi^\star})}\|_\infty
++
+\frac{c \gamma}{(1-\gamma)^2} \left(\frac{\log(c|\Scal||\Acal|/\delta)}{ N}\right)^{3/4}\\
+&&+\frac{c \gamma}{(1-\gamma)^3} \frac{\log(c|\Scal||\Acal|/\delta)}{N}\\
+&\leq & \gamma\sqrt{\frac{2}{(1-\gamma)^3}} \sqrt{\frac{ \log(c|\Scal||\Acal|/\delta)}{N}}
++
+\frac{c \gamma}{(1-\gamma)^2} \left(\frac{\log(c|\Scal||\Acal|/\delta)}{N}\right)^{3/4}
++\frac{c \gamma}{(1-\gamma)^3} \frac{\log(c|\Scal||\Acal|/\delta)}{N}\\
+&\leq & 3 \gamma\sqrt{\frac{1}{(1-\gamma)^3}} c\sqrt{\frac{ \log(c|\Scal||\Acal|/\delta)}{N}}
++2\frac{c\gamma}{(1-\gamma)^3} \frac{\log(c|\Scal||\Acal|/\delta)}{N}
+ \, ,
+\end{eqnarray*}
+where the first step uses Corollary~\ref{corollary:one}; the second uses Lemma~\ref{lemma:var_add};
+and the last step uses that $2ab\leq a^2+b^2$ (and choosing $a,b$ appropriately).
+The proof of the lower bound is analogous. Taking a different absolute
+constant completes the proof.
+\end{proof}
+
+\section{Scalings and Effective Horizon Dependencies}
+
+It will be helpful to more intuitively understand why $1/(1-\gamma)^3$ is the 
+effective horizon dependency one might hope to expect, from a dimensional analysis
+viewpoint. Due to that $Q^\star$ is a quantity that is as large as
+$1/(1-\gamma)$, to account for this scaling, it is natural to look at
+obtaining relative accuracy. 
+
+In particular, if
+\[
+N\geq \frac{c}{1-\gamma}\frac{|\Scal||\Acal|\log(c|\Scal||\Acal|/\delta)}{\eps^2} ,
+\]
+then with probability greater than $1-\delta$, then
+\[
+\|Q^\star-Q^{\widehat \pi^\star}\|_\infty \leq \frac{\eps}{1-\gamma} , 
+\textrm{ and } \|Q^\star-\widehat Q^\star\|_\infty \leq \frac{\eps}{1-\gamma} .
+\]
+(provided that $\eps\leq \sqrt{1-\gamma}$ using Theorem~\ref{thm:sample_complexity}).
+In other words, if we had normalized the value functions~\footnote{Rescaling
+  the value functions by multiplying by
+$(1-\gamma)$, i.e. $Q^\pi \leftarrow (1-\gamma)Q^\pi$, would keep the values bounded between $0$ and $1$. Throughout,
+this book it is helpful to understand sample size with regards to
+normalized quantities.}, then for
+additive accuracy (on our normalized value functions) our sample size
+would scale linearly with the effective horizon.
+
+
+\section{Bibliographic Remarks and Further Readings}\label{bib:sample_complexity}
+
+The notion of a generative model was first introduced
+in~\cite{kearns1999finite}, which made the argument that, up to
+horizon factors and logarithmic factors, both model based methods and
+model free methods are comparable. \cite{kakade2003sample} gave an improved version of this rate
+(analogous to the crude bounds seen here). 
+
+The first claim in Theorem~\ref{thm:sample_complexity} is due to ~\cite{azar2013minimax},
+and the proof in this section largely follows this work. Improvements
+are possible with regards to bounding the quality of  $\widehat
+\pi^\star$; here, Theorem~\ref{thm:sample_complexity} shows that 
+the model based approach is near optimal even for policy itself;
+showing that the quality of $\widehat
+\pi^\star$ does suffer any amplification factor of
+$1/(1-\gamma)$.  \cite{sidford2018vnear} provides the first proof of
+this improvement using a
+variance reduction algorithm with value iteration. The second claim in Theorem~\ref{thm:sample_complexity} is due
+to~\cite{pmlr-v125-agarwal20b}, which shows that 
+the naive model based approach is sufficient. The lower bound in
+Theorem~\ref{thm:lower_sample_complexity} is due to ~\cite{azar2013minimax}.
+
+We also remark that we may hope for the sub-optimality bounds (on the value
+of the argmax policy) to hold up to for ``large'' $\eps$, i.e. up to
+$\eps\leq 1/(1-\gamma)$ (see the second claim in Theorem~\ref{thm:sample_complexity}).
+ Here, the work in
+~\cite{li2020breaking} shows this limit is achievable, albeit
+with a slightly different algorithm where they introduce
+perturbations. It is currently an open question if the naive model based
+approach also achieves the non-asymptotic statistical limit.
+
+This chapter also provided results, without proof, on the optimal sample complexity in
+the finite horizon setting (see
+Section~\ref{sec:finite_horizon_sc}). The proof of this claim
+would also follow from the line of reasoning  in~\cite{azar2013minimax}, with the added
+simplification that the sub-optimality analysis is simpler in the
+finite-horizon setting with time-dependent transition matrices (e.g. see~\cite{Yin2021NearOP}).

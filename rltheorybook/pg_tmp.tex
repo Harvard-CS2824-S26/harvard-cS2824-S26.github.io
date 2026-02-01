@@ -1,0 +1,968 @@
+\chapter{Function Approximation and the NPG}
+\label{chap:pg_approx}
+
+\newcommand{\epsstat}{\epsilon_{\mathrm{stat}}}
+\newcommand{\epsbias}{\epsilon_{\mathrm{bias}}}
+\newcommand{\epsapprox}{\epsilon_{\mathrm{approx}}}
+
+
+We now analyze the case of using parametric policy classes:
+\[
+\Pi=  \{\pi_\theta \mid \theta \in \R^d\},
+\]
+where $\Pi$ may not contain all stochastic policies (and it may not
+even contain an optimal policy).
+In contrast with the tabular results in
+the previous sections, the policy classes that we are often
+interested in are not fully expressive, e.g. $d \ll |\Sset| |\Aset|$\
+(indeed $\card{\Sset}$ or $\card{\Aset}$ need not even be finite for the results in this
+section); in this sense, we are in the regime of function
+approximation.
+
+We focus on obtaining \emph{agnostic} results, where
+we seek to do as well as the best policy in this class (or as well as some other
+comparator policy).  While we are
+interested in a solution to the (unconstrained) policy optimization problem
+\[
+  \max_{\theta \in \R^d}
+  V^{\pi_\theta}(\rho),
+\]
+(for a given initial distribution $\rho$), we will see that
+optimization with respect to a different distribution
+will be helpful, just as in the tabular case,
+
+
+
+We will consider variants of the NPG update rule \eqref{eqn:npg}:
+\begin{equation}
+\theta \leftarrow \theta + \eta F_\rho(\theta)^{\dagger} \nabla_\theta V^{\theta}(\rho) \, .
+\label{eqn:vanilla_NPG}
+\end{equation}
+Our analysis will leverage a close connection between the NPG update rule
+\eqref{eqn:npg} with the notion of  \emph{compatible function
+  approximation}. We start by formalizing this connection.
+The compatible function approximation error also provides a measure of the
+expressivity of our parameterization, allowing us to quantify the
+relevant notion of approximation error for the NPG algorithm.
+%~\citep{sutton1999policy}, as formalized in~\cite{Kakade01}.
+
+The main
+results in this chapter establish the effectiveness of NPG updates where there is
+error both due to statistical estimation (where we may not use exact
+gradients) and approximation (due to using a parameterized function
+class). We will see an precise estimation/approximation decomposition
+based on the compatible function approximation error.
+
+The presentation in this chapter largely follows the results
+in~\cite{agarwal2019optimality}. 
+
+\section{Compatible function approximation and the NPG}
+
+We now introduce the notion of  \emph{compatible function
+  approximation}, which both provides some intuition with regards to
+policy gradient methods and it will help us later on with regards to
+characterizing function approximation.
+
+\begin{lemma}[Gradients and compatible function approximation]\label{lemma:compatible}
+Let $w^\star$ denote the following minimizer:
+\begin{equation*}
+w^\star \in \E_{s \sim d_{\mu}^{\pi_\theta} }\E_{a\sim \pi_\theta(\cdot | s) }\bigg[ \big(A^{\pi_\theta}(s,a)  - w \cdot \nabla_\theta \log \pi_\theta(a | s) \big)^2 \bigg],
+\end{equation*}
+where the squared error above is referred to as the \emph{compatible function
+  approximation}. Denote the best linear predictor of $A^{\pi_\theta}(s,a)$ using
+$\nabla_\theta \log \pi_\theta(a | s)$ by $\widehat
+A^{\pi_\theta}(s,a)$, i.e. 
+\[
+\widehat A^{\pi_\theta}(s,a) := w^\star \cdot \nabla_\theta \log \pi_\theta(a | s).
+\]
+We have that:
+\begin{eqnarray*}
+  \nabla_\theta V^{\pi_\theta}(\mu) &=&
+\frac{1}{1-\gamma} \, \E_{s \sim d_{\mu}^{\pi_\theta} }\E_{a\sim \pi_\theta(\cdot | s) }
+\big[\nabla_\theta \log \pi_{\theta}(a| s) \widehat A^{\pi_\theta}(s,a)\big].
+\end{eqnarray*}
+\end{lemma}
+
+\begin{proof}
+The first order optimality conditions for $w^\star$ imply
+\begin{equation}\label{eq:first_order_compat}
+\E_{s \sim d_{\mu}^{\pi_\theta} }\E_{a\sim \pi_\theta(\cdot | s) }
+\Big[ \big(A^{\pi_\theta}(s,a)  - w^\star \cdot \nabla_\theta \log \pi_\theta(a | s) \big) \nabla_\theta \log \pi_\theta(a | s)  \Big]
+=0
+\end{equation}
+Rearranging and using the definition of $\widehat A^{\pi_\theta}(s,a)$, 
+\begin{eqnarray*}
+  \nabla_\theta V^{\pi_\theta}(\mu) &=&
+\frac{1}{1-\gamma} \, \E_{s \sim d_{\mu}^{\pi_\theta} }\E_{a\sim \pi_\theta(\cdot | s) }
+\big[\nabla_\theta \log \pi_{\theta}(a| s) A^{\pi_\theta}(s,a)\big]\\
+&=&
+\frac{1}{1-\gamma} \, \E_{s \sim d_{\mu}^{\pi_\theta} }\E_{a\sim \pi_\theta(\cdot | s) }
+\big[\nabla_\theta \log \pi_{\theta}(a| s) \widehat A^{\pi_\theta}(s,a)\big],
+\end{eqnarray*}
+which completes the proof.
+\end{proof}
+
+The next lemma shows that the weight vector above is precisely the NPG
+ascent direction. Precisely,
+
+\begin{lemma}
+We have that:
+\begin{equation}\label{eq:npg_argmin}
+F_\rho(\theta)^{\dagger} \nabla_\theta V^{\theta}(\rho) =
+\frac{1}{1-\gamma} w^\star,
+\end{equation}
+where $w^\star $ is a minimizer of the following regression problem:
+\[
+w^\star \in \argmin_w
+\E_{s\sim d^{\pi_\theta}_\rho, a\sim \pi_\theta(\cdot | s)}
+\left[(w^\top \nabla_\theta \log \pi_\theta(\cdot|s) - A^{\pi_\theta}(s,a))^2\right]
+\, .\]
+\end{lemma}
+
+\begin{proof}
+The above is a straightforward consequence of the first order optimality
+conditions (see Equation~\ref{eq:first_order_compat}). Specifically,
+Equation~\ref{eq:first_order_compat}, along with the advantage expression for the policy gradient (see Theorem~\ref{thm:pg_expressions}),
+imply that $w^\star$ must satisfy:
+\[
+\nabla_\theta V^{\theta}(\rho) =
+\frac{1}{1-\gamma} F_\rho(\theta) w^\star\,
+\]
+which completes the proof.
+\end{proof}
+
+This lemma implies that we might write the NPG update rule as:
+\[
+\theta \leftarrow \theta + \frac{\eta}{1-\gamma} w^\star\, .
+\]
+where $w^\star$ is minimizer of the compatible function approximation
+error (which depends on $\theta$.
+
+The above regression
+problem can be viewed as ``compatible'' function approximation: we are
+approximating $A^{\pi_\theta}(s,a)$ using the $\nabla_\theta \log
+\pi_\theta(\cdot|s)$ as features. We also consider a variant of the
+above update rule, $Q$-NPG, where instead of using advantages in the
+above regression we use the $Q$-values.
+This viewpoint provides a methodology for approximate updates, where
+we can solve the relevant regression problems with samples. 
+
+\section{Examples: NPG and $Q$-NPG}\label{section:examples}
+
+In practice, the most common policy classes are of the form:
+\begin{equation}\label{eq:policy_class}
+\Pi=  \left\{
+  \pi_\theta(a| s) = \frac{\exp\big(f_\theta(s,a)\big) }
+  {\sum_{a' \in \Aset} \exp\big(f_\theta(s,a')\big)}
+\ \bigg\vert \ \theta \in \R^d\right\},
+\end{equation}
+where $f_\theta$ is a differentiable function. For example, the tabular softmax
+policy class is one where $f_\theta(s,a) = \theta_{s,a}$.
+Typically, $f_\theta$ is either a linear function or a neural network.
+Let us consider the NPG algorithm, and a variant $Q$-NPG, in each of these two cases.
+
+\subsection{Log-linear Policy Classes and Soft Policy Iteration}\label{section:log_linear}
+
+For any state-action pair $(s,a)$, suppose we have a feature
+mapping $\phi_{s,a} \in \R^d$. Each policy in the log-linear policy class is of
+the form:
+\[
+  \pi_\theta(a| s) = \frac{\exp(\theta \cdot \phi_{s,a})}
+  {\sum_{a' \in \Aset} \exp(\theta \cdot \phi_{s,a'})},
+\]
+with $\theta \in
+\R^d$. Here, we can take
+$f_\theta(s,a) = \theta \cdot \phi_{s,a}$.
+
+With regards to compatible function approximation for the log-linear
+policy class, we have:
+\[
+\nabla_\theta \log \pi_\theta(a| s) = \overline\phi^{\ \theta}_{s,a},
+%\widetilde\phi^\theta_{s,a},
+\textrm{where } \quad
+\overline\phi^{\ \theta}_{s,a} = \phi_{s,a} - \E_{a'\sim\pi_\theta(\cdot |  s)}[\phi_{s,a'}],
+\]
+that is, $\overline\phi^{\ \theta}_{s,a} $ is the centered version of
+$\phi_{s,a}$. With some abuse of notation, we accordingly also define $\bar\phi^\pi$ for any policy $\pi$. Here, using \eqref{eq:npg_argmin}, the NPG update rule~\eqref{eqn:vanilla_NPG} is equivalent to:
+\[
+\textrm{NPG: }  \, \,\,
+\theta \leftarrow \theta + \eta w_\star , \qquad
+%\textrm{where }
+w_\star \in  \argmin_{w}  \E_{s\sim d^{\pi_\theta}_\rho, a\sim \pi_\theta(\cdot | s)}
+\Big[ \big(A^{\pi_\theta}(s,a)  - w \cdot \overline\phi^{\ \theta}_{s,a}\big)^2
+\Big].
+\]
+(We have rescaled the learning rate $\eta$ in
+comparison to~\eqref{eqn:vanilla_NPG}).
+Note that we recompute $w_\star$ for every update of $\theta$.
+Here, the compatible function approximation error measures the
+expressivity of our parameterization in how well linear functions of
+the parameterization can capture the policy's advantage function.
+
+We also consider a variant of the NPG update rule~\eqref{eqn:vanilla_NPG}, termed
+\emph{$Q$-NPG}, where:
+\[
+\textrm{$Q$-NPG: }  \, \,\,
+\theta \leftarrow \theta + \eta w_\star , \qquad
+w_\star \in  \argmin_{w}   \E_{s\sim d^{\pi_\theta}_\rho, a\sim \pi_\theta(\cdot | s)}
+\Big[ \big(Q^{\pi_\theta}(s,a)  - w \cdot \phi_{s,a}\big)^2
+\Big].
+\]
+%
+Note we do not center the features for $Q$-NPG; observe that
+$Q^{\pi}(s,a)$ is also not 0 in expectation under $\pi(\cdot | s)$, unlike
+the advantage function.
+
+%\begin{remark}
+(NPG/$Q$-NPG and Soft-Policy Iteration)  We now see how we can view both
+NPG and $Q$-NPG as an incremental (soft) version of policy iteration, just as
+in Lemma~\ref{lemma:npg-softmax} for the tabular case. Rather than
+writing the update rule in terms of the parameter $\theta$, we can
+write an equivalent update rule directly in terms of the (log-linear)
+policy $\pi$:\\
+\[
+%\textrm{Equivalent NPG update: }  \, \,\,
+%\pi(a|s) \leftarrow \pi(a|s) \exp( \widehat A^{\pi}(s,a))/Z_s
+\textrm{NPG: }  \, \,
+\pi(a|s) \leftarrow \pi(a|s) \exp(w_\star \cdot \phi_{s,a})/Z_s, \quad
+w_\star \in  \argmin_{w}   \E_{s\sim d^{\pi}_\rho, a\sim \pi(\cdot | s)}
+\Big[ \big(A^{\pi}(s,a)  - w \cdot \overline\phi^{\ \pi}_{s,a}\big)^2
+\Big],
+\]
+where $Z_s$ is normalization constant. While the policy update
+uses the original features $\phi$ instead of $\overline\phi^{\ \pi}$, whereas the quadratic error minimization is terms of the centered
+features $\overline\phi^{\ \pi}$, this distinction is not relevant due to that we may also
+instead use
+$\overline\phi^{\ \pi}$ (in the policy update) which would result in an equivalent update;
+the normalization makes the update invariant to (constant) translations of
+the features. Similarly, an equivalent update for $Q$-NPG, where we
+update $\pi$ directly rather than $\theta$, is:
+\[
+\textrm{$Q$-NPG: }  \, \,
+\pi(a|s) \leftarrow \pi(a|s) \exp(w_\star \cdot \phi_{s,a})/Z_s, \quad
+w_\star \in  \argmin_{w}   \E_{s\sim d^{\pi}_\rho, a\sim \pi(\cdot | s)}
+\Big[ \big(Q^{\pi}(s,a)  - w \cdot \phi_{s,a}\big)^2
+\Big].
+\]
+%\[
+%\textrm{$Q$-NPG: }  \, \,\,
+%\pi(a|s) \leftarrow \pi(a|s) \exp( \widehat Q^{\pi}(s,a))/Z_s
+%\]
+%\end{remark}
+
+
+%\begin{remark}
+(On the equivalence of NPG and $Q$-NPG)  If it is the case that the
+compatible function approximation error is $0$,
+then it straightforward to verify that the NPG and $Q$-NPG are
+equivalent algorithms, in that their corresponding policy updates will
+be equivalent to each other.
+%\end{remark}
+
+
+\subsection{Neural Policy Classes}
+\label{sec:neural}
+
+%It is helpful to explicitly consider the neural case as well.
+
+%\begin{example}[Neural policy classes] \label{ex:neural}
+Now suppose $f_\theta(s,a)$ is a neural network parameterized by
+$\theta\in\R^d$, where the policy class $\Pi$ is of form in \eqref{eq:policy_class}.
+Observe:
+\[
+\nabla_\theta \log \pi_\theta(a| s) = g_\theta(s,a),
+\textrm{where } \quad
+g_\theta(s,a) = \nabla_\theta f_\theta(s,a) - \E_{a'\sim\pi_\theta(\cdot |  s)}[\nabla_\theta f_\theta(s,a')],
+\]
+and, using \eqref{eq:npg_argmin}, the NPG update rule~\eqref{eqn:vanilla_NPG} is equivalent to:
+\[
+\textrm{NPG: }  \, \,\, \theta \leftarrow \theta + \eta w_\star , \qquad
+w_\star \in \argmin_{w}   \E_{s\sim d^{\pi_\theta}_\rho, a\sim \pi_\theta(\cdot | s)}
+\Big[ \big(A^{\pi_\theta}(s,a)  - w \cdot g_\theta(s,a)\big)^2\Big]
+\]
+(Again, we have rescaled the learning rate $\eta$ in
+comparison to~\eqref{eqn:vanilla_NPG}).
+%\end{example}
+
+The $Q$-NPG variant of this update rule is:
+\[
+\textrm{$Q$-NPG: }  \, \,\, \theta \leftarrow \theta + \eta w_\star , \qquad
+w_\star \in  \argmin_{w}   \E_{s\sim d^{\pi_\theta}_\rho, a\sim \pi_\theta(\cdot | s)}
+\Big[ \big(Q^{\pi_\theta}(s,a)  - w \cdot \nabla_\theta f_\theta(s,a)\big)^2\Big].
+\]
+
+
+
+\section{The NPG ``Regret Lemma'' }
+
+It is helpful for us to consider NPG more abstractly, as an update rule of the form
+\begin{eqnarray}\label{eqn:general_update}
+\theta^{(t+1)} = \theta^{(t)} + \eta \w^{(t)}  .
+\end{eqnarray}
+We will now provide a lemma where $\w^{(t)}$ is an \emph{arbitrary}
+(bounded) sequence, which will be helpful when specialized.
+
+Recall a function $f:\R^d \rightarrow \R$ is said to be $\beta$-smooth if for all
+$x, x^\prime \in \R^d$:
+\[
+\|\nabla f(x) - \nabla f(x^\prime)\|_2
+\leq \beta \| x-x^\prime\|_2 \, ,
+\]
+and, due to Taylor's theorem, recall that this implies:
+\begin{equation}\label{eq:def_smoothness}
+\bigg| f(x^\prime) -f(x)
+- \nabla f(x) \cdot (x^\prime-x)
+\bigg|
+\leq\frac{\beta}{2} \|x^\prime-x\|_2^2 \, .
+\end{equation}
+
+The following analysis of NPG is draws close connections to the
+mirror-descent approach used in online learning (see
+Section~\ref{bib:pg_approx}), which motivates us to refer to it as a ``regret lemma''.
+
+\begin{lemma}\label{lemma:npg_regret}
+(NPG Regret Lemma) Fix a comparison policy $\widetilde\pi$ and a
+  state distribution $\rho$. Assume for all $s \in
+\Scal$ and $a\in\Acal$ that $\log \pi_{\theta}(a| s)$ is a $\beta$-smooth
+function of $\theta$. Consider the update rule
+  \eqref{eqn:general_update}, where $\pi^{(0)}$ is the uniform
+  distribution (for all states) and where the sequence of weights
+  $w^{(0)},\ldots , w^{(T)}$, satisfies $\|w^{(t)}\|_2 \leq W $ (but is
+  otherwise arbitrary).  Define:
+\[
+\mathrm{err}_t = \E_{s\sim \widetilde d}\, \E_{a\sim \widetilde\pi(\cdot| s)}\Big[ A^{(t)}(s,a) - w^{(t)} \cdot \nabla_\theta \log \pi^{(t)}(a| s) \Big].
+\]
+Using $\eta = \sqrt{2 \log |\Acal| / (\beta W^2 T)}$, we have that:
+\begin{align*}
+  \min_{t< T} \left\{V^{\widetilde\pi}(\rho) - V^{(t)}(\rho) \right\}  \leq\frac{1}{1-\gamma} \left(
+%\frac{\log |\Acal|}{\eta T}  +\frac{\eta \beta W^2}{2}
+W\sqrt{\frac{2\beta \log |\Acal|}{ T}}
++\frac{1}{T}\sum_{t=0}^{T-1}\mathrm{err}_t\right).
+  \end{align*}
+\end{lemma}
+
+This lemma is the key tool in understanding the role of function
+approximation of various algorithms. We will consider one example in
+detail with regards to the log-linear policy class (from
+Example~\ref{ex:linear_policy}). 
+
+Note that when $\mathrm{err}_t = 0$, as will be the case with the (tabular)
+softmax policy class with exact gradients, we obtain a 
+convergence rate of
+$O(\sqrt{1/T})$ using a learning rate of $\eta=O(\sqrt{1/T})$. Note
+that this is
+slower than the faster rate of $O(1/T)$, provided in Theorem~\ref{thm:npg}.
+Obtaining a bound that leads to a faster rate in the setting with errors  
+requires more complicated dependencies on $\mathrm{err}_t$ than those
+stated above.
+
+% how the
+%approximation errors are controlled at each iteration.
+
+
+\begin{proof}
+By smoothness (see \eqref{eq:def_smoothness}),
+  \begin{eqnarray*}
+\log \frac{\pi^{(t+1)}(a| s) }{\pi^{(t)}(a| s)} &\geq&
+    \nabla_\theta \log \pi^{(t)}(a| s) \cdot \big(\theta^{(t+1)}-\theta^{(t)}\big)
+    -\frac{\beta}{2} \|\theta^{(t+1)}-\theta^{(t)}\|_2^2\\
+ &=&
+    \eta \nabla_\theta \log \pi^{(t)}(a| s) \cdot w^{(t)}
+    -\eta^2\frac{\beta}{2} \|w^{(t)}\|_2^2 .
+\end{eqnarray*}
+
+
+We use $\widetilde d$ as shorthand for
+$d^{\widetilde\pi}_{\rho}$ (note $\rho$ and $\widetilde\pi$ are
+fixed); for any policy $\pi$, we also use $\pi_s$ as shorthand for the distribution
+$\pi(\cdot| s)$.
+Using the performance difference lemma (Lemma~\ref{lemma:perf_diff}),
+\begin{align*}
+&\E_{s\sim \widetilde d} \left(\kl( \widetilde\pi_s || \pi^{(t)}_s) -
+\kl( \widetilde\pi_s || \pi^{(t+1)}_s) \right)\\
+&= \E_{s\sim \widetilde d}\, \E_{a\sim \widetilde\pi(\cdot| s)}
+\left[\log \frac{\pi^{(t+1)}(a| s) }{\pi^{(t)}(a| s)}\right]\\
+&\geq \eta \E_{s\sim \widetilde d}\, \E_{a\sim \widetilde\pi(\cdot| s)} \left[
+\nabla_\theta \log \pi^{(t)}(a| s) \cdot w^{(t)}\right]
+-\eta^2\frac{\beta}{2} \| w^{(t)}\|_2^2 \tag{using previous display}
+\\
+&= \eta \E_{s\sim \widetilde d}\, \E_{a\sim \widetilde\pi(\cdot| s)} \left[
+A^{(t)}(s,a)\right]-\eta^2\frac{\beta}{2} \| w^{(t)}\|_2^2
+\\&\qquad +
+\eta \E_{s\sim \widetilde d}\, \E_{a\sim \widetilde\pi(\cdot| s)} \left[
+\nabla_\theta \log \pi^{(t)}(a| s) \cdot w^{(t)}-A^{(t)}(s,a)\right]\\
+&= (1-\gamma)\eta \bigg(V^{\widetilde\pi}(\rho) - V^{(t)}(\rho)\bigg)-\eta^2\frac{\beta}{2} \| w^{(t)}\|_2^2
+- \eta \ \mathrm{err}_t
+\end{align*}
+%where we have used the definition of
+%$\tepsapp$.
+Rearranging, we have:
+\begin{align*}
+V^{\widetilde\pi}(\rho)  - V^{(t)}(\rho)
+%& - V^{(t)}(\rho)\\&
+\leq \frac{1}{1-\gamma}\left(\frac{1}{\eta } \E_{s\sim \widetilde d}
+\left(\kl(\widetilde\pi_s || \pi^{(t)}_s) - \kl(\widetilde\pi_s || \pi^{(t+1)}_s) \right)
++\frac{\eta \beta}{2} W^2 + \mathrm{err}_t\right)
+\end{align*}
+Proceeding,
+\begin{eqnarray*}
+ \frac{1}{T} \sum_{t=0}^{T-1} (V^{\widetilde\pi}(\rho) - V^{(t)}(\rho))& \leq& \frac{1}{\eta T (1-\gamma)} \sum_{t=0}^{T-1} \E_{s\sim \widetilde d}\,
+(\kl(\widetilde\pi_s || \pi^{(t)}_s) - \kl(\widetilde\pi_s || \pi^{(t+1)}_s))
+ \\
+&&+ \frac{1}{T(1-\gamma)} \sum_{t=0}^{T-1} \left(
+\frac{\eta \beta W^2}{2}
++\mathrm{err}_t\right)\\
+&\leq&  \frac{\E_{s\sim \widetilde d}\, \kl(\widetilde\pi_s||\pi^{(0)})}{\eta T(1-\gamma)}
++\frac{\eta \beta W^2}{2(1-\gamma)}
++  \frac{1}{T(1-\gamma)} \sum_{t=0}^{T-1} \mathrm{err}_t\\
+&\leq& \frac{\log |\Acal|}{\eta T (1-\gamma)}
++\frac{\eta \beta W^2}{2(1-\gamma)} +  \frac{1}{T(1-\gamma)} \sum_{t=0}^{T-1} \mathrm{err}_t,
+\end{eqnarray*}
+which completes the proof.
+\end{proof}
+
+
+
+\section{$Q$-NPG: Performance Bounds for Log-Linear Policies}
+\label{sec:q-npg}
+
+For a state-action distribution $\upsilon$,  define:
+\[
+L(w;\theta,\upsilon) :=
+\E_{s,a \sim \upsilon}
+\bigg[ \big(Q^{\pi_\theta}(s,a)  - w \cdot \phi_{s,a} \big)^2 \bigg].
+\]
+The iterates of the $Q$-NPG algorithm can be viewed as minimizing
+this loss under some (changing) distribution $\upsilon$.
+
+We now specify an approximate version of $Q$-NPG. It is helpful to
+consider a slightly more general version of the algorithm in the
+previous section, where instead of optimizing under a starting state
+distribution $\rho$, we have a different starting \emph{state-action}
+distribution $\nu$. The motivation for this is similar in spirit to
+our log barrier regularization: we seek to maintain exploration (and
+estimation) over the action space even if the current policy does not
+have coverage over the action space.
+
+\iffalse
+Analogous to the definition of the state visitation measure, $d_{\mu}^\pi$,  we can define
+a visitation measure over states \emph{and} actions induced by following $\pi$ after $s_0,a_0 \sim
+\nu$. We overload notation using $d_{\nu}^\pi$ to also refer to the
+state-action visitation measure; precisely,
+\begin{equation}\label{eqn:c_def}
+d_{\nu}^\pi(s,a) := (1-\gamma) \E_{s_0,a_0\sim \nu}
+\sum_{t=0}^\infty \gamma^t {\Pr}^\pi(s_t=s,a_t=a|s_0,a_0)
+\end{equation}
+where $\Pr^\pi(s_t=s,a_t=a|s_0,a_0)$ is the
+probability that $s_t=s$ and $a_t=a$, after starting at state
+$s_0$, taking action $a_0$, and following $\pi$ thereafter. While we
+overload notation for visitation distributions ($d^\pi_\mu(s)$ and $d^\pi_\nu(s,a)$) for notational convenience, note that
+the state-action measure $d_{\nu}^\pi$ uses the subscript $\nu$, which
+is a state-action measure.
+\fi
+
+Analogous to the definition of the state-action visitation measure
+$d_{s_0}^\pi$ (see Equation~\ref{eq:dpisa}),  we define
+another state-action visitation measure, 
+$d_{s_0,a_0}^\pi$, as follows:
+\begin{equation}\label{eqn:c_def}
+d_{s_0,a_0}^\pi(s,a) := (1-\gamma) 
+\sum_{t=0}^\infty \gamma^t {\Pr}^\pi(s_t=s,a_t=a|s_0,a_0)
+\end{equation}
+where $\Pr^\pi(s_t=s,a_t=a|s_0,a_0)$ is the
+probability that $s_t=s$ and $a_t=a$, after starting at state
+$s_0$, taking action $a_0$, and following $\pi$ thereafter. Again, we
+overload notation and write:
+\[
+d_{\nu}^\pi(s,a) = \E_{s_0,a_0\sim \nu}[d_{s_0,a_0}]
+\]
+where $\nu$ is a distribution over $\Scal \times \Acal$.
+
+$Q$-NPG will be defined with respect to the \emph{on-policy} state
+action measure starting with $s_0,a_0\sim\nu$.  As per our convention, we define
+\[ d^{(t)} := d_{\nu}^{\pi^{(t)}}.\]  The approximate
+version of this algorithm is:
+\begin{eqnarray}\label{eq:q-npg}
+\textrm{Approx.  Q-NPG: }  \, \,\,
+\theta^{(t+1)} = \theta^{(t)} + \eta  w^{(t)}, \qquad
+w^{(t)} \approx \argmin_{\|w\|_2\leq W}  L(w;\theta^{(t)},d^{(t)}),
+\end{eqnarray}
+where the above update rule also permits us to constrain the norm of the update direction $w^{(t)}$
+(alternatively, we could use $\ell_2$ regularization as is also common in practice).
+The exact minimizer is denoted as:
+\[
+w_\star^{(t)} \in \argmin_{\|w\|_2\leq W}  L(w;\theta^{(t)},d^{(t)}).
+\]
+Note that $w_\star^{(t)}$ depends on the current parameter $\theta^{(t)}$.
+
+Our analysis will take into account both the \emph{excess risk} (often also
+referred to as estimation error) and the
+\emph{approximation error}.  The standard
+approximation-estimation error decomposition is as follows:
+\begin{eqnarray*}
+L(w^{(t)};\theta^{(t)},d^{(t)})
+&=&
+\underbrace{
+L(w^{(t)};\theta^{(t)},d^{(t)}) - L(w_\star^{(t)};\theta^{(t)},d^{(t)})
+}_{\textrm{Excess risk}}
++\underbrace{
+    L(w_\star^{(t)};\theta^{(t)},d^{(t)})}_{\textrm{Approximation error}}
+\end{eqnarray*}
+Using a sample based approach,  we would expect $\epsstat =
+O(1/\sqrt{N})$ or better, where $N$ is the number of samples used to
+estimate. $w_\star^{(t)}$
+In constrast, the  approximation error is due to modeling error, and
+does not tend to $0$ with more samples. We will see how these two errors have strikingly
+different impact on our final performance bound.
+
+
+Note that we have already considered two
+cases where $\epsapprox=0$. For the tabular softmax policy class, it
+is immediate that $\epsapprox=0$. A more interesting example (where
+the state and action space could be infinite) is provided
+by the linear parameterized MDP model from
+Chapter~\ref{chap:linear_MDPs}. Here, provided that we use the
+log-linear policy class (see Section~\ref{section:log_linear}) with
+features corresponding to the linear MDP features, it 
+is straightforward to see that $\epsapprox=0$ for this log-linear policy class.
+More generally, we will see the effect of model misspecification in
+our performance bounds.
+
+
+\iffalse
+Here, the excess risk will be due to that
+$w^{(t)}$ may not be equal $w_\star^{(t)}$, and the approximation
+error will be due to that even the best linear fit using
+$w_\star^{(t)}$ may not perfectly match the $Q$-values, i.e.
+$L(w_\star^{(t)};\theta^{(t)};d^{(t)})$ is unlikely to be $0$ in
+practical applications.
+\fi
+
+We make the following assumption on these errors:
+
+\begin{assumption}[Approximation/estimation
+  error bounds] \label{assum:approx_est} 
+Let $w^{(0)},w^{(1)}, \ldots w^{(T-1)}$ be the sequence of iterates
+used by the $Q$-NPG algorithm 
+Suppose the following holds for all $t < T$:
+\begin{enumerate}
+\item (\emph{Excess risk}) Suppose the estimation error is bounded
+  as follows:
+\[
+L(w^{(t)};\theta^{(t)},d^{(t)}) - L(w_\star^{(t)};\theta^{(t)},d^{(t)})
+\leq \epsstat
+\]
+\item \label{assum:trasnfer_part} (\emph{Approximation error}) Suppose the approximation error is bounded
+  as follows:
+\[
+L(w_\star^{(t)};\theta^{(t)},d^{(t)}) \leq \epsapprox.
+\]
+\end{enumerate}
+\end{assumption}
+
+We will also see how, with regards to our estimation error, we will
+need a far more mild notion of coverage. Here,  with respect to any state-action
+distribution $\upsilon$,  define:
+\[
+\Sigma_\upsilon = \E_{s,a \sim \upsilon}\left[ \phi_{s,a}\phi_{s,a}^\top\right].
+\]
+We make a the following
+conditioning assumption:
+
+\begin{assumption}[Relative condition
+  number]\label{assum:conditioning} 
+Fix a state distribution $\rho$ (this will be 
+what ultimately be the performance measure that we seek to optimize).
+Consider an arbitrary comparator policy
+$\pi^\star$ (not necessarily an optimal policy). With respect to
+$\pi^\star$, define the state-action measure $d^\star$ as
+\[
+d^\star(s,a) = d_{\rho}^{\pi^\star}(s) \cdot \textrm{Unif}_\Acal(a)
+\]
+i.e. $d^\star$ samples states from the comparators state visitation
+measure, $d_{\rho}^{\pi^\star}$ and
+actions from the uniform distribution.
+Define
+\[
+\sup_{w \in \R^d} \ \frac{w^\top \Sigma_{d^\star} w}
+{w^\top \Sigma_\nu w}
+=\kappa,
+\]
+and assume that $\kappa$ is finite.
+\end{assumption}
+
+We later discuss why it is reasonable to
+expect that $\kappa$ is not a quantity related to the size of the
+state space.
+
+\iffalse
+\footnote{Technically, we only need the relative condition number $\sup_{w \in \R^d} \ \frac{w^\top \Sigma_{d^\star} w}
+{w^\top \Sigma_{\pi^{(t)}} w}$ to be bounded for all $t$. We state
+this as a sufficient condition based on the initial distribution $\nu$
+due to: this is more interpretable, and, as per
+Remark~\ref{remark:kappa}, this quantity can be bounded in  a manner that
+is independent of the sequence of iterates produced by the algorithm.}
+\fi
+
+
+The main result of this chapter shows how the
+approximation error, the excess risk, and the conditioning, determine the final
+performance. 
+
+\begin{theorem}\label{thm:q_npg_fa}
+Fix a state distribution $\rho$; a state-action distribution $\nu$; an arbitrary
+comparator policy $\pi^\star$ (not necessarily an optimal policy). Suppose
+Assumption~\ref{assum:conditioning} holds with respect to these
+choices and that $\|\phi_{s,a}\|_2\leq
+B$ for all $s,a$.
+Suppose the $Q$-NPG update rule (in
+\eqref{eq:q-npg}) starts with $\theta^{(0)}=0$, $\eta
+=\sqrt{2\log |\Acal| /(B^2 W^2T)}$, and the (random) sequence of iterates satisfies
+Assumption~\ref{assum:approx_est}.
+We have that:
+\begin{align*}
+\E\left[\min_{t< T} \left\{V^{\pi^\star}(\rho) - V^{(t)}(\rho) \right\}\right]
+\leq
+\frac{BW}{1-\gamma}\sqrt{\frac{2 \log |\Acal|}{T}}
++\sqrt{ \frac{ 4|\Acal| }{(1-\gamma)^3}
+\left(\kappa \cdot \epsstat + \BigNorm{\frac{d^\star}{\nu}}_\infty  \cdot\epsapprox \right)
+}\, .
+\end{align*}
+\end{theorem}
+
+Note when $\epsapprox = 0$, our
+convergence rate is $O(\sqrt{1/T})$ plus a term that depends on the
+excess risk; hence, provided we obtain enough samples, then
+$\epsstat$ will also tend to $0$, and we will be
+competitive with the comparison policy
+$\pi^\star$.
+
+The above also shows
+the striking difference between the effects of estimation error and
+approximation error.  A few remarks are now in order.
+
+
+\paragraph{Transfer learning, distribution shift, and the approximation error.}
+In large scale problems, the worst case distribution mismatch factor
+$\BigNorm{\frac{d^\star}{\nu}}_\infty$ is unlikely to be
+small. However, this factor is ultimately due to transfer
+learning. Our approximation error is with respect to the fitting
+distribution $d^{(t)}$, where we assume that
+$L(w_\star^{(t)};\theta^{(t)},d^{(t)}) \leq \epsapprox$. 
+As the proof will show, the relevant notion of approximation error
+will be $L(w_\star^{(t)};\theta^{(t)},d^\star)$, where $d^\star$ is
+the \emph{fixed} comparators measure. In others words, to get a good
+performance bound we need to successfully have low transfer learning
+error to the fixed measure $d^\star$.  Furthermore, 
+in many modern machine learning applications, this error is often is
+favorable, in that it is substantially better than worst case theory
+might suggest.
+
+See Section~\ref{bib:pg_approx} for further remarks on this point.
+
+
+\paragraph{Dimension dependence in $\kappa$ and the importance of $\nu$.} It is
+reasonable to think about $\kappa$ as being dimension dependent (or
+worse), but it is not necessarily related to the size of the state space.  For
+example, if $\|\phi_{s,a}\|_2\leq
+B$, then
+$
+\kappa \leq \frac{B^2}{\sigma_{\min}(\E_{s,a \sim \nu }[
+\phi_{s,a}\phi_{s,a}^\top])}
+$
+though this bound may be pessimistic.  Here, we also see the
+importance of choice of $\nu$ in having a small (relative) condition number; in
+particular, this is the motivation for considering the generalization
+which allows for a starting state-action distribution $\nu$ vs. just a
+starting state distribution $\mu$ (as we did in the tabular case). Roughly speaking, we desire a $\nu$ which
+provides good coverage over the features. As the following lemma shows,
+there always exists a universal distribution $\nu$, which can be
+constructed only with knowledge of the
+feature set (without knowledge of
+$d^\star$), such that $\kappa\leq d$.
+
+\begin{lemma}
+($\kappa\leq d$ is always possible)
+Let $\Phi=\{\phi(s,a)|(s,a)\in \Scal\times\Acal\}\subset \R^d$ and suppose $\Phi$
+is a compact set.
+There always exists a state-action distribution $\nu$,
+which is supported on at most $d^2$ state-action pairs and
+which can be constructed only with knowledge of
+$\Phi$  (without knowledge of the MDP or $d^\star$), such that:
+\[
+\kappa\leq d.
+\]
+\end{lemma}
+\begin{proof}
+The distribution can be found through
+constructing the minimal volume ellipsoid containing $\Phi$, i.e. the
+Lo\"wner-John ellipsoid. {\bf To be added... \/}
+\end{proof}
+
+
+\paragraph{Direct policy optimization vs. approximate value function
+  programming methods}
+Part of the reason for
+the success of the direct policy optimization approaches is to due their
+more mild dependence on the approximation error. Here, our theoretical
+analysis has a dependence on a
+distribution mismatch coefficient,
+$\BigNorm{\frac{d^\star}{\nu}}_\infty$, while approximate value function
+methods have even worse dependencies. See 
+Chapter~\ref{chap:api}. As discussed earlier and
+as can be seen in the regret lemma (Lemma~\ref{lemma:npg_regret}), the
+distribution mismatch coefficient is due to that the relevant error for
+NPG is a transfer error notion to a \emph{fixed} comparator
+distribution, while approximate value function methods have more
+stringent conditions where the error has to be small under,
+essentially, the distribution of \emph{any} other policy.
+
+\subsection{Analysis}%\label{section:analysis_fa}
+
+\begin{proof} (of Theorem~\ref{thm:q_npg_fa})
+For the log-linear policy class, due to that the feature mapping $\phi$ satisfies $\|\phi_{s,a}\|_2 \leq
+B$, then it is not difficult to verify that $\log \pi_\theta(a|s)$ is a
+$B^2$-smooth function. Using this and the NPG regret lemma
+(Lemma~\ref{lemma:npg_regret}), we have:
+\begin{align*}
+\min_{t< T} \left\{V^{\pi^\star}(\rho) - V^{(t)}(\rho) \right\}
+\leq
+\frac{BW}{1-\gamma}\sqrt{\frac{2 \log |\Acal|}{T}}
++\frac{1}{(1-\gamma)T}\sum_{t=0}^{T-1}\mathrm{err}_t\, .
+\end{align*}
+where we have used our setting of $\eta$.
+
+We make the following decomposition of $\mathrm{err}_t$:
+\begin{align*}
+\mathrm{err}_t
+&= \E_{s\sim d^\star_\rho,a\sim \pi^\star(\cdot| s)}\Big[ A^{(t)}(s,a) - w_\star^{(t)} \cdot \nabla_\theta \log \pi^{(t)}(a| s) \Big]\\
+&\quad+ \E_{s\sim d^\star_\rho,a\sim \pi^\star(\cdot| s)}\Big[ \big(w_\star^{(t)}- w^{(t)}\big) \cdot \nabla_\theta \log \pi^{(t)}(a| s) \Big].
+\end{align*}
+For the first term, using that $\nabla_\theta \log \pi_\theta(a| s) =
+\phi_{s,a} - \E_{a'\sim\pi_\theta(\cdot |  s)}[\phi_{s,a'}]$ (see
+Section~\ref{section:log_linear}), we have:
+\begin{eqnarray*}
+&&\E_{s\sim d^\star_\rho,a\sim \pi^\star(\cdot| s)}\Big[ A^{(t)}(s,a) - w_\star^{(t)} \cdot \nabla_\theta \log \pi^{(t)}(a| s) \Big]\\
+&=& \E_{s\sim d^\star_\rho,a\sim \pi^\star(\cdot| s)}\Big[ Q^{(t)}(s,a) - w_\star^{(t)} \cdot \phi_{s,a}\Big]
+-\E_{s\sim d^\star_\rho,a'\sim \pi^{(t)}(\cdot| s)}\Big[ Q^{(t)}(s,a') - w_\star^{(t)} \cdot \phi_{s,a'}\Big]\\
+&\leq& \sqrt{\E_{s\sim d^\star_\rho,a\sim \pi^\star(\cdot| s)} \left(Q^{(t)}(s,a) - w_\star^{(t)} \cdot \phi_{s,a}\right)^2}
++\sqrt{\E_{s\sim d^\star_\rho,a'\sim \pi^{(t)}(\cdot| s)}\left(Q^{(t)}(s,a') - w_\star^{(t)} \cdot \phi_{s,a'}\right)^2}\\
+&\leq& 2\sqrt{|\Acal|\E_{s\sim d^\star_\rho,a\sim \textrm{Unif}_\mathcal{\Acal}}\Big[ \left(Q^{(t)}(s,a) - w_\star^{(t)} \cdot \phi_{s,a}\right)^2\Big]}
+=2\sqrt{|\Acal| L(w_\star^{(t)};\theta^{(t)},d^\star)}.
+\end{eqnarray*}
+where we have used the definition of $d^\star$ and
+$L(w_\star^{(t)};\theta^{(t)},d^\star)$ in the last step. Using following crude upper bound,
+\[
+L(w_\star^{(t)};\theta^{(t)},d^\star)
+\leq \BigNorm{\frac{d^\star}{d^{(t)}}}_\infty
+L(w_\star^{(t)};\theta^{(t)},d^{(t)})
+\leq \frac{1}{1-\gamma}\BigNorm{\frac{d^\star}{\nu}}_\infty
+L(w_\star^{(t)};\theta^{(t)},d^{(t)}),
+\]
+(where the last step uses the defintion of $d^{(t)}$, see
+Equation~\ref{eqn:c_def}), we have that:
+\begin{equation} \label{eq:term_one}
+\E_{s\sim d^\star_\rho,a\sim \pi^\star(\cdot| s)}\Big[ A^{(t)}(s,a) - w_\star^{(t)} \cdot \nabla_\theta \log \pi^{(t)}(a| s) \Big]
+\leq 2\sqrt{ \frac{|\Acal|}{1-\gamma}\BigNorm{\frac{d^\star}{\nu}}_\infty
+L(w_\star^{(t)};\theta^{(t)},d^{(t)}).} 
+\end{equation}
+
+For the second term, let us now show that:
+\begin{align}
+&\E_{s\sim d^\star_\rho,a\sim \pi^\star(\cdot| s)}\Big[ \big(w_\star^{(t)}- w^{(t)}\big) \cdot \nabla_\theta \log \pi^{(t)}(a| s) \Big]\nonumber\\
+&\qquad \leq\ 2\sqrt{\frac{|\Acal|\kappa}{1-\gamma} \left( L(w^{(t)};\theta^{(t)},d^{(t)}) - L(w_\star^{(t)};\theta^{(t)},d^{(t)})\right)}
+\label{eq:term_two}
+\end{align}
+To see this, first observe that a similar argument to the above leads to:
+\begin{align*}
+&\E_{s\sim d^\star_\rho,a\sim \pi^\star(\cdot| s)}\Big[ \big(w_\star^{(t)}- w^{(t)}\big) \cdot \nabla_\theta \log \pi^{(t)}(a| s) \Big]\\
+&=\E_{s\sim d^\star_\rho,a\sim \pi^\star(\cdot| s)}\Big[ \big(w_\star^{(t)}- w^{(t)}\big) \cdot \phi_{s,a} \Big]
+-\E_{s\sim d^\star_\rho,a'\sim \pi^{(t)}(\cdot| s)}\Big[ \big(w_\star^{(t)}- w^{(t)}\big) \cdot \phi_{s,a'} \Big]\\
+%=\E_{s\sim d^\star,a\sim \pi^\star(\cdot| s)}\Big[ \big(w_\star^{(t)}- w^{(t)}\big) \cdot \phi_{s,a} \Big]\\
+%&=\E_{s\sim d^\star,a\sim \pi^\star(\cdot| s)}\Big[ w_\star^{(t)}\cdot \phi_{s,a} -Q^{(t)}(s,a)\Big]+
+%\E_{s\sim d^\star,a\sim \pi^\star(\cdot| s)}\Big[ Q^{(t)}(s,a)- w^{(t)} \cdot \phi_{s,a} \Big]\\
+&\leq 2\sqrt{|\Acal|\E_{s,a\sim d^\star}\Big[ \left( \big(w_\star^{(t)}- w^{(t)}\big) \cdot \phi_{s,a}\right)^2\Big]}
+= 2\sqrt{|\Acal| \cdot \| w_\star^{(t)}- w^{(t)} \|_{\Sigma_{d^\star}}^2},
+\end{align*}
+where we use the notation $\|x\|_M^2:=x^\top M x$ for a matrix $M$ and
+a vector $x$. From the definition of $\kappa$,
+\begin{eqnarray*}
+\| w_\star^{(t)}- w^{(t)} \|_{\Sigma_{d^\star}}^2
+\leq \kappa \| w_\star^{(t)}- w^{(t)} \|_{\Sigma_{\nu}}^2
+\leq \frac{\kappa}{1-\gamma} \| w_\star^{(t)}- w^{(t)} \|_{\Sigma_{d^{(t)}}}^2
+%&\leq& \frac{\kappa}{1-\gamma} \left(L(w^{(t)};\theta^{(t)},d^{(t)}) - L(w_\star^{(t)};\theta^{(t)},d^{(t)})\right)
+\end{eqnarray*}
+using that $(1-\gamma)\nu \leq
+d_{\nu}^{\pi^{(t)}}$ (see \eqref{eqn:c_def}).
+Due to that $w_\star^{(t)}$ minimizes $L(w;\theta^{(t)}, d^{(t)})$
+over the set $\Wcal:=\{w:\|w\|_2\leq W\}$, for any $w \in \Wcal$
+the first-order optimality conditions for
+$w_\star^{(t)}$ imply that:
+\[
+(w-w_\star^{(t)})\cdot \nabla L(w^{(t)}_\star; \theta^{(t)}, d^{(t)}) \geq 0.
+\]
+Therefore, for any $w \in \Wcal$,
+\begin{align*}
+&L(w;\theta^{(t)},d^{(t)}) - L(w_\star^{(t)};\theta^{(t)},d^{(t)})\\
+&=\E_{s,a\sim d^{(t)}}\left[\big(w\cdot \phi(s,a) - w_\star\cdot \phi(s,a)+ w_\star\cdot \phi(s,a)-Q^{(t)}(s,a)\big)^2\right]
+- L(w_\star^{(t)};\theta^{(t)},d^{(t)})\\
+&=\E_{s,a\sim d^{(t)}}\left[\big(w\cdot \phi(s,a) - w_\star\cdot \phi(s,a)\big)^2\right]+
+2(w - w_\star )\E_{s,a\sim d^{(t)}}\left[\phi(s,a)\big(w_\star\cdot \phi(s,a)-Q^{(t)}(s,a)\big)\right]\\
+&=\|w - w_\star^{(t)}\|_{\Sigma_{d^{(t)}}}^2+
+(w-w_\star^{(t)})\cdot \nabla L(w^{(t)}_\star; \theta^{(t)}, d^{(t)})\\
+&\geq \|w - w_\star^{(t)}\|_{\Sigma_{d^{(t)}}}^2.
+\end{align*}
+Noting that $w^{(t)} \in \Wcal$ by construction in
+Algorithm~\ref{eq:q-npg} yields the claimed bound on the second
+term in \eqref{eq:term_two}.
+
+ 
+Using the bounds on the first and second terms in \eqref{eq:term_one}
+and \eqref{eq:term_two}, along with concavity of the square root function, we have that:
+\begin{align*}
+\mathrm{err}_t  \leq 2\sqrt{ \frac{|\Acal|}{1-\gamma}\BigNorm{\frac{d^\star}{\nu}}_\infty
+L(w_\star^{(t)};\theta^{(t)},d^{(t)})} 
++2\sqrt{\frac{|\Acal|\kappa}{1-\gamma} \Big( L(w^{(t)};\theta^{(t)},d^{(t)}) - L(w_\star^{(t)};\theta^{(t)},d^{(t)})\Big)}.
+\end{align*}
+The proof is completed by substitution and using our assumptions on
+$\epsstat$ and $\epsbias$.
+\end{proof}
+
+
+\section{$Q$-NPG Sample Complexity}
+
+{\bf To be added... \/}
+
+\iffalse
+\begin{assumption}[Episodic Sampling Oracle] \label{assum:sampling} For a fixed state-action distribution $\nu$,
+we assume the ability to: start at $s_0,a_0\sim\nu$; continue
+to act thereafter in the MDP according to any policy $\pi$; and terminate
+this ``rollout'' when desired. With this oracle, it is straightforward
+to obtain unbiased samples of $Q^{\pi}(s,a)$ (or $A^{\pi}(s,a)$) under
+$s,a\sim d_{\nu}^{\pi}$ for any $\pi$; see
+Algorithms~\ref{alg:q_sampler} and ~\ref{alg:a_sampler}.
+\end{assumption}
+
+\begin{algorithm}[!t]
+	\begin{algorithmic}[1]	
+		\Require Starting state-action distribution $\nu$.
+		\State Sample $s_0,a_0\sim\nu$.
+		\State Sample $s,a\sim d_{\nu}^\pi$ as follows:
+                at every timestep $h$,  with probability $\gamma$, act
+                according to $\pi$; else, accept  $(s_h,a_h)$ as the sample and
+                proceed to Step~\ref{state:next_step}. See
+                \eqref{eqn:c_def}.
+		\State\label{state:next_step} From $s_h,a_h$,
+                continue to execute $\pi$, and use a termination probability of
+                $1-\gamma$. Upon termination, set
+                $\widehat{Q^\pi}(s_h,a_h)$ as the \emph{undiscounted} sum
+                of rewards from time $h$ onwards.
+                \State \Return $(s_h, a_h)$ and $\widehat{Q^\pi}(s_h,a_h)$.
+	\end{algorithmic}
+	\caption{Sampler for: $s,a\sim d_{\nu}^\pi$ and
+          unbiased estimate of $Q^\pi(s,a)$}
+\label{alg:q_sampler}
+\end{algorithm}
+
+
+Algorithm~\ref{alg:q_npg_sample} provides a sample based version of the
+$Q$-NPG algorithm; it simply uses stochastic
+projected gradient ascent within each iteration. The following corollary shows
+this algorithm suffices to obtain an accurate sample based version of $Q$-NPG.
+
+\begin{corollary}\label{cor:q_npg_sample}
+(Sample complexity of $Q$-NPG) Assume we are in the setting of
+Theorem~\ref{thm:q_npg_fa} and that we have access to
+an episodic sampling oracle (i.e. Assumption~\ref{assum:sampling}).
+Suppose that the Sample Based $Q$-NPG Algorithm (Algorithm~\ref{alg:q_npg_sample}) is run for $T$
+iterations, with $N$ gradient steps per iteration, with an appropriate
+setting of the learning rates $\eta$ and  $\alpha$. We have that:
+\begin{align*}
+&\E\left[\min_{t< T} \left\{V^{\pi^\star}(\rho) - V^{(t)}(\rho) \right\}\right]\\
+&\leq
+\frac{BW}{1-\gamma}\sqrt{\frac{2 \log |\Acal|}{T}}
++\sqrt{ \frac{8\kappa |\Acal|BW (BW+1)}{(1-\gamma)^4}}  \frac{1}{N^{1/4}}
+%\frac{BW}{1-\gamma}\sqrt{\frac{2 \log |\Acal|}{T}}
+%+\sqrt{ \frac{8\kappa BW |\Acal|}{(1-\gamma)^4\sqrt{N}}\left((1-\gamma)BW+1
+%\right)}
++ \frac{\sqrt{4|\Acal| \epsbias}}{1-\gamma}\, .
+\end{align*}
+Furthermore, since each episode has expected length $2/(1-\gamma)$, the
+expected number of total samples used by $Q$-NPG is $2NT/(1-\gamma)$.
+\end{corollary}
+
+\begin{proof}
+  Note that our sampled gradients are bounded by
+  $G:=2B(BW+\frac{1}{1-\gamma})$.  Using
+  $\alpha = \frac{W}{G\sqrt{N}}$, a standard analysis for stochastic
+  projected gradient ascent (Theorem \ref{thm:shalev}) shows that:
+\[
+\epsstat\leq \frac{2BW(BW+\frac{1}{1-\gamma})}{\sqrt{N}}.
+\]
+The proof is completed via substitution.
+\end{proof}
+
+
+\begin{algorithm}[!t]
+	\begin{algorithmic}[1]	
+		\Require Learning rate $\eta$; SGD learning rate
+                $\alpha$; number of SGD iterations $N$
+		\State Initialize $\theta^{(0)} = 0$.
+		\For{$t=0,1,\ldots,T-1$}
+		\State Initialize $w_0 = 0$
+		\For{$n=0,1,\ldots,N-1$}
+		\State Call Algorithm~\ref{alg:q_sampler}  to obtain $s,a\sim d^{(t)}$ and an unbiased
+                estimate $\widehat{Q}(s,a)$.
+                \State Update:
+                \[
+                w_{n+1}= \textrm{Proj}_{\mathcal{W}} \Big(w_n - 2 \alpha\left(w_n\cdot \phi_{s,a} - \widehat Q(s,a)\right) \phi_{s,a}\Big)
+                \]
+               \Statex\quad\qquad where $\mathcal{W} = \{w: \|w\|_2\leq W\}$.
+		\EndFor
+		\State Set $\wh^{(t)} = \frac{1}{N} \sum_{n=1}^{N} w_n$.
+		\State Update $\theta^{(t+1)} = \theta^{(t)} + \eta \wh^{(t)}$.
+		\EndFor
+	\end{algorithmic}
+
+	\caption{Sample-based $Q$-NPG for Log-linear Policies}
+\label{alg:q_npg_sample}
+\end{algorithm}
+
+\begin{remark}(Improving the scaling with $N$)
+Our current rate of convergence is $1/N^{1/4}$ due to our use of
+stochastic projected gradient ascent.
+Instead, for the least squares estimator, $\epsstat$ would be
+$O(d/N)$ provided certain further regularity assumptions hold (a bound
+on the minimal eigenvalue of $\Sigma_{\nu}$ would be
+sufficient but not necessary. See~\cite{hsu2014random} for such
+conditions). With such further assumptions, our rate of convergence
+would be $O(1/\sqrt{N})$.
+\end{remark} 
+\fi
+
+\section{Bibliographic Remarks and Further Readings}\label{bib:pg_approx}
+
+The notion of \emph{compatible function approximation} was due to
+\cite{sutton1999policy}, which also proved the claim in
+Lemma~\ref{lemma:compatible}. The close connection of the NPG update
+rule to compatible function approximation (Lemma~\ref{eq:npg_argmin}) was noted
+in~\cite{Kakade01}.
+
+The regret lemma (Lemma~\ref{lemma:npg_regret}) for the NPG analysis has origins in the online regret
+framework in changing MDPs~\citep{even-dar2009online}.
+The convergence rates in this chapter are largely derived
+from~\cite{agarwal2019optimality}. The Q-NPG
+algorithm for the log-linear policy classes is essentially the same
+algorithm as POLITEX ~\citep{abbasi2019politex}, with a distinction that it is important to use a
+state action measure over the initial distribution. The analysis and
+error decomposition of Q-NPG is
+from~\cite{agarwal2019optimality}, which has a more general analysis
+of NPG with function approximation under the regret lemma. This more
+general approach also permits the analysis of neural policy classes,
+as shown in ~\cite{agarwal2019optimality}.
+Also, \cite{caiTRPO} provide an analysis of the TRPO
+algorithm~\citep{schulman2015trust} (essentially the same as NPG) for neural network
+parameterizations in the somewhat restrictive linearized ``neural
+tangent kernel'' regime.
+
+

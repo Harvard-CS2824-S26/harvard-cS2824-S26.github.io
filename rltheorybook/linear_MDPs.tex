@@ -1,0 +1,506 @@
+% !TEX root = rltheorybook_AJKS.tex
+\chapter{Linearly Parameterized MDPs}
+\label{chap:linear_MDPs}
+\newcommand{\Ecal}{\mathcal{E}}
+%{\bf To be added... \/}
+
+
+In this chapter, we consider learning and exploration in linearly parameterized MDPs---the linear MDP. Linear MDP generalizes tabular MDPs into MDPs with potentially infinitely many state and action pairs. 
+
+
+This chapter largely follows the model and analysis first provided in~\cite{jin2020provably}.
+
+\section{Setting}
+ 
+
+We consider episodic finite horizon MDP with horizon $H$, $\Mcal = \{\Scal,\Acal, \{r_h\}_h, \{P_h\}_h, H, s_0\}$, where $s_0$ is a fixed initial state, $r_h:\Scal\times\Acal\mapsto [0,1]$ and $P_h:\Scal\times\Acal\mapsto \Delta(\Scal)$ are time-dependent reward function and transition kernel. Note that for time-dependent finite horizon MDP, the optimal policy will be time-dependent as well. For simplicity, we overload notations a bit and denote $\pi = \{\pi_0,\dots, \pi_{H-1}\}$, where each $\pi_h: \Scal\mapsto \Acal$.  We also denote $V^{\pi} := V^{\pi}_0(s_0)$, i.e., the expected total reward of $\pi$ starting at $h = 0$ and $s_0$. 
+
+
+
+We define the learning protocol below. Learning happens in an episodic setting. Every episode $k$, learner first proposes a policy $\pi^k$ based on all the history information up to the end of episode $k-1$. The learner then executes $\pi^k$ in the underlying MDP to generate a single trajectory $\tau^k = \{s^k_h,a_h^k\}_{h=0}^{H-1}$ with $a_h = \pi_h^k(s_h^k)$ and $s_{h+1}^k \sim P_h(\cdot |s_h^k,a_h^k)$. The goal of the learner is to minimize the following cumulative regret over $N$ episodes:
+\begin{align*}
+    \textrm{Regret} := \EE \left[ \sum_{k=0}^{K-1} \left(V^{\star}  - V^{\pi^k} \right)  \right],
+\end{align*} where the expectation is with respect to the randomness of the MDP environment and potentially the randomness of the learner (i.e., the learner might make decisions in a randomized fashion). 
+
+\subsection{Low-Rank MDPs and Linear MDPs} 
+
+Note that here we do not assume $\Scal$ and $\Acal$ are finite anymore. Indeed in this note, both of them could be continuous. Without any further structural assumption, the lower bounds we saw in the Generalization Lecture forbid us to get a polynomially regret bound. 
+
+The structural assumption we make in this note is a linear structure in both reward and the transition. 
+\begin{definition}[Linear MDPs] Consider transition $\{P_h\}$ and $\{r_h\}_h$. A linear MDP has the following structures on $r_h$ and $P_h$:
+\begin{align*}
+r_h(s,a) = \theta_h^\star\cdot \phi(s,a), \quad P_h(\cdot | s,a) = \mu_h^\star  \phi(s,a), \forall h
+\end{align*} where $\phi$ is a known state-action feature map $\phi: \Scal\times\Acal\mapsto \mathbb{R}^d$, and $\mu^\star_h \in \mathbb{R}^{|\Scal| \times d }$. Here $\phi, \theta^\star_h$ are \textbf{known} to the learner, while $\mu^\star$  is unknown.  We further assume the following norm bound on the parameters: (1) $\sup_{s,a} \| \phi(s,a) \|_2 \leq 1$, (2) $\|  v^{\top} \mu_h^\star \|_2 \leq \sqrt{d}$ for any $v$ such that $\|v \|_{\infty} \leq 1$, and all $h$, and (3) $\|\theta_h^\star\|_2 \leq W$ for all $h$. We assume $r_h(s,a) \in [0,1]$ for all $h$ and $s,a$.
+\end{definition}
+
+The model essentially says that the transition matrix $P_h\in\mathbb{R}^{|\Scal| \times |\Scal||\Acal|}$ has rank at most $d$, and $P_h = \mu_h^\star \Phi$. where $\Phi\in\mathbb{R}^{d\times |\Scal||\Acal|}$ and each column of $\Phi$ corresponds to $\phi(s,a)$ for a pair $s,a\in\Scal\times\Acal$.
+
+%In the literature,  MDPs that has low-rank structure in its transition is called low-rank MDP (e.g., see \cite{jiang2017contextual}). Note that linear MDP is a  stronger assumption than Low-rank MDP: in linear MDP we assume $\phi$---the right hand side of the low-rank decomposition is known, while low rank MDP just assumes that the rank $d$ is known to the learner.   Simultaneously learning both sides $\mu$ and $\phi$ has recently been studied by \cite{agarwal2020flambe}.
+
+
+\paragraph{Linear Algebra Notations} For real-valued matrix $A$, we denote $\|A\|_2 = \sup_{x:\|x\|_2 = 1} \|Ax\|_2$ which denotes the maximum singular value of $A$. We denote $\|A\|_F$ as the Frobenius norm $\|A\|_F^2 = \sum_{i,j} A_{i,j}^2$ where $A_{i,j}$ denotes the $i,j$'th entry of $A$. For any Positive Definite matrix $\Lambda$, we denote $x^{\top} \Lambda x  = \|x\|^2_{\Lambda}$. We denote $\det(A)$ as the determinant of the matrix $A$.  For a PD matrix $\Lambda$, we note that $\det(\Lambda) = \prod_{i=1}^d \sigma_i$ where $\sigma_i$ is the eigenvalues of $\Lambda$. 
+For notation simplicity, during inequality derivation, we will use $\lesssim, \eqsim$ to suppress all absolute constants. We will use $\widetilde{O}$ to suppress all absolute constants and log terms. 
+
+\section{Planning in Linear MDPs }
+
+We first study how to do value iteration in linear MDP if $\mu$ is given.  %Along the way, we study some interesting properties of linear MDPs. 
+
+%\subsection{Value Iteration}
+We start from $Q^\star_{H-1}(s,a) = \theta_{H-1}^\star \cdot \phi(s,a)$, and $\pi^\star_{H-1}(s) = \argmax_{a} Q^\star_{H-1}(s,a) = \argmax_{a} \theta_{H-1}^\star \cdot \phi(s,a)$, and $V^\star_{H-1}(s) = \argmax_{a} Q_{H-1}^\star(s,a)$.
+
+Now we do dynamic programming from $h+1$ to $h$:
+\begin{align}
+\label{eq:linear_MDP_VI}
+Q^\star_{h}(s,a) & = \theta_h^\star\cdot \phi(s,a) + \EE_{s\sim P_h(\cdot | s,a)} V_{h+1}^\star(s') = \theta_h^\star \cdot \phi(s,a) + P_h(\cdot | s,a) \cdot V^\star_{h+1} = \theta_h^\star \cdot \phi(s,a) +  (\mu_h^\star \phi(s,a))^{\top} V^\star_{h+1}  \\
+&  = \phi(s,a) \cdot\left( \theta_h^\star +   (\mu_h^\star)^{\top} V^\star_{h+1}  \right)  = \phi(s,a) \cdot w_{h},  
+\end{align} where we denote $w_h := \theta_h^\star + (\mu_h^\star)^{\top} V^\star_{h+1}$. Namely we see that $Q^\star_{h}(s,a)$ is a linear function with respect to $\phi(s,a)$! We can continue by defining $\pi^\star_h(s) = \argmax_{a} Q^\star_h(s,a)$ and $V^\star_h(s) = \max_{a} Q^\star_h(s,a)$.
+
+At the end, we get a sequence of linear $Q^\star$, i.e., $Q^\star_h(s,a) = w_h\cdot \phi(s,a)$, and the optimal policy is also simple, $\pi^\star_h(s) = \argmax_{a} w_h\cdot \phi(s,a)$, for all $h = 0, \dots, H-1$.
+
+One key property of linear MDP is that a Bellman Backup of any function $f: \Scal\mapsto \mathbb{R}$ is a linear function with respect to $\phi(s,a)$. We summarize the key property in the following claim. 
+\begin{claim}Consider any arbitrary function $f: \Scal\mapsto [0,H]$. At any time step $h \in [0,\dots H-1]$, there must exist a $w\in\mathbb{R}^d$, such that, for all $s,a\in\Scal\times\Acal$:
+\begin{align*}
+r_h(s,a) + P_h(\cdot | s,a) \cdot f = w^{\top} \phi(s,a).
+\end{align*}
+\end{claim}
+The proof of the above claim is essentially the Eq.~\ref{eq:linear_MDP_VI}.
+
+\section{Learning Transition using Ridge Linear Regression}
+
+In this section, we consider the following simple question: given a dataset of state-action-next state tuples, how can we learn the transition $P_h$ for all $h$? 
+
+
+Note that $\mu^\star\in\mathbb{R}^{|\Scal|\times d}$. Hence explicitly writing down and storing the parameterization $\mu^\star$ takes time at least $|\Scal|$. We show that we can represent the model in a non-parametric way. 
+
+%We take a detour and first study Ridge Linear Regression and its statistical property here. 
+We consider a particular episode $n$. Similar to Tabular-UCBVI, we learn a model at the very beginning of the episode $n$ using all data from the previous episodes (episode $1$ to the end of the episode $n-1$).  We denote such dataset as:
+\begin{align*}
+\mathcal{D}_h^n = \left\{ s_h^i, a_h^i, s_{h+1}^i \right\}_{i=0}^{n-1}.
+\end{align*}
+
+We maintain the following statistics using $\mathcal{D}_h^n$: 
+\begin{align*}
+\Lambda_h^n = \sum_{i=0}^{n-1} \phi(s^i_h,a_h^i)\phi(s^i_h,a_h^i)^{\top} + \lambda I,
+\end{align*} where $\lambda \in \mathbb{R}^+$ (it will be set to $1$ eventually, but we keep it here for generality). 
+
+To get intuition of $\Lambda^n$, think about the tabular setting where $\phi(s,a)$ is a one-hot vector (zeros everywhere except that the entry corresponding to $(s,a)$ is one). Then $\Lambda_h^n$ is a diagonal matrix and the diagonal entry contains $N^n(s,a)$---the number of times $(s,a)$ has been visited. 
+
+
+
+We consider the following multi-variate linear regression problem. Denote $\delta(s)$ as a one-hot vector   that has zero everywhere except that the entry corresponding to $s$ is one.   Denote $\epsilon_{h}^i = P(\cdot | s_h^i,a_h^i) - \delta(s_{h+1}^i)$. Conditioned on history $\Hcal_{h}^i$ (history $\Hcal_{h}^i$ denotes  all information from the very beginning of the learning process up to and including $(s_h^i,a_h^i)$), we have:
+\begin{align*}
+\EE\left[ \epsilon_{h}^i \vert \Hcal_{h}^i \right] = 0,
+\end{align*}  simply because $s_{h+1}^i$ is sampled from $P_h(\cdot | s_h^i,a_h^i)$ conditioned on $(s_h^i,a_h^i)$. 
+Also note that $\| \epsilon_h^i \|_1 \leq 2$ for all $h,i$.
+
+Since $\mu_h^\star\phi(s_h^i,a_h^i) = P_h(\cdot | s_h^i,a_h^i)$, and $\delta(s_{h+1}^i)$ is an unbiased estimate of $P_h(\cdot | s_h^i,a_h^i)$ conditioned on $s_h^i,a_h^i$, it is reasonable to learn $\mu^\star$ via regression from $\phi(s_h^i,a_h^i)$ to $\delta(s_{h+1}^i)$. This leads us to the following ridge linear regression:
+\begin{align*}
+\widehat{\mu}_h^n = \argmin_{\mu\in\mathbb{R}^{|\Scal|\times d}} \sum_{i=0}^{n-1}\left\| \mu\phi(s_h^i,a_h^i) - \delta(s_{h+1}^i) \right\|_2^2 + \lambda \| \mu \|_F^2.
+\end{align*}
+
+Ridge linear regression has the following closed-form solution:
+\begin{align}
+\label{eq:model_learning}
+\widehat{\mu}_h^n = \sum_{i=0}^{n-1} \delta(s_{h+1}^i) \phi(s_{h}^i,a^i_{h})^{\top} (\Lambda_h^n)^{-1}
+\end{align}
+Note that $\widehat{\mu}_h^n \in \mathbb{R}^{|\Scal|\times d}$, so we never want to explicitly store it. Note that we will always use $\widehat{\mu}_h^n$ together with a specific $s,a$ pair and a value function $V$ (think about value iteration case), i.e., we care about $\widehat{P}_h^n(\cdot|s,a) \cdot V := (\widehat{\mu}_h^n \phi(s,a))\cdot V$, which can be re-written as:
+\begin{align*}
+\widehat{P}_h^n(\cdot|s,a) \cdot V := (\widehat{\mu}_h^n \phi(s,a))\cdot V =  \phi(s,a)^{\top} \sum_{i=0}^{n-1} (\Lambda_h^n)^{-1} \phi(s_h^i,a_h^i) V(s_{h+1}^i),
+\end{align*} where we use the fact that $\delta(s)^{\top} V = V(s)$. Thus the operator $\widehat{P}_h^n(\cdot|s,a) \cdot V$ simply requires storing all data and can be computed via simple linear algebra and the computation complexity is simply $\text{poly}(d, n)$---no poly dependency on $|\Scal|$. 
+
+
+Let us calculate the difference between $\widehat{\mu}_h^n$ and $\mu_h^\star$. 
+\begin{lemma}[Difference between $\widehat{\mu}_h$ and $\mu_h^\star$] For all $n$ and $h$, we must have:
+\begin{align*}
+\widehat{\mu}_h^n - \mu_h^\star = - \lambda \mu_h^\star \left( \Lambda_h^n\right)^{-1} + \sum_{i=1}^{n-1}\epsilon_h^i \phi(s_h^i, a_h^i)^{\top}\left( \Lambda_h^n\right)^{-1}.
+\end{align*}
+%Further for a fixed function $V:\Scal\mapsto [0,H]$, we have that for any $s,a\in\Scal\times\Acal$:
+%\begin{align*}
+%&\left\lvert \lambda V^{\top} \mu_h^\star (\Lambda_h^n)^{-1} \phi(s,a) \right\rvert \leq \sqrt{\lambda} \| \phi(s,a)^{\top}\|_{(\Lambda_h^n)^{-1}} {H\sqrt{d}}, \\
+%& \left\lvert \sum_{i=1}^{n-1} \phi(s,a)^{\top} (\Lambda_h^n)^{-1}  \phi(s_h^i,a_h^i) (\epsilon_h^i)^{\top} V \right\rvert \leq
+%\end{align*}
+\label{lem:difference_learned_model}
+\end{lemma}
+\begin{proof}
+We start from the closed-form solution of $\widehat\mu_h^n$: 
+\begin{align*}
+    \widehat{\mu}_h^n &=\sum_{i=0}^{n-1} \delta(s_{h+1}^i) \phi(s_{h}^i,a^i_{h})^{\top} (\Lambda^n_h)^{-1}=\sum_{i=0}^{n-1} ( P(\cdot|s_{h}^i,a^i_{h})+\epsilon^n_h) \phi(s_{h}^i,a^i_{h})^{\top} (\Lambda^n_h)^{-1}\\
+    &=\sum_{i=0}^{n-1} ( \mu^{\star}_h\phi(s_{h}^i,a^i_{h})+\epsilon^i_h ) \phi(s_{h}^i,a^i_{h})^{\top} (\Lambda^n_h)^{-1}=\sum_{i=0}^{n-1}  \mu^{*}_h\phi(s_{h}^i,a^i_{h}) \phi(s_{h}^i,a^i_{h})^{\top} (\Lambda^n_h)^{-1}+\sum_{i=0}^{n-1} \epsilon^i_h \phi(s_{h}^i,a^i_{h})^{\top} (\Lambda^n_h)^{-1}\\
+   &= \sum_{i=0}^{n-1}  \mu^{\star}_h\phi(s_{h}^i,a^i_{h}) \phi(s_{h}^i,a^i_{h})^{\top} (\Lambda^n_h)^{-1}+\sum_{i=0}^{n-1} \epsilon^i_h \phi(s_{h}^i,a^i_{h})^{\top} (\Lambda^n_h)^{-1}\\
+    &=  \mu^{\star}_h(\Lambda^n_h -\lambda I) (\Lambda^n_h)^{-1}+\sum_{i=0}^{n-1} \epsilon^i_h \phi(s_{h}^i,a^i_{h})^{\top} (\Lambda^n_h)^{-1}= \mu^{*}_h -\lambda  \mu^{\star}_h (\Lambda^n_h)^{-1}+\sum_{i=0}^{n-1} \epsilon^i_h \phi(s_{h}^i,a^i_{h})^{\top} (\Lambda^n_h)^{-1}. 
+\end{align*} Rearrange terms, we conclude the proof. 
+\end{proof}
+
+%Now consider a pre-fixed function $V: \Scal\mapsto [0,H]$.  %We bound $\left\lvert \sum_{i=1}^{n-1}  (\Lambda_h^n)^{-1}  \phi(s_h^i,a_h^i) (\epsilon_h^i)^{\top} V \right\rvert$ as follows using the self-normalized vector-valued Martinagle (Lemma~\ref{lemma:self_norm})
+
+\begin{lemma}
+Fix $V:\Scal\mapsto [0,H]$. For all $n$ and $s,a\in\Scal\times\Acal$, and $h$, with probability at least $1-\delta$, we have:
+\begin{align*}
+\left\|  \sum_{i=0}^{n-1}\phi(s_h^i,a_h^i) (V^{\top} \epsilon_h^i) \right\|_{ (\Lambda_h^n)^{-1} } \leq  3H  \sqrt { \ln \frac{ H \det(\Lambda^n_h)^{1/2} \det(\lambda I)^{-1/2}    }{\delta}  }. 
+\end{align*}\label{lem:bounding_noise_term_linear_mdp}
+\end{lemma}
+
+\begin{proof}
+We first check the noise terms $\{ V^{\top} \epsilon_h^i \}_{h,i}$.  Since $V$ is independent of the data (it's a pre-fixed function), and by linear property of expectation, we have:
+\begin{align*}
+\EE\left[ V^{\top} \epsilon_h^i  \vert \Hcal_{h}^i \right]  = 0, \quad | V^{\top} \epsilon_h^i  | \leq \|V\|_{\infty} \|\epsilon_h^i \|_1 \leq 2 H, \forall h,i.
+\end{align*}
+Hence, this is a Martingale difference sequence. Using the Self-Normalized vector-valued Martingale Bound (Lemma~\ref{lemma:self_norm}), we have that for all $n$, with probability at least $1-\delta$:
+\begin{align*}
+\left\|  \sum_{i=0}^{n-1}\phi(s_h^i,a_h^i) (V^{\top} \epsilon_h^i) \right\|_{ (\Lambda_h^n)^{-1} } \leq  3H  \sqrt { \ln \frac{ \det(\Lambda^n_h)^{1/2} \det(\lambda I)^{-1/2}    }{\delta}  }. 
+\end{align*}
+Apply union bound over all $h\in [H]$, we get that with probability at least $1-\delta$, for all $n, h$:\begin{align}
+\left\|  \sum_{i=0}^{n-1}\phi(s_h^i,a_h^i) (V^{\top} \epsilon_h^i) \right\|_{ (\Lambda_h^n)^{-1} } \leq  3H  \sqrt { \ln \frac{ H \det(\Lambda^n_h)^{1/2} \det(\lambda I)^{-1/2}    }{\delta}  }. 
+\label{eq:mid_step}
+\end{align}
+\iffalse
+Now we get back to term $B$, we have:
+\begin{align*}
+\left\lvert \sum_{i=1}^{n-1} \phi(s,a)^{\top} (\Lambda_h^n)^{-1}  \phi(s_h^i,a_h^i) (\epsilon_h^i)^{\top} V \right\rvert & \leq \left\| \phi(s,a)^{\top} (\Lambda_h^n)^{-1/2}  \right\|_2 \left\|  (\Lambda_h^n)^{-1/2} \sum_{i=1}^{n-1} \phi(s_h^i,a_h^i) (V^{\top}\epsilon_h^i)  \right\|_2 \\
+& \leq  \| \phi(s,a) \|_{(\Lambda_h^n)^{-1}} \times 3H  \sqrt { \ln \frac{ H \det(\Lambda^n_h)^{1/2} \det(\lambda I)^{-1/2}    }{\delta}  }. 
+\end{align*}
+Note the above inequality holds with probability at least $1-\delta$ and it holds for all $s,a$ as the randomness is only at the term $\left\|  (\Lambda_h^n)^{-1/2} \sum_{i=1}^{n-1} \phi(s_h^i,a_h^i) (V^{\top}\epsilon_h^i)  \right\|_2$ which is independent of $s,a$.
+\fi
+\end{proof}
+
+
+%We went through this in the lecture and \textbf{please provide a proof here}.
+
+\section{Uniform Convergence via Covering}
+
+Now we take a detour first and consider how to achieve a uniform convergence result over a function class $\Fcal$ that contains infinitely many functions. Previously we know how to get uniform convergence if $\Fcal$ is finite---we simply do a union bound. However, when $\Fcal$ contains infinitely many functions, we cannot simply apply a union bound. We will use the covering argument here. 
+
+Consider the following ball with radius $R$: $\Theta = \{ \theta\in\mathbb{R}^d : \|\theta\|_2 \leq R\in\mathbb{R}^+ \}$.  Fix an $\epsilon$. An $\epsilon$-net $\Ncal_{\epsilon} \subset \Theta $ is a set such that for any $\theta \in \Theta$, there exists a $\theta' \in \Ncal_{\epsilon}$,  such that $\| \theta - \theta' \|_2 \leq \epsilon$.  We call the smallest $\epsilon$-net as $\epsilon$-cover.  Abuse notations a bit, we simply denote $\Ncal_{\epsilon}$ as the $\epsilon$-cover.
+
+The $\epsilon$-covering number is the size of $\epsilon$-cover $\Ncal_{\epsilon}$. We define the covering dimension as $\ln\left( |\Ncal_{\epsilon}|\right)$
+\begin{lemma}
+The $\epsilon$-covering number of the ball $\Theta = \{ \theta\in\mathbb{R}^d : \|\theta\|_2 \leq R\in\mathbb{R}^+ \}$ is upper bounded by $(1 + 2 R / \epsilon)^d$.
+\end{lemma}
+
+
+We can extend the above definition to a function class.  Specifically, we look at the following function. For a triple of $( w, \beta, \Lambda)$ where $w\in\mathbb{R}^d$ and $\|w\|_2 \leq L$, $\beta \in [0,B]$, and $\Lambda$ such that $\sigma_{\min}(\Lambda) \geq \lambda$, we define $f_{w,\beta,\Lambda}: \Scal \mapsto [0,R]$ as follows:
+\begin{align}
+f_{w, \beta, \Lambda}(s) = \min\left\{ \max_{a} \left(w^{\top}\phi(s, a) + \beta \sqrt{ \phi(s,a)^{\top}\Lambda^{-1}\phi(s,a)}\right), \; H\right\}, \forall s\in\Scal.
+\label{eq:form_of_hat_Q}
+\end{align}
+We denote the function class $\Fcal$ as:
+\begin{align}
+\label{eq:f_class}
+\Fcal = \{f_{w, \beta,\Lambda}: \|w\|_2 \leq L, \beta \in [0, B], \sigma_{\min}(\Lambda) \geq \lambda\}.
+\end{align} Note that $\Fcal$ contains infinitely many functions as the parameters are continuous. However we will show that it has finite covering number that scales exponentially with respect to the number of parameters in $(w, \beta,\Lambda)$.
+
+Why do we look at $\Fcal$? As we will see later in this chapter $\Fcal$ contains all possible $\widehat{Q}_h$ functions one could encounter during the learning process. %(recall UCBVI, we will use $\widehat{P}^n_h$ and $r+b_h^n$ for value iteration).
+
+\begin{lemma}[$\epsilon$-covering dimension of $\Fcal$] Consider $\Fcal$ defined in Eq.~\ref{eq:f_class}. Denote its  $\epsilon$-cover as $\Ncal_{\epsilon}$ with the $\ell_{\infty}$ norm as the distance metric, i.e., $d(f_1,f_2) = \|f_1 - f_2\|_{\infty}$ for any $f_1,f_2\in\Fcal$. We have that:
+\begin{align*}
+\ln\left( |\Ncal_{\epsilon}| \right) \leq d  \ln(1 + 6 L/\epsilon) + \ln(1 + 6B/(\sqrt{\lambda}\epsilon) ) + d^2 \ln(1 + 18B^2\sqrt{d} / (\lambda\epsilon^2)).
+%d \ln\left( 1 + 4L / \epsilon \right) + d^2 \ln\left( 1 + 8 d^{1/2} B^2 / (\lambda\epsilon^2) \right)
+\end{align*}\label{lem:cover}
+\end{lemma}
+Note that the $\epsilon$-covering dimension scales quadratically with respect to $d$. 
+
+\begin{proof}
+%\textbf{We provide a proof sketch here, and please fill in the detailed explanation}.
+We start from building a net over the parameter space $(w, \beta, \Lambda)$, and then we convert the net over parameter space to an $\epsilon$-net over $\Fcal$ under the $\ell_{\infty}$ distance metric. 
+
+We pick two functions that corresponding to parameters $(w, \beta, \Lambda)$ and $(\hat{w}, \hat{\beta},\widehat\Lambda)$. 
+\begin{align*}
+| f(s) - \hat{f}(s) | &\leq  \left\lvert \max_{a} \left(w^{\top} \phi(s,a) + \beta \sqrt{\phi(s,a)^{\top}\Lambda^{-1}\phi(s,a)} \right) - \max_{a} \left(\hat{w}^{\top} \phi(s,a) + \hat{\beta} \sqrt{\phi(s,a)^{\top}\hat\Lambda^{-1}\phi(s,a)} \right) \right\rvert \\
+& \leq   \max_{a} \left\lvert  \left(w^{\top} \phi(s,a) + \beta \sqrt{\phi(s,a)^{\top}\Lambda^{-1}\phi(s,a)} \right) -  \left(\hat{w}^{\top} \phi(s,a) + \hat{\beta} \sqrt{\phi(s,a)^{\top}\hat\Lambda^{-1}\phi(s,a)} \right) \right\rvert\\
+& \leq  \max_{a} \left\lvert  (w - \hat{w})^{\top} \phi(s,a)  \right\rvert + \max_{a} \left\lvert (\beta-\hat\beta)\sqrt{\phi(s,a)^{\top}\Lambda^{-1}\phi(s,a)} \right\rvert  \\
+& \qquad \qquad + \max_{a} \left\lvert \hat\beta (\sqrt{\phi(s,a)^{\top}\Lambda^{-1}\phi(s,a)} -\sqrt{\phi(s,a)^{\top}\hat\Lambda^{-1}\phi(s,a)} ) \right\rvert  \\
+& \leq \|w - \hat{w}\|_2 + | \beta-\hat\beta | / \sqrt{\lambda} + B \sqrt{ \left\lvert\phi(s,a)^{\top} (\Lambda^{-1} - \hat\Lambda^{-1}) \phi(s,a) \right\rvert   }  \\
+& \leq \|w - \hat{w}\|_2 + | \beta-\hat\beta | / \sqrt{\lambda} + B \sqrt{\| \Lambda^{-1} - \hat{\Lambda}^{-1} \|_F}
+\end{align*}
+Note that $\Lambda^{-1}$ is a PD matrix with $\sigma_{\max}(\Lambda^{-1}) \leq 1/\lambda$.
+
+Now we consider the $\epsilon/3$-Net $\mathcal{N}_{\epsilon/3, w}$ over $\{w: \|w\|_2 \leq L\}$,  $\sqrt{\lambda}\epsilon/3$-net $\mathcal{N}_{\sqrt{\lambda}\epsilon/3,\beta}$ over interval $[0,B]$ for $\beta$, and $\epsilon^2/(9B^2)$-net $\mathcal{N}_{\epsilon^2/(9B), \Lambda}$ over $\{\Lambda: \|\Lambda\|_F \leq \sqrt{d}/\lambda\}$. The product of these three nets provide a $\epsilon$-cover for $\mathcal{F}$, which means that that size of the $\epsilon$-net $\mathcal{N}_{\epsilon}$ for $\Fcal$ is upper bounded as:
+\begin{align*}
+ \ln|\mathcal{N}_{\epsilon}|  &\leq \ln| \mathcal{N}_{\epsilon/3,w} | + \ln | \mathcal{N}_{\sqrt{\lambda}\epsilon/3,\beta}| +\ln| \mathcal{N}_{\epsilon^2/(9B^2), \Lambda}| \\
+& \leq d  \ln(1 + 6 L/\epsilon) + \ln(1 + 6B/(\sqrt{\lambda}\epsilon) ) + d^2 \ln(1 + 18B^2\sqrt{d} / (\lambda\epsilon^2)).% \\
+%& \leq d  \ln(1 + 6 L/\epsilon) + 2d^2 \ln(1 + 18B^2\sqrt{d} / (\lambda\epsilon^2))
+\end{align*}
+
+\end{proof}
+
+\paragraph{Remark}
+Covering gives a way to represent the complexity of function class (or hypothesis class). Relating to VC, covering number is upper bound roughly by $\exp(d)$ with $d$ being the VC-dimension. However, there are cases where VC-dimensional is infinite, but covering number if finite. 
+%\end{remark}
+
+Now we can build a uniform convergence argument for all $f\in \Fcal$. %Note that previously 
+\begin{lemma}[Uniform Convergence Results] Set $\lambda = 1$. Fix $\delta\in (0,1)$. For all $n,h$, all $s,a$, and all $f\in \Fcal$, with probability at least $1-\delta$, we have:
+\begin{align*}
+\left\lvert \left( \widehat{P}^n_h(\cdot | s,a) - P(\cdot | s,a) \right) \cdot f \right\rvert \lesssim H \left\|\phi(s,a)\right\|_{(\Lambda_h^n)^{-1}} \left(\sqrt{d \ln(1+ 6 L \sqrt{N})} + d \sqrt{\ln(1 + 18 B^2 \sqrt{d} N)}  +  \sqrt{\ln \frac{H}{\delta}} \right).
+\end{align*}
+\label{lem:uniform_converge}
+\end{lemma} 
+\begin{proof}
+Recall Lemma~\ref{lem:bounding_noise_term_linear_mdp}, we have with probability at least $1-\delta$, for all $n, h$, for a pre-fixed $V$ (independent of the random process):
+\begin{align*}
+\left\|  \sum_{i=1}^{n-1}\phi(s_h^i,a_h^i) (V^{\top} \epsilon_h^i) \right\|^2_{ (\Lambda_h^n)^{-1} } \leq  9H^2   { \ln \frac{ H \det(\Lambda^n_h)^{1/2} \det(\lambda I)^{-1/2}    }{\delta}  } \leq  9H^2 \left( \ln \frac{H}{\delta} + d\ln\left( 1 + N \right) \right)
+\end{align*} where we have used the fact that $\|\phi\|_2 \leq 1$, $\lambda = 1$, and $\| \Lambda^n_h \|_2 \leq N + 1$.
+
+Denote the  $\epsilon$-cover of $\Fcal$ as $\Ncal_{\epsilon}$. With an application of a union bound over all functions in $\Ncal_{\epsilon}$, we have that with probability at least $1-\delta$, for all $V\in \Ncal_{\epsilon}$, all $n,h$, we have:
+\begin{align*}
+\left\|  \sum_{i=1}^{n-1}\phi(s_h^i,a_h^i) (V^{\top} \epsilon_h^i) \right\|^2_{ (\Lambda_h^n)^{-1} } \leq  9H^2 \left( \ln \frac{H}{\delta} + \ln\left(\left\lvert \Ncal_\epsilon \right\rvert\right) + d\ln\left( 1 + N \right) \right). 
+\end{align*}Recall Lemma~\ref{lem:cover}, substitute the expression of $\ln|\Ncal_\epsilon|$ into the above inequality, we get:
+\begin{align*}
+\left\|  \sum_{i=1}^{n-1}\phi(s_h^i,a_h^i) (V^{\top} \epsilon_h^i) \right\|^2_{ (\Lambda_h^n)^{-1} } \leq 9H^2 
+\left( \ln \frac{H}{\delta} + d \ln(1 + 6L/\epsilon) + d^2 \ln(1 + 18B^2 \sqrt{d} / \epsilon^2) + d\ln\left( 1 + N \right)\right). 
+\end{align*}
+Now consider an arbitrary $f\in\Fcal$. By the definition of $\epsilon$-cover, we know that for $f$, there exists a $V\in\Ncal_{\epsilon}$, such that $\| f - V \|_{\infty} \leq \epsilon$. Thus, we have:
+\begin{align*}
+\left\|  \sum_{i=1}^{n-1}\phi(s_h^i,a_h^i) (f^{\top} \epsilon_h^i) \right\|^2_{ (\Lambda_h^n)^{-1} }&  \leq 2 \left\|  \sum_{i=1}^{n-1}\phi(s_h^i,a_h^i) (V^{\top} \epsilon_h^i) \right\|^2_{ (\Lambda_h^n)^{-1} } +2  \left\|  \sum_{i=1}^{n-1}\phi(s_h^i,a_h^i) ((V-f)^{\top} \epsilon_h^i) \right\|^2_{ (\Lambda_h^n)^{-1} } \\
+& \leq 2 \left\|  \sum_{i=1}^{n-1}\phi(s_h^i,a_h^i) (V^{\top} \epsilon_h^i) \right\|^2_{ (\Lambda_h^n)^{-1} }  + 8 \epsilon^2 N \\
+& \leq 9H^2 
+\left( \ln \frac{H}{\delta} + d \ln(1 + 6L/\epsilon) + d^2 \ln(1 + 18B^2 \sqrt{d} / \epsilon^2) + d\ln\left( 1 + N \right)\right) + 8 \epsilon^2 N,
+\end{align*} where in the second inequality we use the fact that $\| \sum_{i=1}^{n-1} \phi(s_h^i,a_h^i) (V-f)^{\top}\epsilon_h^i\|^2_{(\Lambda^n_h)^{-1}} \leq 4\epsilon^2 N$, which is from
+\begin{align*}
+\left\| \sum_{i=1}^{n-1} \phi(s_h^i,a_h^i) (V-f)^{\top}\epsilon_h^i \right\|^2_{(\Lambda^n_h)^{-1}}\leq \| \sum_{i=1}^{n-1} \phi(s_h^i,a_h^i) 2\epsilon\|^2_{(\Lambda^n_h)^{-1}}\leq  \frac{4\epsilon^2}{\lambda}\| \sum_{i=1}^{n-1} \phi(s_h^i,a_h^i)\|_{2}\leq 4\epsilon^2N.
+\end{align*}
+
+
+
+Set $\epsilon = 1/\sqrt{N}$, we get:
+\begin{align*}
+\left\|  \sum_{i=1}^{n-1}\phi(s_h^i,a_h^i) (f^{\top} \epsilon_h^i) \right\|^2_{ (\Lambda_h^n)^{-1} }& \leq 9H^2 
+\left( \ln \frac{H}{\delta} + d \ln(1 + 6L\sqrt{N}) + d^2 \ln(1 + 18B^2 \sqrt{d} N ) + d\ln\left( 1 + N \right)\right) + 8  \\
+& \lesssim  H^2 \left( \ln \frac{H}{\delta} + d \ln(1+ 6 L \sqrt{N}) + d^2 \ln(1 + 18 B^2 \sqrt{d} N) \right),
+\end{align*}where we recall $\lesssim$ ignores absolute constants.
+
+
+Now recall that we can express $\left(\widehat{P}^n_h(\cdot | s,a) - P(\cdot | s,a)\right) \cdot f = \phi(s,a)^{\top} ( \widehat\mu^n_h - \mu^\star_h)^{\top} f$. Recall Lemma~\ref{lem:difference_learned_model}, we have:
+\begin{align*}
+&\left\lvert ( \widehat{\mu}_h^n \phi(s,a) - \mu_h^\star\phi(s,a))\cdot f \right\rvert  \leq  \left\lvert \lambda  \phi(s,a)^{\top}\left( \Lambda_h^n\right)^{-1}  \left(\mu_h^\star\right)^{\top} f \right\rvert  + \left\lvert \sum_{i=1}^{n-1} \phi(s,a)^{\top} (\Lambda_h^n)^{-1}  \phi(s_h^i,a_h^i) (\epsilon_h^i)^{\top} f \right\rvert\\
+& \lesssim  H \sqrt{d} \left\|\phi(s,a)\right\|_{(\Lambda_h^n)^{-1}} + \|\phi(s,a)\|_{(\Lambda_h^n)^{-1}} \sqrt{\left(H^2 \left( \ln \frac{H}{\delta} + d \ln(1+ 6 L \sqrt{N}) + d^2 \ln(1 + 18 B^2 \sqrt{d} N) \right)\right)}\\
+& \eqsim H \left\|\phi(s,a)\right\|_{(\Lambda_h^n)^{-1}} \left( \sqrt{\ln \frac{H}{\delta}} + \sqrt{d \ln(1+ 6 L \sqrt{N})} + d \sqrt{\ln(1 + 18 B^2 \sqrt{d} N)}  \right).
+\end{align*} 
+\end{proof}
+
+\section{Algorithm}
+
+Our algorithm, Upper Confidence Bound Value Iteration (UCB-VI) will use reward bonus to ensure optimism.  Specifically, we will the following reward bonus, which is motivated from the reward bonus used in linear bandit:
+\begin{align}
+\label{eq:bonus}
+b_h^n(s,a) = \beta \sqrt{ \phi(s,a)^{\top} (\Lambda_h^n)^{-1} \phi(s,a)},
+\end{align} where $\beta$ contains poly of $H$ and $d$, and other constants and log terms.  Again to gain intuition, please think about what this bonus would look like when we specialize linear MDP to tabular MDP.  
+
+
+
+
+\begin{algorithm}[h]
+\begin{algorithmic}[1]
+\State \textbf{Input: parameters $\beta, \lambda$}
+\For{$n = 1\dots N $}
+    \State Compute $\widehat{P}^n_h$ for all $h$ (Eq.~\ref{eq:model_learning})
+    \State Compute reward bonus $b^n_h$ for all h (Eq.~\ref{eq:bonus})
+    \State Run Value-Iteration on $\{\widehat{P}^n_h, r_h+b^n_h\}_{h=0}^{H-1}$ (Eq.~\ref{eq:vi})
+    \State Set $\pi^n$ as the returned policy of VI.
+\EndFor
+\end{algorithmic}
+\caption{UCBVI for Linear MDPs}
+\label{alg:ucbvi}
+\end{algorithm}
+
+
+With the above setup, now we describe the algorithm.  Every episode $n$, we learn the model $\widehat{\mu}^n_h$ via ridge linear regression. We then form the quadratic reward bonus as shown in Eq.~\ref{eq:bonus}. With that, we can perform the following truncated Value Iteration (always truncate the Q function at $H$):
+\begin{align}
+&\widehat{V}^n_{H}(s) = 0, \forall s,  \nonumber \\
+& \widehat{Q}^n_h(s,a) = \theta^\star\cdot \phi(s,a) + \beta \sqrt{ \phi(s,a)^{\top}(\Lambda_h^n)^{-1} \phi(s,a)} + \phi(s,a)^{\top}  (\widehat{\mu}^n_h)^{\top}   \widehat{V}^{n}_{h+1} \nonumber\\
+&\qquad= \beta \sqrt{ \phi(s,a)^{\top}(\Lambda_h^n)^{-1} \phi(s,a)}  + ( \theta^\star + (\widehat{\mu}^n_h)^{\top}   \widehat{V}^{n}_{h+1} )^{\top}\phi(s,a) , \nonumber \\
+& \widehat{V}^n_h(s) = \min\{ \max_{a} \widehat{Q}^n_h(s,a)  ,\; H\},  \quad \pi^n_h(s) = \argmax_{a} \widehat{Q}^n_h(s,a).
+ \label{eq:vi}
+\end{align}
+Note that above $\widehat{Q}^n_h$ contains two components: a quadratic component and a linear component. And $\widehat{V}^n_h$ has the format of $f_{w,\beta,\Lambda}$ defined in Eq.~\ref{eq:form_of_hat_Q}.
+
+The following lemma bounds the norm of linear weights in $\widehat{Q}^n_h$. 
+\begin{lemma}
+Assume $\beta \in [0, B]$. For all $n,h$, we have $\widehat{V}^n_h$ is in the form of Eq.~\ref{eq:form_of_hat_Q}, and $\widehat{V}^n_h$ falls into the following class:
+%we have that $\widehat{V}^n_h$ falls into the following function class 
+\begin{align}
+\mathcal{V} = \{ f_{w, \beta, \Lambda}: \|w\|_2 \leq W + \frac{HN}{\lambda}, \beta\in [0, B], \sigma_{\min}(\Lambda) \geq \lambda\}.
+\label{eq:function_range}
+\end{align}\label{lem:function_range}
+\end{lemma}
+\begin{proof}
+We just need to show that $\theta^\star + (\widehat\mu^n_h)^{\top} \widehat{V}^n_{h+1}$ has its $\ell_2$ norm bounded. This is easy to show as we always have $\| \widehat{V}^n_{h+1} \|_{\infty} \leq H$ as we do truncation at Value Iteration:
+\begin{align*}
+\left\| \theta^\star + (\widehat\mu^n_h)^{\top} \widehat{V}^n_{h+1}  \right\|_2 \leq  W + \left\|  (\widehat\mu^n_h)^{\top} \widehat{V}^n_{h+1}  \right\|_2.
+\end{align*}
+Now we use the closed-form of $\widehat{\mu}^n_h$ from Eq.~\ref{eq:model_learning}:
+\begin{align*}
+\left\| (\widehat\mu^n_h)^{\top} \widehat{V}^n_{h+1} \right\|_2 &  = \left\| \sum_{i=1}^{n-1} \widehat{V}^n_{h+1}(s_{h+1}^i) \phi(s_h^i,a_h^i)^{\top} (\Lambda_h^n)^{-1}  \right\|_2 \leq H \left\|  (\Lambda_h^n)^{-1} \sum_{i=0}^{n-1} \phi(s_h^i,a_h^i) \right\|_2  \leq \frac{Hn}{\lambda},
+\end{align*} where we use the fact that $\| \widehat{V}^n_{h+1} \|_{\infty} \leq H$, $\sigma_{\max}(\Lambda^{-1}) \leq 1/\lambda$, and $\sup_{s,a}\|\phi(s,a)\|_2\leq 1$.
+\end{proof}
+
+\section{Analysis of UCBVI for Linear MDPs}
+
+In this section, we prove the following regret bound for UCBVI.
+\begin{theorem}[Regret Bound] Set $\beta = \widetilde{O}\left( H d\right)$, $\lambda = 1$. UCBVI (Algorithm~\ref{alg:ucbvi}) achieves the following regret bound:
+\begin{align*}
+\mathbb{E}\left[ N V^\star - \sum_{i=0}^{N} V^{\pi^n} \right] \leq \widetilde{O}\left(  H^2  \sqrt{ d^3 N }\right)
+\end{align*}\label{thm:main}
+\end{theorem}
+
+The main steps of the proof are similar to the main steps of UCBVI in tabular MDPs.  We first prove optimism via induction, and then we use optimism to upper bound per-episode regret. Finally we use simulation lemma to decompose the per-episode regret. 
+
+In this section, to make notation simple, we set $\lambda = 1$ directly. 
+
+\subsection{Proving Optimism}
+
+
+
+Proving optimism requires us to first bound model error which we have built in the uniform convergence result shown in Lemma~\ref{lem:uniform_converge}, namely, the bound we get for $(\widehat{P}^n_h(\cdot | s,a) - P(\cdot | s,a))\cdot f$ for all $f\in \mathcal{V}$. Recall Lemma~\ref{lem:uniform_converge} but this time replacing $\Fcal$ by $\mathcal{V}$ defined in Eq.~\ref{eq:function_range}. With probability at least $1-\delta$, for all $n, h, s,a$ and for all $f\in\Vcal$, 
+\begin{align*}
+\left\lvert (\widehat{P}^n_h(\cdot | s,a) - P(\cdot | s,a))\cdot f\right\rvert & \leq H \left\|\phi(s,a)\right\|_{(\Lambda_h^n)^{-1}} \left( \sqrt{\ln \frac{H}{\delta}} + \sqrt{d \ln(1+ 6 (W+HN) \sqrt{N})} + d \sqrt{\ln(1 + 18 B^2 \sqrt{d} N)}  \right)\\
+&  \lesssim H d \left\|\phi(s,a)\right\|_{(\Lambda_h^n)^{-1}} \left( \sqrt{\ln \frac{H}{\delta}} +  \sqrt{ \ln(WN+HN^2) } +\sqrt{\ln( B^2 dN )} \right) \\
+& \lesssim  \left\|\phi(s,a)\right\|_{(\Lambda_h^n)^{-1}} \underbrace{Hd \left( \sqrt{\ln \frac{H}{\delta}} + \sqrt{ \ln(W+H) } + \sqrt{\ln B} + \sqrt{ \ln d} + \sqrt{\ln N}\right)}_{:=\beta}.
+\end{align*} 
+Denote the above inequality as event $\mathcal{E}_{model}$. Below we are going to condition on $\mathcal{E}_{model}$ being hold. Note that here for notation simplicity, we denote 
+\begin{align*}
+\beta = Hd \left( \sqrt{\ln \frac{H}{\delta}} + \sqrt{ \ln(W+H) } + \sqrt{\ln B} + \sqrt{ \ln d} + \sqrt{\ln N}\right) = \widetilde{O}\left( H d\right).
+\end{align*}
+
+\paragraph{remark}
+Note that in the definition of $\mathcal{V}$ (Eq.~\ref{eq:function_range}), we have $\beta \in [0,B]$. And in the above formulation of $\beta$, note that $B$ appears inside a log term. So we need to set $B$ such that $\beta \leq B$ and we can get the correct $B$ by solving the inequality $\beta\leq B$ for $B$. 
+%\end{remark}
+
+\begin{lemma}[Optimism]  Assume event $\mathcal{E}_{model}$ is true. 
+ for all $n$ and $h$, 
+\begin{align*}
+\widehat{V}^n_h(s) \geq V^\star_h(s), \forall s.
+\end{align*}
+\end{lemma}
+\begin{proof}
+We consider a fixed episode $n$. 
+We prove via induction. Assume that $\widehat{V}^n_{h+1}(s) \geq V^\star_{h+1}(s)$ for all $s$.  For time step $h$, we have:
+%{\blockedit 
+\begin{align*}
+& {\hat Q}^n_h(s,a) - Q^\star_h(s,a) \\
+& =  \theta^\star\cdot \phi(s,a) + \beta \sqrt{ \phi(s,a)^{\top}(\Lambda_h^n)^{-1} \phi(s,a)} + \phi(s,a)^{\top}  (\widehat{\mu}^n_h)^{\top}   \widehat{V}^{n}_{h+1} - \theta^\star\cdot\phi(s,a) -  \phi(s,a)^{\top}(\mu^\star_h)^{\top} V_{h+1}^\star \\
+& \geq \beta \sqrt{ \phi(s,a)^{\top}(\Lambda_h^n)^{-1} \phi(s,a)} + \phi(s,a)^{\top} \left( \widehat\mu^n_h - \mu_h^\star \right)^{\top} \widehat{V}^n_{h+1},
+\end{align*} where in the last inequality we use the inductive hypothesis that $\widehat{V}^n_{h+1}(s) \geq V^\star_{h+1}(s)$, and $\mu^\star_h \phi(s,a)$ is a valid distribution (note that $\widehat\mu^n_h \phi(s,a)$ is not necessarily a valid distribution).
+We need to show that the bonus is big enough to offset the model error $\phi(s,a)^{\top} \left( \widehat\mu^n_h - \mu_h^\star \right)^{\top} \widehat{V}^n_{h+1}$. Since we have event $\mathcal{E}_{model}$ being true, we have that:
+\begin{align*}
+\left\lvert (\widehat{P}^n_h(\cdot | s,a) - P(\cdot | s,a))\cdot  \widehat{V}^n_{h+1}\right\rvert  \lesssim \beta \|\phi(s,a)\|_{(\Lambda_h^n)^{-1}},
+\end{align*} as by the construction of $\mathcal{V}$, we know that $\widehat{V}^n_{h+1}\in \mathcal{V}$.
+
+%However, here note that $\widehat{V}^n_{h+1}$ is a random quantity, i.e., it depends on the data that we collected so far and hence it is not independent with respect to $\widehat\mu^n_h$. 
+
+This concludes the proof.
+\end{proof}
+\subsection{Regret Decomposition}
+
+Now we can upper bound the per-episode regret as follows:
+\begin{align*}
+V^\star - V^{\pi_n} \leq \widehat{V}^n_{0}(s_0) - V^{\pi_n}_{0}(s_0).
+\end{align*}
+We can further bound the RHS of the above inequality using simulation lemma. Recall Eq.~\ref{eq:sim_lem}  that we derived in the note for tabular MDP (Chapter~\ref{chap:tabular_exploration}:
+\begin{align*}
+\widehat{V}^n_{0}(s_0) - V^{\pi_n}_{0}(s_0) \leq \sum_{h=0}^{H-1} \mathbb{E}_{s,a\sim d^{\pi_n}_h} \left[ b_h^n(s,a) + \left( \widehat{P}^n_h(\cdot | s,a) - P(\cdot | s,a) \right) \cdot \widehat{V}^n_{h+1} \right].
+\end{align*} (recall that the simulation lemma holds for any MDPs---it's not specialized to tabular).
+
+In the event $\mathcal{E}_{model}$, we already know that for any $s,a,h,n$, we have $\left( \widehat{P}^n_h(\cdot | s,a) - P(\cdot | s,a) \right) \cdot \widehat{V}^n_{h+1} \lesssim \beta \| \phi(s,a) \|_{(\Lambda_h^n)^{-1}} = b_h^n(s,a)$. Hence, under $\mathcal{E}_{model}$, we have:
+\begin{align*}
+\widehat{V}^n_{0}(s_0) - V^{\pi_n}_{0}(s_0) \leq \sum_{h=0}^{H-1} \mathbb{E}_{s,a\sim d^{\pi_n}_h} \left[ 2 b_h^n(s,a)  \right] \lesssim \sum_{h=0}^{H-1} \mathbb{E}_{s,a\sim d^{\pi_n}_h} \left[  b_h^n(s,a)  \right].
+\end{align*}
+
+Sum over all episodes, we have the following statement. 
+\begin{lemma}[Regret Bound] Assume the event $\mathcal{E}_{model}$ holds. We have:
+\begin{align*}
+\sum_{n=0}^{N-1} \left({V}^\star_0(s_0) - V^{\pi_n}_{0}(s_0) \right) \leq \sum_{n=0}^{N-1} \sum_{h=0}^{H-1} \mathbb{E}_{s_h^n,a_h^n \sim d^{\pi_n}_h} \left[  b_h^n(s_h^n,a_h^n)  \right]
+\end{align*}\label{lem:general_regret_bound}
+\end{lemma}
+
+\subsection{Concluding the Final Regret Bound}
+
+We first consider the following elliptical potential argument, which is similar to what we have seen in the linear bandit lecture. 
+\begin{lemma}[Elliptical Potential] Consider an arbitrary  sequence of state action pairs $s_h^i,a_h^i$. Assume $\sup_{s,a}\| \phi(s,a) \|_2\leq 1$.  Denote $\Lambda^n_h = I + \sum_{i=0}^{n-1} \phi(s_h^i,a_h^i)\phi(s_h^i,a_h^i)^{\top}$.  We have:
+%{\blockedit 
+\begin{align*}
+\sum_{i=0}^{N-1} \phi(s_h^i,a_h^i) (\Lambda_h^i)^{-1} \phi(s_h^i,a_h^i) \leq  2 \ln\left( \frac{\det(\Lambda_h^{N+1})}{\det(I)} \right) \lesssim 2 d \ln(N).
+\end{align*}
+\end{lemma}
+% \textbf{Please complete the above proof}
+%{\blockedit
+\begin{proof}  By the Lemma 3.7 and 3.8 in the linear bandit lecture note,
+\begin{align*}
+\sum_{i=1}^N \phi(s_h^i,a_h^i) (\Lambda_h^i)^{-1} \phi(s_h^i,a_h^i) & \leq  2\sum_{i=1}^N \ln (1+ \phi(s_h^i,a_h^i) (\Lambda_h^i)^{-1} \phi(s_h^i,a_h^i)) \\
+&\leq  2 \ln\left( \frac{\det(\Lambda_h^{N+1})}{\det(I)} \right) \\
+& \leq 2d \ln (1 + \frac{N + 1}{d\lambda}) \lesssim 2 d \ln(N).
+\end{align*}
+where the first inequality uses that for $0 \leq y \leq 1$, $\ln(1 + y) \geq y/2 $.
+\end{proof}
+
+
+Now we use Lemma~\ref{lem:general_regret_bound} together with the above inequality to conclude the proof. 
+
+\begin{proof}[Proof of main Theorem~\ref{thm:main}]
+
+We split the expected regret based on the event $\mathcal{E}_{model}$.
+\begin{align*}
+ \EE\left[ N V^\star - \sum_{n=1}^N V^{\pi_n} \right] & = \EE\left[  \one\{\Ecal_{model} \text{ holds} \} \left(N V^\star - \sum_{n=1}^N V^{\pi_n} \right)\right] \\
+ & \qquad + \EE\left[  \one\{\Ecal_{model} \text{ doesn't hold} \} \left(N V^\star - \sum_{n=1}^N V^{\pi_n} \right)\right] \\
+& \leq   \EE\left[  \one\{\Ecal_{model} \text{ holds} \} \left(N V^\star - \sum_{n=1}^N V^{\pi_n} \right)\right] + \delta NH \\
+& \lesssim \EE  \left[    \sum_{n=1}^N \sum_{h=0}^{H-1} b_h^n(s_h^n,a_h^n)    \right] + \delta NH.
+\end{align*}
+Note that:
+\begin{align*}
+ \sum_{n=1}^N \sum_{h=0}^{H-1} b_h^n(s_h^n,a_h^n) &  = \beta  \sum_{n=1}^N \sum_{h=0}^{H-1} \sqrt{ \phi(s_h^n,a_h^n)^{\top} (\Lambda_h^n)^{-1} \phi(s_h^n,a_h^n) } \\
+ & =   \beta \sum_{h=0}^{H-1} \sum_{n=1}^N\sqrt{ \phi(s_h^n,a_h^n)^{\top} (\Lambda_h^n)^{-1} \phi(s_h^n,a_h^n) } \\
+ & \leq \beta \sum_{h=0}^{H-1} \sqrt{ N  \sum_{n=1}^N \phi(s_h^n,a_h^n)(\Lambda_h^n)^{-1}\phi(s_h^n,a_h^n) } \lesssim \beta  H  \sqrt{ N d \ln (N) }.
+\end{align*}
+Recall that $\beta = \widetilde{O}( H d)$. This concludes the proof. 
+\end{proof}
+
+
+
+
+
+
+\section{Bibliographic Remarks and Further Readings}
+
+There are number of ways to linearly parameterize an
+MDP such that it permits for efficient reinforcement learning (both
+statistically and computationally). The first observation that such assumptions lead to statistically
+efficient algorithms was due to~\cite{jiang2017contextual} due to that
+these models have low Bellman rank (as we
+shall see in Chapter~\ref{chap:Bellman_rank}).  The first
+statistically and computationally efficient algorithm for a linearly
+parameterized MDP model was due to
+~\cite{yang2019reinforcement,yang2019sample}. Subsequently,
+\cite{jin2020provably} provided a computationally and statistically
+efficient algorithm for  simplified version of this model, which is
+the model we consider here.
+The model of~\cite{DBLP:conf/aistats/0002JTS20,pmlr-v120-jia20a,ayoub2020, zhou2020provably} provides another linearly
+parameterized model, which can viewed as parameterizing
+$P(s'|s,a)$ as a linear combination of feature functions
+$\phi(s,a,s')$. One notable aspect of the model we choose to present
+here, where $P_h(\cdot | s,a) = \mu_h^\star  \phi(s,a)$, is
+that this model has a number of free parameters that is $|\Scal| \cdot
+d$ (note that $\mu$ is unknown and is of size $|\Scal| \cdot
+d$), and yet the statistical complexity does not depend on $|\Scal|$. Notably, this implies that accurate model estimation
+request $O(|\Scal|)$ samples, while the regret for
+reinforcement learning is only polynomial in  $d$.
+ The linearly parameterized models of~\cite{DBLP:conf/aistats/0002JTS20,pmlr-v120-jia20a,ayoub2020, zhou2020provably} are parameterized by $O(d)$
+parameters, and, while $O(d)$ free parameters suggests lower model
+capacity (where accurate model based estimation requires only
+polynomial in  $d$ samples), these models are incomparable to the linearly parameterized models
+presented in this chapter;
+
+It is worth observing that all of these models permit statistically
+efficient estimation due to that they have bounded Bellman rank~\cite{jiang2017contextual} (and
+bounded Witness rank~\cite{sun2019model}), a point which we return to
+in the next Chapter.
+
+The specific linear model we consider here was originally introduced
+by~\cite{jin2020provably}. The non-parametric model-based algorithm we
+study here was first introduced by \cite{lykouris2019corruption} (but
+under the context of adversarial attacks). 
+
+The analysis we present here does not easily extend to
+infinite dimensional feature $\phi$ (e.g., RBF kernel); here,
+\cite{agarwal2020pc} provide an algorithm and an analysis that extends to
+infinite dimensional $\phi$, i.e. where we have a Reproducing Kernel Hilbert Space
+(RKHS) and the regret is based on the concept of Information Gain.  
+

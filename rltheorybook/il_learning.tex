@@ -1,0 +1,1030 @@
+% !TEX root = rltheorybook_AJKS.tex
+
+\chapter{Imitation Learning}
+\label{chap:il}
+%\lecture{\thechapter}{}{Alekh Agarwal, Sham Kakade}{Apprenticeship Learning, Imitation Learning, and Behavioral Cloning}
+
+%{\bf To be added... \/}
+
+In this chapter, we study imitation learning. Unlike the Reinforcement Learning setting, in Imitation Learning,  we do not have access to the ground truth reward function (or cost function), but instead, we have expert demonstrations. We often assume that the expert is a policy that approximately optimizes the underlying reward (or cost) functions. 
+The goal is to leverage the expert demonstrations to learn a policy that performs as good as the expert. 
+
+We consider three settings of imitation learning: (1) pure offline where we only have expert demonstrations and no more real world interaction is allowed, (2) hybrid where we have expert demonstrations, and also is able to interact with the real world (e.g., have access to the ground truth transition dynamics); (3) interactive setting where we have an interactive expert and also have access to the underlying reward (cost) function. 
+
+
+\section{Setting}
+We will focus on finite horizon MDPs $\Mcal = \{ \Scal, \Acal, r, \mu, P, H \}$ where $r$ is the reward function but is unknown to the learner.  We represent the expert as a closed-loop policy $\pi^\star:\Scal\mapsto \Delta(\Acal)$.  For analysis simplicity, we assume the expert $\pi^\star$ is indeed the optimal policy of the original MDP $\Mcal$ with respect to the ground truth reward $r$. Again, our goal is to learn a policy $\widehat{\pi}:\Scal\mapsto \Delta(\Acal)$ that performs as well as the expert, i.e., $V^{\widehat\pi}$ needs to be close to $V^\star$, where $V^{\pi}$ denotes the expected total reward of policy $\pi$ under the MDP $\Mcal$. We denote $d^{\pi}$ as the state-action visitation of policy $\pi$ under $\Mcal$. 
+
+We assume we have a pre-collected expert dataset in the format of $\{s_i^\star, a_i^\star\}_{i=1}^M$ where $s_i^\star, a_i^\star \sim d^{\pi^\star}$. 
+
+
+\section{Offline IL: Behavior Cloning}
+
+%We consider the setting where we have an MDP and an expert policy $\pi^\star$ which we simply assume to be the optimal policy of the MDP. We have a dataset $\Dcal^\star = \{s_i,a_i\}_{i=1}^M$ where $s_i,a_i \sim d^{\pi^\star}$.
+We study offline IL here. Specifically, we study the classic Behavior Cloning algorithm. 
+
+We consider a policy class $\Pi = \{\pi: \Scal\mapsto \Delta(A)\}$. We consider the following realizable assumption.
+\begin{assumption}
+\label{assum:realizable_in_BC}
+We assume $\Pi$ is rich enough such that $\pi^\star \in \Pi$.
+\end{assumption}
+
+For analysis simplicity, we assume $\Pi$ is discrete. But our sample complexity will only scale with respect to $\ln(|\Pi|)$. 
+
+Behavior cloning is one of the simplest Imitation Learning algorithm which only uses the expert data $\Dcal^\star$ and does not require any further interaction with the MDP.  It computes a policy via a reduction to supervised learning. Specifically, we consider a reduction to Maximum Likelihood Estimation (MLE):
+\begin{align}
+\label{eq:bc_mle}
+\text{Behavior Cloning (BC): \quad }  \widehat{\pi} = \argmax_{\pi\in\Pi} \sum_{i=1}^N \ln \pi( a^\star_i | s^\star_i ). 
+\end{align} Namely we try to find a policy from $\Pi$ that has the maximum likelihood of fitting the training data.  As this is a reduction to MLE, we can  leverage the existing classic analysis of MLE (e.g., Chapter 7 in \cite{geer2000empirical}) to analyze the performance of the learned policy. 
+
+\begin{theorem}[MLE Guarantee]
+Consider the MLE procedure (Eq.~\ref{eq:bc_mle}). With probability at least $1-\delta$, we have:
+\begin{align*}
+\mathbb{E}_{s\sim d^{\pi^\star}} \left\| \widehat\pi(\cdot |s) - \pi^\star(\cdot |s)   \right\|_{tv}^2 \leq \frac{2 \ln\left( | \Pi | / \delta \right) }{M}.
+\end{align*}\label{them:mle_to_tv}
+\end{theorem} We refer readers to Section E, Theorem 21 in \cite{agarwal2020flambe} for detailed proof of the above MLE guarantee. 
+
+Now we can transfer the average divergence between $\widehat\pi$ and $\pi^\star$ to their performance difference $V^{\widehat\pi}$ and $V^{\pi^\star}$.
+
+One thing to note is that BC only ensures that the learned policy $\widehat\pi$ is close to $\pi^\star$ under $d^{\pi^\star}$.  Outside of $d^{\pi^\star}$'s support, we have no guarantee that $\widehat\pi$ and $\pi^\star$ will be close to each other. The following theorem shows that a compounding error occurs when we study the performance of the learned policy $V^{\widehat{pi}}$.
+\begin{theorem}[Sample Complexity of BC] With probability at least $1-\delta$, BC returns a policy $\widehat\pi$ such that:
+\begin{align*}
+V^\star - V^{\widehat\pi} \leq  \frac{3}{(1-\gamma)^2} \sqrt{ \frac{ \ln(|\Pi| / \delta) }{M} }.
+\end{align*}
+\end{theorem}
+\begin{proof}
+We start with the performance difference lemma and the fact that $\EE_{a\sim \pi(\cdot | s)}A^{\pi}(s,a) = 0$:
+\begin{align*}
+&(1-\gamma) \left(V^{\star} - V^{\widehat\pi}\right) = \mathbb{E}_{s\sim d^{\pi^\star}} \EE_{a\sim \pi^\star(\cdot | s)}A^{\widehat\pi}(s,a) \\
+& =   \mathbb{E}_{s\sim d^{\pi^\star}} \EE_{a\sim \pi^\star(\cdot | s)}A^{\widehat\pi}(s,a) - \mathbb{E}_{s\sim d^{\pi^\star}} \EE_{a\sim \widehat\pi(\cdot | s)}A^{\widehat\pi}(s,a) \\
+& \leq \EE_{s\sim d^{\pi^\star}} \frac{1}{1-\gamma }\left\| \pi^\star(\cdot | s) - \widehat\pi(\cdot | s)   \right\|_1 \\
+& \leq \frac{1}{1-\gamma} \sqrt{  \EE_{s\sim d^{\pi^\star}}\left\| \pi^\star(\cdot | s) - \widehat\pi(\cdot | s)   \right\|^2_1}\\
+& = \frac{1}{1-\gamma} \sqrt{ 4 \EE_{s\sim d^{\pi^\star}}\left\| \pi^\star(\cdot | s) - \widehat\pi(\cdot | s)   \right\|^2_{tv}}.
+\end{align*} where we use the fact that $\sup_{s,a,\pi} | A^{\pi}(s,a) | \leq \frac{1}{1-\gamma}$, and the fact that $(\EE[x])^2 \leq \EE[x^2]$.
+
+Using Theorem~\ref{them:mle_to_tv} and rearranging terms conclude the proof. 
+\end{proof}
+
+For Behavior cloning, from the supervised learning error the quadratic polynomial dependency on the effect horizon $1/(1-\gamma )$ is not avoidable in worst case \cite{ross2010efficient}.  This is often referred as the distribution shift issue in the literature. Note that $\widehat\pi$ is trained under $d^{\pi^\star}$, but during execution, $\widehat\pi$ makes prediction on states that are generated by itself, i.e., $d^{\widehat\pi}$, instead of the training distribution $d^{\pi^\star}$.
+%due to the fact that the algorithm do not interact with the underlying MDP at all during learning. 
+
+
+\section{The Hybrid Setting: Statistical Benefit and Algorithm}
+
+The question we want to answer here is that if we know the underlying MDP's transition $P$ (but the reward is still unknown), can we improve Behavior Cloning? In other words:
+\begin{center}
+\emph{what is the benefit of the known transition in addition to the expert demonstrations?}
+\end{center}
+
+
+Instead of a quadratic dependency on the effective horizon, we should expect a linear dependency on the effective horizon.  The key benefit of the known transition is that we can test our policy using the known transition to see how far away we are from the expert's demonstrations, and then use the known transition to plan to move closer to the expert demonstrations. 
+
+In this section, we consider a statistical efficient, but computationally intractable algorithm, which we use to demonstrate that informationally theoretically, by interacting with the underlying known transition, we can do better than Behavior Cloning.  In the next section, we will introduce a popular and computationally efficient algorithm Maximum Entropy Inverse Reinforcement Learning (MaxEnt-IRL) which operates under this setting (i.e., expert demonstrations with a known transition).
+
+We start from the same policy class $\Pi$ as we have in the BC algorithm, and again we assume realizability (Assumption~\ref{assum:realizable_in_BC}) and $\Pi$ is discrete. 
+
+ Since we know the transition $P$, information theoretically, for any policy $\pi$, we have $d^{\pi}$ available (though it is computationally intractable to compute $d^{\pi}$ for large scale MDPs). We have $(s^\star_i,a^\star_i)_{i=1}^M \sim d^{\pi^\star}$. 
+
+Below we present an algorithm which we called Distribution Matching with Scheff\'e Tournament (DM-ST). 
+
+For any two policies $\pi$ and $\pi'$, we denote $f_{\pi,\pi'}$ as the following witness function:
+\begin{align*}
+f_{\pi,\pi'} := \argmax_{f: \|f\|_{\infty} \leq 1}\left[ \EE_{s,a\sim d^{\pi}} f(s,a) - \EE_{s,a\sim d^{\pi'}}f(s,a) \right].
+\end{align*} We denote the set of witness functions as:
+\begin{align*}
+\Fcal = \{ f_{\pi,\pi'}: \pi,\pi' \in \Pi, \pi\neq \pi' \}. 
+\end{align*}Note that $|\Fcal | \leq |\Pi|^2$.
+
+DM-ST selects $\widehat\pi$ using the following procedure:
+\begin{align*}
+\text{DM-ST:\quad} \widehat\pi \in \argmin_{\pi\in \Pi} \left[ \max_{f\in \Fcal} \left[ \mathbb{E}_{s,a\sim d^{\pi}} f(s,a) - \frac{1}{M} \sum_{i=1}^M f(s^\star_i,a^\star_i)  \right]  \right].
+\end{align*}
+
+The following theorem captures the sample complexity of DM-ST. 
+\begin{theorem}[Sample Complexity of DM-ST] With probability at least $1-\delta$, DM-ST finds a policy $\widehat\pi$ such that:
+\begin{align*}
+V^{\star} - V^{\widehat\pi} \leq \frac{4}{1-\gamma}  \sqrt{ \frac{ 2\ln(|\Pi|) + \ln\left(\frac{1}{\delta}\right)   }{M}}.
+\end{align*}
+\end{theorem}
+\begin{proof}
+The proof basically relies on a uniform convergence argument over $\Fcal$ of which the size is $|\Pi|^2$.  First we note that for all policy $\pi\in \Pi$:
+\begin{align*}
+\max_{f\in \Fcal} \left[ \mathbb{E}_{s,a\sim d^{\pi}} f(s,a) - \EE_{s,a\sim d^{\star}} f(s,a)  \right]  &  = \max_{f: \|f\|_{\infty}\leq 1} \left[ \mathbb{E}_{s,a\sim d^{\pi}} f(s,a) - \EE_{s,a\sim d^\star}f(s,a)  \right]  =  \left\|  d^{\pi} - d^{\pi^\star}   \right\|_{1},
+\end{align*} where the first equality comes from the fact that $\Fcal$ includes  $\arg\max_{f: \|f\|_{\infty}\leq 1} \left[ \mathbb{E}_{s,a\sim d^{\pi}} f(s,a) - \EE_{s,a\sim d^\star}f(s,a)  \right]$.
+
+Via Hoeffding's inequality and a union bound over $\Fcal$, we get that with probability at least $1-\delta$, for all $f\in\Fcal$:
+\begin{align*}
+\left\lvert  \frac{1}{M} \sum_{i=1}^M f(s^\star_i,a^\star_i) - \EE_{s,a\sim d^\star}f(s,a)  \right\rvert \leq 2\sqrt{ \frac{ \ln(|\Fcal |/\delta) }{M} } := \epsilon_{stat}.
+\end{align*}
+Denote $\widehat{f} := \arg\max_{f\in \Fcal} \left[ \mathbb{E}_{s,a\sim d^{\widehat\pi}} f(s,a) - \EE_{s,a\sim d^{\star}} f(s,a)  \right] $, and $\widetilde{f}:= \arg\max_{f\in\Fcal} \mathbb{E}_{s,a\sim d^{\widehat\pi}} {f}(s,a) - \frac{1}{M} \sum_{i=1}^M {f}(s_i,a_i)$.
+Hence, for $\widehat\pi$, we have:
+\begin{align*}
+\left\| d^{\widehat\pi} - d^\star  \right\|_{1} & = \mathbb{E}_{s,a\sim d^{\widehat\pi}} \widehat{f}(s,a) - \EE_{s,a\sim d^{\star}} \widehat{f}(s,a)  \leq \mathbb{E}_{s,a\sim d^{\widehat\pi}} \widehat{f}(s,a) - \frac{1}{M} \sum_{i=1}^M \widehat{f}(s^\star_i,a^\star_i) + \epsilon_{stat} \\
+& \leq \mathbb{E}_{s,a\sim d^{\widehat\pi}} \widetilde{f}(s,a) - \frac{1}{M} \sum_{i=1}^M \widetilde{f}(s_i,a_i) + \epsilon_{stat} \\
+& \leq \mathbb{E}_{s,a\sim d^{\pi^\star}} \widetilde{f}(s,a) - \frac{1}{M} \sum_{i=1}^M \widetilde{f}(s_i,a_i) + \epsilon_{stat} \\
+& \leq \mathbb{E}_{s,a\sim d^{\pi^\star}} \widetilde{f}(s,a) - \EE_{s,a\sim d^\star} \widetilde{f}(s,a) +2 \epsilon_{stat}  = 2\epsilon_{stat},
+\end{align*} where in the third inequality we use the optimality of $\widehat\pi$. 
+
+Recall that $V^{\pi} = \EE_{s,a\sim d^{\pi}} r(s,a) / (1-\gamma)$, we have:
+\begin{align*}
+V^{\widehat\pi} - V^\star = \frac{1}{1-\gamma} \left( \EE_{s,a\sim d^{\widehat\pi}}r(s,a) - \EE_{s,a\sim d^\star}r(s,a) \right) \leq \frac{\sup_{s,a} |r(s,a)| }{1-\gamma} \left\| d^{\widehat\pi} - d^\star \right\|_1 \leq \frac{2}{1-\gamma} \epsilon_{stat}. 
+\end{align*} 
+This concludes the proof. 
+\end{proof}
+
+Note that above theorem confirms the statistical benefit of having the access to a known transition: comparing to the classic Behavior Cloning algorithm, the approximation error of DM-ST only scales linearly with respect to horizon $1/(1-\gamma)$ instead of quadratically. 
+
+
+\subsection{Extension to Agnostic Setting}
+So far we focused on agnostic learning setting. What would happen if $\pi^\star\not\in \Pi$? We can still run our DM-ST algorithm as is. We state the sample complexity of DM-ST in agnostic setting below.
+
+\begin{theorem}[Agnostic Guarantee of DM-ST] Assume $\Pi$ is finite, but $\pi^\star\not\in\Pi$. With probability at least $1-\delta$, DM-ST learns a policy $\widehat\pi$ such that:
+\begin{align*}
+V^{\star} - V^{\widehat\pi} \leq  \frac{1}{1-\gamma} \| d^\star - d^{\widetilde\pi}\|_1 \leq  \frac{3}{1-\gamma} \min_{\pi\in\Pi} \| d^{\pi} - d^\star \|_1  + \widetilde{O}\left(\frac{1}{1-\gamma} \sqrt{\frac{ \ln(|\Pi| + \ln(1/\delta)) }{M}} \right).
+\end{align*}
+\end{theorem}
+\begin{proof}
+We first define some terms below. Denote $\widetilde\pi:= \argmin_{\pi\in\Pi} \| d^{\pi} - d^\star \|_1 $.  Let us denote:
+\begin{align*}
+&\widetilde{f} = \argmax_{f\in\Fcal} \left[ \EE_{s,a\sim d^{\widehat\pi}} f(s,a) - \EE_{s,a\sim d^{\widetilde\pi}} f(s,a) \right], \\
+& \overline{f} = \argmax_{f\in \Fcal} \left[ \EE_{s,a\sim d^{\widehat\pi}} f(s,a) - \frac{1}{M}\sum_{i=1}^M f(s^\star_i,a^\star_i) \right], \\
+& f' = \arg\max_{f\in\Fcal} \left[\EE_{s,a\sim d^{\widetilde\pi}} \left[ {f}(s,a)\right] -  \frac{1}{M}\sum_{i=1}^M {f}( s_i^\star, a_i^\star ) \right] .
+\end{align*} Starting with a triangle inequality, we have:
+\begin{align*}
+\left\| d^{\widehat\pi} - d^{\pi^\star} \right\|_1&  \leq \left\| d^{\widehat\pi} - d^{\widetilde\pi} \right\|_1 + \left\| d^{\widetilde\pi} - d^{\pi^\star} \right\|_1 \\
+& =  \EE_{s,a\sim d^{\widehat\pi}} \left[ \widetilde{f}(s,a)\right] - \EE_{s,a\sim d^{\widetilde\pi}}\left[ \widetilde{f}(s,a)\right]   + \left\| d^{\widetilde\pi} - d^{\pi^\star} \right\|_1  \\
+&  =  \EE_{s,a\sim d^{\widehat\pi}} \left[ \widetilde{f}(s,a)\right] -  \frac{1}{M}\sum_{i=1}^M \widetilde{f}( s_i^\star, a_i^\star )  + \frac{1}{M}\sum_{i=1}^M \widetilde{f}( s_i^\star, a_i^\star ) -
+\EE_{s,a\sim d^{\widetilde\pi}}\left[ \widetilde{f}(s,a)\right]   + \left\| d^{\widetilde\pi} - d^{\pi^\star} \right\|_1 \\
+& \leq  \EE_{s,a\sim d^{\widehat\pi}} \left[ \overline{f}(s,a)\right] -  \frac{1}{M}\sum_{i=1}^M \overline{f}( s_i^\star, a_i^\star )  + \frac{1}{M}\sum_{i=1}^M \widetilde{f}( s_i^\star, a_i^\star ) - \EE_{s,a\sim d^\star} \widetilde{f}(s,a) \\
+& \qquad + \left[ \EE_{s,a\sim d^\star} \widetilde{f}(s,a)-
+\EE_{s,a\sim d^{\widetilde\pi}}\left[ \widetilde{f}(s,a)\right]  \right] + \left\| d^{\widetilde\pi} - d^{\pi^\star} \right\|_1 \\
+& \leq \EE_{s,a\sim d^{\widetilde\pi}} \left[ {f'}(s,a)\right] -  \frac{1}{M}\sum_{i=1}^M {f'}( s_i^\star, a_i^\star ) +   2 \sqrt{\frac{\ln(|\Fcal|/\delta)}{ M }} + 2\| d^{\widetilde\pi} - d^\star\|_1  \\
+& \leq \EE_{s,a\sim d^{\widetilde\pi}} \left[ {f'}(s,a)\right] -  \EE_{s,a\sim d^{\star}}\left[ f'( s, a ) \right] + 4 \sqrt{\frac{\ln(|\Fcal|/\delta)}{ M }} + 2\| d^{\widetilde\pi} - d^\star\|_1 \\
+& \leq 3 \| d^\star - d^{\widetilde\pi} \|_1 + 4 \sqrt{ \frac{\ln(|\Fcal|/\delta)}{M } },
+\end{align*} where the first inequality uses the definition of $\overline{f}$, the second inequality uses the fact that $\widehat\pi$ is the minimizer of $\max_{f\in\Fcal} \EE_{s,a\sim d^{\pi}}f(s,a) - \frac{1}{M}\sum_{i=1}^M f(s_i^\star,a_i^\star)$, along the way we also use Heoffding's  inequality where $\forall f\in\Fcal$, $| \EE_{s,a\sim d^\star} f(s,a) - \sum_{i=1}^M f(s_i^\star,a_i^\star) | \leq 2\sqrt{ \ln(|\Fcal|/\delta) / M}$, with probability at least $1-\delta$.
+\end{proof}
+
+As we can see, comparing to the realizable setting, here we have an extra term that is related to $\min_{\pi\in \Pi} \| d^\pi - d^\star \|_{1} $. Note that the dependency on horizon also scales linearly in this case.  In general, the constant $3$ in front of $\min_{\pi\in \Pi} \| d^\pi - d^\star \|_{1} $ is not avoidable in Scheff\'e estimator \cite{devroye2012combinatorial}. 
+
+
+
+
+\section{Maximum Entropy Inverse Reinforcement Learning}
+
+
+%\subsection{Setting}
+
+Similar to Behavior cloning, we assume we have a dataset of state-action pairs from expert $\mathcal{D}^\star = \{s^\star_i, a^\star_i\}_{i=1}^N$ where $s^\star_i, a^\star_i \sim d^{\pi^\star}$.  Different from Behavior cloning, here we assume that we have access to the underlying MDP's transition, i.e., we assume transition is known and we can do planning if we were given a cost function. 
+
+We assume that we are given a state-action feature mapping $\phi:\Scal\times\Acal\mapsto \mathbb{R}^d$ (this can be extended infinite dimensional feature space in RKHS, but we present finite dimensional setting for simplicity).  We assume the true ground truth cost function as $c(s,a) := \theta^\star \cdot\phi(s,a)$ with $\|\theta^\star\|_2 \leq 1$ and $\theta^\star$ being unknown. 
+
+The goal of the learner is to compute a policy $\pi: \Scal\mapsto \Delta(A)$ such that when measured under the true cost function, it performs as good as the expert, i.e., $\EE_{s,a\sim d^{\pi}} \theta^\star\cdot \phi(s,a) \approx \EE_{s,a\sim d^{\pi^\star}} \theta^\star\cdot \phi(s,a)$.
+
+We will focus on finite horizon MDP setting in this section. We denote $\rho^{\pi}(\tau)$ as the trajectory distribution induced by $\pi$ and $d^{\pi}$ as the average state-action distribution induced by $\pi$. 
+
+
+\subsection{MaxEnt IRL: Formulation and The Principle of Maximum Entropy}
+
+MaxEnt IRL uses the principle of Maximum Entropy and poses the following policy optimization optimization program:
+\begin{align*}
+&\max_{\pi} -\sum_{\tau} \rho^{\pi}(\tau) \ln \rho^{\pi}(\tau), \\
+& s.t., \mathbb{E}_{s,a\sim d^{\pi}} \phi(s,a) = \sum_{i=1}^N \phi(s_i^\star,a_i^\star) / N.
+\end{align*} Note that $\sum_{i=1}^N \phi(s_i^\star,a_i^\star) / N$ is an unbiased estimate of $\mathbb{E}_{s,a\sim d^{\pi^\star}} \phi(s,a)$.  MaxEnt-IRL searches for a policy that maximizes the entropy of its trajectory distribution subject to a moment matching constraint. 
+
+Note that there could be many policies that satisfy the moment matching constraint, i.e., $\mathbb{E}_{s,a\sim d^{\pi}} \phi(s,a) = \mathbb{E}_{s,a\sim d^{\pi^\star}}\phi(s,a)$, and any feasible solution is guaranteed to achieve the same performance of the expert under the ground truth cost function $\theta^\star\cdot \phi(s,a)$. The maximum entropy objective ensures that the solution is unique. 
+
+Using the Markov property, we notice that:
+\begin{align*}
+\argmax_{\pi} -\sum_{\tau} \rho^{\pi}(\tau) \ln \rho^{\pi}(\tau) = \argmax_{\pi} -\mathbb{E}_{s,a\sim d^{\pi}} \ln\pi(a|s).
+\end{align*}
+
+This, we can rewrite the MaxEnt-IRL as follows:
+\begin{align}
+\label{eq:maxent_irl_formulation}
+&\min_{\pi}  \mathbb{E}_{s,a\sim d^{\pi}} \ln\pi(a|s) , \\
+& s.t., \mathbb{E}_{s,a\sim d^{\pi}} \phi(s,a) = \sum_{i=1}^N \phi(s_i^\star,a_i^\star) / N.
+\end{align}
+
+\iffalse
+We start by searching for policies that matches to the expert's expected state-action feature, i.e., 
+\begin{align}
+\min_{\pi}  \left\| \mathbb{E}_{s,a\sim d^{\pi}} \phi(s,a) - \mathbb{E}_{s,a\sim d^{\pi^\star}} \phi(s,a)  \right\|^2_2. 
+\label{eq:minimize_l2}
+\end{align} To learn an interpretable cost function, we can rewrite the above objective using the dual of the $\ell_2$ norm as follows:
+\begin{align*}
+\min_{\pi}  \max_{\theta:\|\theta\|_2\leq 1} \left( \mathbb{E}_{s,a\sim d^{\pi}}  \theta^{\top} \phi(s,a) - \mathbb{E}_{s,a\sim d^{\pi^\star}} \theta^{\top}\phi(s,a)  \right),
+\end{align*}  where $\max_{\theta:\|\theta\|_2\leq 1} \left( \mathbb{E}_{s,a\sim d^{\pi}} \phi(s,a) - \mathbb{E}_{s,a\sim d^{\pi^\star}} \phi(s,a)  \right)$ is also known as Maximum Mean Discrepancy (MMD) measured under the feature map $\phi$. Note that via min-max theorem, we can swap the order of min and max above to get:
+\begin{align}
+ \max_{\theta:\|\theta\|_2\leq 1}  \left [ \left( \min_{\pi}  \mathbb{E}_{s,a\sim d^{\pi}} \theta^{\top}\phi(s,a) - \mathbb{E}_{s,a\sim d^{\pi^\star}} \theta^{\top}\phi(s,a)  \right)\right].
+ \label{eq:max_min_il}
+\end{align} Intuitively, we can interpret the above objective as selecting a cost function as follows. First for any cost function $\theta\cdot\phi(s,a)$, if the optimal policy under $\theta$ has smaller expected total cost than the expert policy's expert total cost, then this cost function will be not the ground truth cost function since we assume the expert is the minimizer of the ground truth cost function;  Secondly, following the above argument, we should pick a cost function $\theta$ such that  minimum achievable expected cost is equal to the expected cost under the expert $\pi^\star$.  Note that the value of the max-min objective in Eq.~\ref{eq:max_min_il} is always zero. This is because for any $\theta$, we have:
+\begin{align*}
+L(\theta) := \min_{\pi}  \mathbb{E}_{s,a\sim d^{\pi}} \theta^{\top}\phi(s,a) - \mathbb{E}_{s,a\sim d^{\pi^\star}} \theta^{\top}\phi(s,a)  \leq 0.
+\end{align*} But note $\max_{\theta:\|\theta\|_2\leq 1} L(\theta) \geq L(\theta^\star) = 0$, which implies $0 \geq \max_{\theta:\|\theta\|_2\leq 1} L(\theta) \geq 0$ and thus $\max_{\theta:\|\theta\|_2\leq 1} L(\theta) =0$.  Note that  while at $\theta^\star$, we achieve $L(\theta^\star) =0$, there is also a trivial solution $\theta = 0$ in which case $L(0 ) = 0$.
+
+
+In general, the optimization program in Eq.~\ref{eq:minimize_l2} (the other two objectives are all equivalent to Eq.~\ref{eq:minimize_l2}) does not admit a unique solution. Below, we apply the principle of maximum entropy to provide a unique solution.  Recall we have $\rho^{\pi}$ as the trajectory distribution induced by $\pi$.  We perform the following Maximum-Entropy Inverse RL (MaxEnt-IRL) optimization program:
+\begin{align}
+\label{eq:max_ent_irl}
+&\max_{\pi} - \mathbb{E}_{s,a\sim d^{\pi}} \ln \pi(a|s)\\ 
+%&\max_{\pi} - \sum_{\tau} \rho^{\pi}(\tau)  \ln\left( \rho^{\pi}(\tau)  \right), \\
+& s.t.,\max_{\theta:\|\theta\|_2 \leq 1}  \mathbb{E}_{s,a\sim d^{\pi}} \theta^{\top}\phi(s,a) - \mathbb{E}_{s,a\sim d^{\pi^\star}} \theta^{\top}\phi(s,a) = 0. \label{eq:constraint_maxent_irl}
+\end{align}
+Note that any feasible solution $\pi$ of the above program must be achieving equal performance as expert, since we have
+\begin{align*}
+0 = \max_{\theta:\|\theta\|_2 \leq 1}  \mathbb{E}_{s,a\sim d^{\pi}} \theta^{\top}\phi(s,a) - \mathbb{E}_{s,a\sim d^{\pi^\star}} \theta^{\top}\phi(s,a) \geq \mathbb{E}_{s,a\sim d^{\pi}} (\theta^\star)^{\top}\phi(s,a) - \mathbb{E}_{s,a\sim d^{\pi^\star}} (\theta^\star)^{\top}\phi(s,a) \geq 0, 
+\end{align*} where the first equality is due to the feasibility of $\pi$, and the last inequality is due to the fact that $\pi^\star$ is the optimal policy under cost function $\theta^\star \cdot \phi(s,a)$, which immediately implies that for feasible policy $\pi$, $\mathbb{E}_{s,a\sim d^{\pi}} (\theta^\star)^{\top}\phi(s,a) - \mathbb{E}_{s,a\sim d^{\pi^\star}} (\theta^\star)^{\top}\phi(s,a) = 0$. 
+Also using the Markov property, we can verify that 
+\begin{align*}
+\argmax_{\pi}   - \mathbb{E}_{s,a\sim d^{\pi}} \ln \pi(a|s) = \argmax_{\pi} \mathbb{E}_{\tau \sim \rho^{\pi}} \ln ( \rho^{\pi}(\tau))
+ = \argmax_{\pi} \text{Entropy}( \rho^{\pi} ).
+ \end{align*} 
+Thus, the MaxEnt-IRL formulation is searching, among all feasible policies (satisfying constraint~\ref{eq:constraint_maxent_irl}), the policy that has the maximum entropy in terms of its trajectory distribution---hence the principle of maximum entropy.  Note that entropy is a strongly concave function which admits a unique maximizer. Thus MaxEnt-IRL admits a unique solution. 
+\fi
+
+%we should select a cost function $\theta$ such that, under the chosen cost, the minimum possible expected cost achievable by any policy should be 
+
+\subsection{Algorithm}
+To better interpret the objective function, below we replace $\sum_i \phi(s_i^\star, a_i^\star) / N$ by its expectation $\mathbb{E}_{s,a\sim d^{\pi^\star}} \phi(s,a)$. Note that we can use standard concentration inequalities to  bound the difference between $\sum_i \phi(s_i^\star, a_i^\star) / N$ and $\mathbb{E}_{s,a\sim d^{\pi^\star}} \phi(s,a)$.
+ 
+Using Lagrange multipliers, we can rewrite the constrained optimization program in Eq.~\ref{eq:maxent_irl_formulation} as follows:
+\begin{align*}
+\min_{\pi} \mathbb{E}_{s,a\sim d^{\pi}} \ln \pi(a|s) +  \max_{\theta}  \mathbb{E}_{s,a\sim d^{\pi}} \theta^{\top}\phi(s,a) - \mathbb{E}_{s,a\sim d^{\pi^\star}} \theta^{\top}\phi(s,a).
+\end{align*} The above objective conveys a clear goal of our imitation learning problem: we are searching for $\pi$ that minimizes the MMD between $d^{\pi}$ and $d^{\pi^\star}$ with a (negative) entropy regularization on the trajectory distribution of policy $\pi$. 
+
+
+To derive an algorithm that optimizes the above objective, we first again swap the min max order via the minimax theorem:
+\begin{align*}
+  \max_{\theta} \left( \min_{\pi} \mathbb{E}_{s,a\sim d^{\pi}} \theta^{\top}\phi(s,a) - \mathbb{E}_{s,a\sim d^{\pi^\star}} \theta^{\top}\phi(s,a) +  \mathbb{E}_{s,a\sim d^{\pi}}\ln\pi(a|s)\right).
+\end{align*}
+The above objective proposes a natural algorithm where we perform projected gradient ascent on $\theta$, while perform best response update on $\pi$, i.e., given $\theta$, we solve the following planning problem:
+\begin{align}
+\label{eq:maxent_rl}
+ \argmin_{\pi} \mathbb{E}_{s,a\sim d^{\pi}} \theta^{\top}\phi(s,a) +  \mathbb{E}_{s,a\sim d^{\pi}}\ln\pi(a|s) .
+\end{align} Note that the above objective can be understood as planning with cost function $\theta^{\top}\phi(s,a)$ with an additional negative entropy regularization on the trajectory distribution. 
+On the other hand, given $\pi$, we can compute the gradient of $\theta$, which is simply the difference between the expected features:
+\begin{align*}
+\mathbb{E}_{s,a\sim d^{\pi}} \phi(s,a) - \mathbb{E}_{s,a\sim d^{\pi^\star}} \phi(s,a),
+\end{align*} which gives the following gradient ascent update on $\theta$:
+\begin{align}
+\label{eq:update_theta}
+\theta := \theta + \eta \left(\mathbb{E}_{s,a\sim d^{\pi}} \phi(s,a) - \mathbb{E}_{s,a\sim d^{\pi^\star}} \phi(s,a)\right).
+\end{align} %where $\Pi_{\theta: \|\theta\|_2 \leq 1} x = \argmin_{\theta:\|\theta\|_2 \leq 1} \|\theta - x\|_2$ for any $x$, i.e., the projection of $x$ onto the ball $\{\theta:\|\theta\|_2\leq 1\}$with radius $1$.
+
+\paragraph{Algorithm of MaxEnt-IRL} MaxEnt-IRL updates $\pi$ and $\theta$ alternatively using Eq.~\ref{eq:maxent_rl} and Eq.~\ref{eq:update_theta}, respectively.
+We summarize the algorithm in Alg.~\ref{alg:maxent_irl}. Note that for the stochastic gradient of $\theta_t$, we see that it is the empirical average feature difference between the current policy $\pi_t$ and the expert policy $\pi^\star$.
+
+\begin{algorithm}
+\begin{algorithmic}[1]
+    \Require Expert data $\mathcal{D}^\star= \{s^\star_i,a^\star_i\}_{i=1}^M$, MDP $\Mcal$, parameters $\beta, \eta, N$.
+    \State Initialize $\theta_0$ with $\|\theta_0\|_2 \leq 1$.
+    \For{$t=1,2,\ldots,$}
+    		\State Entropy-regularized Planning with cost $\theta_t^{\top}\phi(s,a)$: $\pi_{t} \in \argmin_{\pi} \mathbb{E}_{s,a\sim d^{\pi}} \left[ \theta_t^{\top}\phi(s,a) + \beta \ln \pi(a|s)\right].
+$
+	\State Draw samples $\{s_i,a_i\}_{i=1}^N \sim d^{\pi_t}$ by executing $\pi_t$ in $\Mcal$. 
+	\State Stochastic Gradient Update: $\theta' = \theta_t + \eta \left[ \frac{1}{N}\sum_{i=1}^N   \phi(s_i,a_i) - \frac{1}{M} \sum_{i=1}^M \phi(s_i^\star,a_i^\star)\right]$.
+	%\State Projection onto the unit ball: $\theta_{t+1} = \argmin_{\theta:\|\theta\|_2 \leq 1} \| \theta' - \theta  \|_2$.
+     \EndFor
+\end{algorithmic}
+\caption{MaxEnt-IRL}
+\label{alg:maxent_irl}
+\end{algorithm}
+%Note that for $\theta$ update, 
+%the expectation can be replaced by their corresponding empirical estimates by sampling state action pairs from $d^{\pi_t}$
+
+Note that Alg.~\ref{alg:maxent_irl} uses an entropy-regularized planning oracle. Below we discuss how to implement such entropy-regularized planning oracle via dynamic programming. 
+
+
+
+
+\subsection{Maximum Entropy RL: Implementing the Planning Oracle in Eq.~\ref{eq:maxent_rl}}
+
+The planning oracle in Eq.~\ref{eq:maxent_rl} can be implemented in a value iteration fashion using Dynamic Programming. We denote $c(s,a) := \theta\cdot \phi(s,a)$.  
+
+We are interested in implementing the following planning objective:
+\begin{align*}
+\argmin_{\pi} \mathbb{E}_{s,a\sim d^{\pi}} \left[ c(s,a)  +   \ln\pi(a|s)   \right]
+\end{align*}
+The subsection has its own independent interests beyond the framework of imitation learning.  This maximum entropy regularized planning formulation is widely used in RL as well and it is well connected to the framework of RL as Inference. 
+
+%We consider two examples here: (1) tabular MDPs and (2) Linear Quadratic Regulator.  
+%\paragraph{Implementing Eq.~\ref{eq:maxent_rl} for Tabular MDP}
+
+%\paragraph{Tabular MDPs}
+As usually, we start from the last time step $H-1$. For any policy $\pi$ and any state-action $(s,a)$, we have the cost-to-go $Q^{\pi}_{H-1}(s,a)$:
+\begin{align*}
+Q^{\pi}_{H-1}(s,a) = c(s,a) +  \ln \pi(a | s), \quad V^{\pi}_{H-1}(s ) = \sum_{a} \pi(a|s) \left(c(s,a) +  \ln \pi(a | s)\right).
+\end{align*} We have:
+\begin{align}
+\label{eq:temp_v_star}
+V^\star_{H-1}(s) = \min_{\rho\in \Delta(\Acal)} \sum_{a} \rho(a)  c(s,a) +  \rho(a) \ln \rho(a).
+\end{align} 
+Take gradient with respect to $\rho$, set it to zero and solve for $\rho$, we get:
+\begin{align*}
+\pi^\star_{H-1}(a | s) \propto \exp\left( - c(s,a)  \right), \forall s,a.
+\end{align*}
+%Intuitively, when $\beta \to 0^+$, $\pi^\star_{H-1}(s) \to \argmax_{a} c(s,a)$, while $\beta \to \infty$, we have $\pi^\star_{H-1}(\cdot|s) \to \text{Unifm}(\Acal)$.
+
+Substitute $\pi^\star_{H-1}$ back to the expression in Eq.~\ref{eq:temp_v_star}, we get:
+\begin{align*}
+V_{H-1}^\star(s) = - \ln \left( \sum_{a} \exp\left( -c(s,a) \right) \right), 
+\end{align*} i.e., we apply a softmin operator rather than the usual min operator (recall here we are minimizing cost). 
+
+With $V^\star_{h+1}$, we can continue to $h$. Denote $Q^\star(s,a)$ as follows:
+\begin{align*}
+Q^\star_h(s,a) = r(s,a) + \EE_{s'\sim P(\cdot | s,a)} V^\star_{h+1}(s').
+\end{align*} For $V^\star_h$, we have:
+\begin{align*}
+V^{\star}_{h}(s) = \min_{\rho\in\Delta(\Acal)} \sum_{a} \rho(a) \left( c(s,a)  +  \ln \rho(a)   + \EE_{s'\sim P(\cdot|s,a)}V^\star_{h+1}(s')\right).
+\end{align*} Again we can show that the minimizer of the above program has the following form:
+\begin{align}
+\pi^\star_{h}(a|s) \propto \exp\left(- { Q_h^\star(s,a) }  \right).
+\label{eq:soft_opt_policy}
+\end{align}   Substitute $\pi^\star_h$ back to $Q^\star_h$, we can show that:
+\begin{align*}
+V^\star_h(s )  = - \ln\left( \sum_{a} \exp\left( - Q^\star_h(s,a) \right)  \right),
+\end{align*} where we see again that $V^\star_h$ is based on a softmin operator on $Q^\star$. 
+
+Thus the \emph{soft value iteration} can be summarized below:
+\begin{align*}
+&\text{Soft Value Iteration: }\\
+ Q^\star_{H-1}(s,a) = c(s,a), \quad \pi^\star_h(a|s) \propto  & \exp(-Q_h^\star(s,a)), \quad V^\star_h(s) = - \ln\left( \sum_{a} \exp(-Q^\star_h(s,a) ) \right), \forall h.
+\end{align*}
+
+
+We can continue the above procedure to $h = 0$, which gives us the optimal policies, all in the form of Eq.~\ref{eq:soft_opt_policy}
+
+%Note that the above procedure can be understand as a soft value iteration, where $V^\star_h(s)$ not only contains the usual cost-to-go but also the negative entropy in the future as well, while the optimal policy instead of being greedy with respect to $c(s,a) + P(\cdot|s,a)\cdot V^\star_{h}$, it applies the softmax to $c(s,a) + P(\cdot|s,a)\cdot V^\star_{h}$.
+
+%\paragraph{LQR} 
+%To be added...
+
+
+\section{Interactive Imitation Learning: \\AggreVaTe and Its Statistical Benefit over Offline IL Setting}
+
+We study the Interactive Imitation Learning setting where we have an expert policy that can be queried at any time during training, and we also have access to the ground truth reward signal. 
+
+We present AggreVaTe (Aggregate Values to Imitate) first and then analyze its sample complexity under the realizable setting. %Perhaps more surprisingly, while it is widely believed that DAgger avoids the distribution shift issue presented in the offline IL algorithm BC, we demonstrate that indeed under realizable setting, in worst case, DAgger will encounter distribution shift and pay a quadratic dependency on the effective horizon. Along the way we also discuss under what assumptions DAgger avoids distribution shift. 
+
+Again we start with a realizable policy class $\Pi$ that is discrete. We denote $\Delta(\Pi)$ as the convex hull of $\Pi$ and each policy $\pi\in \Delta(\Pi)$ is a mixture policy represented by a distribution $\rho\in\mathbb{R}^{|\Pi|}$ with $\rho[i] \geq 0$ and $\|\rho\|_1 = 1$. With this parameterization, our decision space simply becomes $\Delta(|\Pi|)$, i.e., any point in $\Delta(|\Pi|)$ corresponds to a mixture policy.  Notation wise, given $\rho\in \Delta(|\Pi|)$, we denote $\pi_{\rho}$ as the corresponding mixture policy.  We denote $\pi_i$ as the i-th policy in $\Pi$. We denote $\rho[i]$ as the $i$-th element of the vector $\rho$.
+
+AggreVaTe assumes an interactive expert from whom I can query for action feedback. Basically, given a state $s$, let us assume that expert returns us the advantages of all actions, i.e., \emph{one query of expert oracle at any state $s$ returns $A^\star(s,a),\forall a \in \Acal$}.\footnote{Technically one cannot use one query to get $A^{\star}(s,a)$ for all $a$. But one can use importance weighting to get an unbiased estimate of $A^{\star}(s,a)$ for all $a$ via just one expert roll-out. For analysis simplicity, we assume one expert query at $s$ returns the whole vector $A^\star(s,\cdot) \in\mathbb{R}^{|\Acal|}$.} 
+
+%we can get a action query $a\sim\pi^\star(\cdot | s)$.
+
+\begin{algorithm}
+\begin{algorithmic}[1]
+    \Require The interactive expert, regularization $\lambda$
+    \State Initialize $\rho_0$ to be a uniform distribution.
+    \For{$t=0,2,\ldots,$}
+    	\State Sample $s_t \sim d^{\pi_{\rho_t}}$
+	\State Query expert to get $A^\star(s_t,a)$ for all $a\in \Acal$
+	\State Policy update: $\rho_{t+1} = \argmax_{\rho\in \Delta(|\Pi|)} \sum_{j=0}^t \sum_{i=1}^{|\Pi|} \rho[i] \left(\EE_{a\sim\pi_i(\cdot|s_t)}A^\star(s_t,a)\right) - \lambda \sum_{i=1}^{|\Pi|} \rho[i] \ln(\rho[i])$
+    \EndFor
+\end{algorithmic}
+\caption{AggreVaTe}
+\label{alg:AggreVaTe}
+\end{algorithm}
+
+The algorithm in summarized in Alg.~\ref{alg:AggreVaTe}.
+
+To analyze the algorithm, let us introduce some additional notations. Let us denote $\ell_t(\rho) = \sum_{i=1}^{|\Pi|} \rho[i] \EE_{a\sim \pi_i(\cdot | s)} A^\star(s_t, a)$, which is dependent on state $s_t$ generated at iteration $t$, and is a linear function with respect to decision variable $\rho$. AggreVaTe is essentially running the specific online learning algorithm, Follow-the-Regularized Leader (FTRL) (e.g., see \cite{shalev2011online}) with Entropy regularization:
+\begin{align*}
+\rho_{t+1} = \argmax_{\rho\in \Delta(|\Pi|)} \sum_{i=0}^{t} \ell_t(\rho) + \lambda \text{Entropy}(\rho).
+\end{align*} Denote $c = \max_{s,a} A^{\pi}(s,a)$. This implies that $\sup_{\rho,t}\| \ell_t(\rho) \| \leq c$.
+FTRL with linear loss functions and entropy regularization gives the following deterministic regret guarantees (\cite{shalev2011online}):
+\begin{align}
+\label{eq:noregret_aggrevate}
+\max_{\rho}\sum_{t=0}^{T-1}\ell_t(\rho) - \sum_{t=0}^{T-1} \ell_t(\rho_t) \leq  c \sqrt{ \log(|\Pi|) T}.
+\end{align}
+%This gives us the following 
+We will analyze AggreVaTe's sample complexity using the above result. 
+
+\begin{theorem}[Sample Complexity of AggreVaTe] Denote $c = \sup_{s,a} |A^\star(s,a)|$. Let us denote $\epsilon_{\Pi}$ and $\epsilon_{stat}$ as follows:
+\begin{align*}
+\epsilon_{\Pi} := \max_{\rho\in\Delta(|\Pi|)}\frac{1}{M} \sum_{t=0}^{M-1} \ell_t(\rho^\star), \quad \epsilon_{stat} := \sqrt{ \frac{\ln(|\Pi|)/\delta}{M} } + 2\sqrt{ \frac{\ln(1/\delta)}{M} }.
+\end{align*}
+With probability at least $1-\delta$, after $M$ iterations (i.e., $M$ calls of expert oracle), AggreVaTe finds a policy $\widehat\pi$ such that:
+\begin{align*}
+V^\star - V^{\widehat\pi} \leq   \frac{c}{1-\gamma} \epsilon_{stat} - \frac{1}{1-\gamma} \epsilon_{\Pi}.
+\end{align*}
+\end{theorem}
+\begin{proof}
+At each iteration $t$, let us define $\tilde\ell_t(\rho_t)$ as follows:
+\begin{align*}
+\tilde\ell_t(\rho_t) =  \EE_{s\sim d^{\pi_{\rho_t}}} \sum_{i=1}^{|\Pi|} \rho_t[i] \EE_{a\sim \pi_i(\cdot | s)} A^\star(s,a)
+\end{align*} Denote $\EE_t[ \ell_t(\rho_t)]$ as the conditional expectation of $\ell_t(\rho_t)$, conditioned on all history up and including the end of iteration $t-1$. Thus, we have $\EE_{t}[\ell_t](\rho_t) = \tilde\ell_t(\rho_t)$ as $\rho_t$ only depends on the history up to the end of iteration $t-1$.  Also note that $|\ell_t(\rho)| \leq c$. Thus by Azuma-Hoeffding inequality (Theorem~\ref{thm:Azuma}), we get:
+\begin{align*}
+\left\lvert \frac{1}{M}\sum_{t=0}^{M-1} \tilde\ell_t(\rho_t) - \frac{1}{T}\sum_{t=0}^{M-1} \ell_t(\rho_t)   \right\rvert \leq 2c \sqrt{ \frac{ \ln(1/\delta) }{M}},
+\end{align*} with probability at least $1-\delta$.
+Now use Eq.~\ref{eq:noregret_aggrevate}, and denote $\rho^\star = \argmin_{\rho\in\Delta(\Pi)} \frac{1}{M} \sum_{t=0}^{M-1} \ell_t(\rho)$, i.e., the best minimizer that minimizes the average loss $\sum_{t=0}^{M-1} \ell_t(\rho)/ M$. 
+%and the fact that for any $s$, for $\rho^\star$ which puts probability mass 1 on policy $\pi^\star$ and zero on any other policy, we must have $\ell_t(\rho^\star) = 0$ for all $t$. Thus, 
+we get:
+\begin{align*}
+\frac{1}{M} \sum_{t=0}^{M-1} \tilde\ell_t(\rho_t) \geq \frac{1}{M} \sum_{t=0}^{M-1} \ell_t(\rho_t) - 2c\sqrt{\frac{\ln(1/\delta)}{M}} \geq \frac{1}{M}\sum_{t=0}^{M-1} \ell_t(\rho^\star)  - c\sqrt{ \frac{\ln(|\Pi|)}{M}} - 2c\sqrt{\frac{\ln(1/\delta)}{M}},
+\end{align*}
+which means that there must exist a $\hat{t}\in \{0, \dots, {M-1}\}$, such that:
+\begin{align*}
+\widetilde{\ell}_{\hat{t}}(\rho_{\hat{t}}) \geq  \frac{1}{M} \sum_{t=0}^{M-1} \ell_t(\rho^\star) - c\sqrt{ \frac{\ln(|\Pi|)}{M}} - 2c\sqrt{\frac{\ln(1/\delta)}{M}}.
+\end{align*}
+Now use Performance difference lemma, we have:
+\begin{align*}
+(1-\gamma)\left( - V^{\star} + V^{\pi_{\rho_{\hat{t}}}}\right) & = \EE_{s\sim d^{\pi_{\rho_{\hat{t}}}}} \sum_{i=1}^{|\Pi|}\rho_{\hat{t}}[i] \EE_{a\sim \pi_i(\cdot | s)} A^\star(s,a) = \ell_{\hat{t}} (\rho_{\hat{t}}) \\
+& \geq  \frac{1}{M} \sum_{t=0}^{M-1} \ell_t(\rho^\star)  - c\sqrt{ \frac{\ln(|\Pi|)}{T}} - 2c\sqrt{\frac{\ln(1/\delta)}{T}}.
+\end{align*} Rearrange terms, we get:
+\begin{align*}
+V^\star - V^{\pi_{\rho_{\hat{t}}}} \leq -\frac{1}{1-\gamma}  \left[ \frac{1}{M} \sum_{t=0}^{M-1} \ell_t(\rho^\star)\right] +  \frac{c}{1-\gamma}\left[\sqrt{  \frac{\ln(|\Pi|)/\delta}{M} } + 2\sqrt{ \frac{\ln(1/\delta)}{M} } \right],
+\end{align*} which concludes the proof. 
+\end{proof}
+
+\paragraph{Remark} We analyze the $\epsilon_{\Pi}$ by discussing realizable setting and non-realizable setting separately. When $\Pi$ is realizable, i.e., $\pi^\star \in\Pi$, by the definition of our loss function $\ell_t$, we immediately have $\sum_{i=1}^M \ell_t(\rho^\star) \geq  0$ since $A^\star(s,\pi^\star(s)) = 0$ for all $s\in\Scal$.  Moreover, when $\pi^\star$ is not the globally optimal policy, it is possible that $ \epsilon_{\Pi} : = \sum_{i=1}^M \ell_t(\rho^\star)/M > 0$, which implies that when $M\to \infty$ (i.e., $\epsilon_{stat} \to 0$), AggreVaTe indeed can learn a policy that outperforms the expert policy $\pi^\star$.  In general when $\pi^\star \not\in\Pi$, there might not exist a mixture policy $\rho$ that achieves positive advantage against $\pi^\star$ under the $M$ training samples $\{s_0,\dots, s_{M-1}\}$. In this case, $\epsilon_{\Pi} < 0$. 
+
+Does AggreVaTe avoids distribution shift? Under realizable setting, note that the bound explicitly depends on $\sup_{s,a} |A^\star(s,a)|$ (i.e., it depends on $|\ell_t(\rho_t)|$ for all $t$). In worst case, it is possible that $\sup_{s,a} | A^\star(s,a)|  = \Theta(1/(1-\gamma))$, which implies that AggreVaTe could suffer a quadratic horizon dependency, i.e., $1/(1-\gamma)^2$.  Note that DM-ST provably scales linearly with respect to $1/(1-\gamma)$, but DM-ST requires a stronger assumption that the transition $P$ is known.  
+
+When $\sup_{s,a} |A^\star(s,a)| = o(1/(1-\gamma))$, then AggreVaTe performs strictly better than BC.  This is possible when the MDP is mixing quickly under $\pi^\star$, or $Q^\star$ is L- Lipschitz continuous, i.e., $ | Q^\star(s, a ) - Q^\star(s,a') | \leq L \|a - a'\|$, with bounded range in action space, e.g., $\sup_{a,a'} \|a-a'\| \leq  \beta \in \mathbb{R}^+$. In this case, if $L$ and $\beta$ are independent of $1/(1-\gamma)$, then $\sup_{s,a} | A^\star(s,a)| \leq L \beta$, which leads to a $\frac{\beta L}{1-\gamma}$ dependency. 
+
+When $\pi^\star\not\in\Pi$, the agnostic result of AggreVaTe and the agnostic result of DM-ST is not directly comparable.  Note that the model class error that DM-ST suffers is algorithmic-independent, i.e., it is $\min_{\pi\in\Pi} \| d^{\pi} - d^{\pi^\star} \|_1$ and it only depends on $\pi^\star$ and $\Pi$, while the model class $\epsilon_{\Pi}$ in AggreVaTe is algorithmic path-dependent, i.e., in additional to $\pi^\star$ and $\Pi$, it depends the policies $\pi_1,\pi_2, \dots$ computed during the learning process.  Another difference is that $\min_{\pi\in\Pi} \| d^{\pi} - d^{\pi^\star} \|_1 \in [0,2]$, while $\epsilon_{\Pi}$ indeed could scale linearly with respect to $1/(1-\gamma)$, i.e., $\epsilon_{\pi} \in [ -\frac{1}{1-\gamma}, 0]$ (assume $\pi^\star$ is the globally optimal policy for simplicity).
+
+
+%\paragraph{Implementing Eq.~\ref{eq:maxent_rl} for LQRs}
+
+%In general for parameterized and differential policy $\pi_\theta$, we can also optimize Eq.~\ref{eq:maxent_rl} via policy gradient descent.  We will have the policy gradient in the following form:
+%\begin{align*}
+%\mathbb{E}_{\tau \sim \rho^{\pi}} \left(\sum_{t=0}^{H-1} \ln\pi_\theta(a_t|s_h) \left[\sum_{h=0}^{H-1} c(s_h,a_h)\right]  \right)  + \mathbb{E}_{\tau\sim \rho^{\pi}} 
+%\end{align*}
+
+\section{Bibliographic Remarks and Further Readings}\label{bib:IL}
+
+Behavior cloning was used in autonomous driving back in 1989 \cite{pomerleau1989alvinn}, and the distribution shift and compounding error issue was studied by \citet{ross2010efficient}. \citet{ross2010efficient,ross2011reduction} proposed using interactive experts to alleviate the distribution shift issue. 
+
+MaxEnt-IRL was proposed by \citet{ziebart2008maximum}. The original MaxEnt-IRL focuses on deterministic MDPs and derived distribution over trajectories. Later \citet{ziebart2010modeling} proposed the Principle of Maximum Causal Entropy framework which captures  MDPs with stochastic transition.  MaxEnt-IRL has been widely used in real applications (e.g., \cite{kitani2012activity,ziebart2009planning}). 
+
+To the best of our knowledge, the algorithm Distribution Matching with Scheff\'e Tournament introduced in this chapter is new here and is the first to demonstrate the statistical benefit (in terms of sample complexity of the expert policy) of the hybrid setting over the pure offline setting with general function approximation.  
+
+Recently, there are approaches that extend the linear cost functions used in MaxEnt-IRL to deep neural networks which are treated as discriminators to distinguish between experts datasets and the datasets generated by the policies. Different distribution divergences have been proposed, for instance, JS-divergence \cite{ho2016generative}, general f-divergence which generalizes JS-divergence \cite{ke2019imitation}, and Integral Probability Metric (IPM) which includes Wasserstein distance \cite{sun2019provably}. While these adversarial IL approaches are promising as they fall into the hybrid setting, it has been observed that empirically, adversarial IL sometimes cannot outperform simple algorithms such as Behavior cloning which operates in pure offline setting (e.g., see experiments results on common RL benchmarks from \citet{brantley2019disagreement}).
+
+Another important direction in IL is to combine expert demonstrations and reward functions together (i.e., perform Imitation together with RL).  There are many works in this direction, including learning with pre-collected expert data  \cite{hester2017deep,rajeswaran2017learning,cheng2018fast,le2018hierarchical,sun2018truncated}, learning with an interactive expert \cite{daume2009search,ross2014reinforcement,chang2015learning,sun2017deeply,cheng2020policy,cheng2018convergence}.  The algorithm AggreVaTe was originally introduced in \cite{ross2014reinforcement}. A policy gradient and natural policy gradient version of AggreVaTe are introduced in \cite{sun2017deeply}. The precursor of AggreVaTe is the algorithm Data Aggregation (DAgger) \cite{ross2011reduction}, which leverages interactive experts and a reduction to no-regret online learning, but without assuming access to the ground truth reward signals. 
+
+The maximum entropy RL formulation has been widely used in RL literature as well. For instance, Guided Policy Search (GPS) (and its variants) use maximum entropy RL formulation as  its planning subroutine \cite{levine2013guided,levine2014learning}. We refer readers to the excellent survey from \citet{levine2018reinforcement} for more details of Maximum Entropy RL formulation and its connections to the framework of RL as Probabilistic Inference. 
+
+
+\iffalse
+\paragraph{Maximum Entropy Linear Quadratic Regulator} We can derive closed-form Gaussian policies when the underlying dynamics is a linear system and the cost functions are quadratic. 
+
+Recall the LQR model:
+\begin{align*}
+&s_{t+1} = A s_t + B a_t,  s_0 \sim \mu, \\
+& c(s, a) = \frac{1}{2} \left[ s^{\top} Q s + a^{\top} R a \right].
+\end{align*}
+We start from $h = H-1$. For any $s$, we have:
+\begin{align*}
+V^\star(s)_{H-1} = \min_{\pi_{H-1}(\cdot | s) \in \Delta(\Acal)} \EE_{a\sim \rho}\left[   \frac{1}{2} s^{\top} Q x + \frac{1}{2} a^{\top} R a +  \beta \ln \rho(a)   \right]
+\end{align*}
+Take derivative with respect to $\pi_{H-1}(a|s)$, set it to zero and solve for $\pi_{H-1}(a|s)$, we get:
+\begin{align*}
+\pi^\star_{H-1}(a|s) \propto \exp\left( -\frac{1}{2\beta} \left(  a^{\top } R a  \right)     \right),
+\end{align*} which implies that:
+\begin{align*}
+\pi^\star_{H-1}(\cdot | s) = \Ncal\left( 0,  \beta R^{-1} \right).
+\end{align*}
+Substitute it back to $V^\star_{H-1}$, we get:
+\begin{align*}
+V^\star_{H-1}(s) = \frac{1}{2} s^{\top} Q s + \frac{1}{2}\text{Tr}\left( \beta  R^{-1} R \right) + \beta \ln\det\left( 2\pi e \beta R^{-1} \right) = \frac{1}{2} s^{\top} M_{H-1} s + c_{H-1}, 
+\end{align*} where $M_{H-1} := Q$, and $c_{H-1} :=  \frac{d \beta}{2} + \beta \ln\det(2\pi e\beta R^{-1})$.
+Now assume that we have computed $V^\star_{h+1}(s)$ for all $s$ has the following format:
+\begin{align*}
+V^\star_{h+1}(s) = \frac{1}{2} s^{\top} M_{h+1} s + c_{h+1}. 
+\end{align*}We continue to derive $V^\star_h$ and $\pi^\star_{h}$. 
+\begin{align*}
+V_h^\star(s) = \min_{\pi(\cdot | s)} \mathbb{E}_{a\sim \pi(\cdot | s)} \left[ \frac{1}{2} s^{\top} Q s + \frac{1}{2} a^{\top} R a + \beta \ln \pi(a|s) +  \frac{1}{2} ( A s + B a)^{\top} M_{h+1} (As + B a) + c_{h+1}  \right]
+\end{align*}
+Again, we can take the derivative with respect to $\pi(a|s)$, set it zero, and solve for $\pi(a|s)$, we get:
+\begin{align*}
+\pi(a| s) \propto  \exp\left( - \frac{1}{2\beta} \left[  a^{\top} (R+B^{\top} M_{h+1} B) a + 2 s^{\top} A^{\top} M_{h+1} B a  \right]  \right).
+\end{align*} Rearrange terms, we get:
+\begin{align*}
+\pi_h^\star(\cdot | s) \propto \exp\left( -\frac{1}{\beta} \left(  a + K_h s   \right)^{\top} (R + B^{\top} M_{h+1} B)  (a + K_h s) \right)
+\end{align*}
+
+\fi
+
+\iffalse
+\section{Imitation Learning with Interactive Expert}
+Here we consider the a new setting where we have access to the underlying MDPs and we also have access to an interactive expert from who we can query for feedback. The query mode operates as follows. At any state $s$ where the agent currently, the agent can query for feedback from the expert, i.e., $a\sim \pi^\star(\cdot | s)$. 
+
+We present the Data Aggregation (DAgger) algorithm below. We again focus on realizable and finite policy class $\Pi$.  We expand our policy class to its simplex: $\overline{\Pi} := \Delta(\Pi)$, and each policy $\pi\in \overline\Pi$ can be represented by a distribution $\rho\in \Delta(|\Pi|)$ and can be written as a mixture policy $\pi: = \sum_{\pi'\in \Pi} \rho_i  \pi'$. A mixture policy $\pi$ with distribution $\rho$ can be interpreted as follows: at the initial state, we sample a policy in $\Pi$ from the distribution $\rho$, and then execute that policy over the entire trajectory. 
+
+
+DAgger finds a policy $\widehat\pi$ such that under the distribution $d^{\pi}$, $\pi$ can predict $\pi^\star$ well. Specifically, we have:
+\begin{align*}
+\EE_{s \sim d^{\widehat\pi}} \left\| \widehat\pi(\cdot | s) - \pi^\star(\cdot | s)  \right\|_{tv} \leq  \epsilon. 
+\end{align*}
+Via performance difference lemma, this immediately implies that:
+\begin{align*}
+(1-\gamma)\left(V^{\star} - V^{\widehat\pi}\right)  & =  - \EE_{s\sim d^{\widehat\pi}} \EE_{a\sim \widehat\pi(\cdot | s)} A^{\star}(s,a)  = - \EE_{s\sim d^{\widehat\pi}} \EE_{a\sim \widehat\pi(\cdot | s)} A^{\star}(s,a)  +  \EE_{s\sim d^{\widehat\pi}} \EE_{a\sim \pi^\star(\cdot | s)} A^{\star}(s,a) \\
+& \leq  \left( \sup_{s,a} \left\lvert A^\star(s,a) \right\lvert \right)  \EE_{s\sim \widehat\pi} \left\| \widehat\pi(\cdot | s) - \pi^\star(\cdot | s) \right\|_{1}.
+\end{align*}
+Thus, we have:
+\begin{align*}
+V^{\star} - V^{\widehat\pi} \leq \frac{ \sup_{s,a} | A^\star(s,a) |  }{1-\gamma} \epsilon. 
+\end{align*}
+DAgger avoids the quadratic effective horizon dependency $1/(1-\gamma)^2$ only under the condition that $\EE_{s\sim d^{\widetilde\pi}} \max_{a} | A^\star(s,a) | = o\left( \frac{1}{1-\gamma} \right)$. Note that in the worst case, it is possible that $\EE_{s\sim d^{\widetilde\pi}} \max_{a} | A^\star(s,a) | = \Theta\left( 1/ (1-\gamma)\right)$, in which case unlike DM-ST, DAgger indeed cannot avoid the quadratic dependency on the effective horizon and also suffers distribution shift issue as the Behavior cloning algorithm. Cooking up such MDPs is not hard. 
+
+\fi
+
+
+
+\iffalse
+Learning from demonstrations is the problem of learning a policy from
+expert demonstrations. In contrast to reinforcement learning, such
+procedures do not require carefully designed reward functions.
+%and, in
+%some cases, can operate with a relatively coarse-grained dynamics
+%model.
+
+Algorithms for learning from demonstrations may be classified
+according to the interaction model they operate in.
+%\textbf{Inverse
+%  Optimal Control} aspires to replicate the performance of an expert
+%using logged trajectories of expert behaviour.
+%Popular approaches to
+%achieve this objective include:
+The two popular approaches
+\begin{enumerate}
+    \item \emph{Behavioral Cloning} (a.k.a. \emph{Imitation Learning}): the learner attempts to directly
+      learn a state-to-action map from the expert demonstrations,
+      where we observe the state-action pairs on expert's trajectories.
+      \cite{ross2010efficient}.
+    \item \emph{Inverse Reinforcement Learning}: The learner chooses the best policy to optimise a reward function that is inferred from expert demonstrations \cite{ng2000algorithms,abbeel2004apprenticeship,syed2008game}.
+    \item \emph{Learning from observations}: the learner attempts to directly
+      learn a state-to-action map from the expert state trajectories,
+      where we only observe the states on the expert's trajectories.
+    \end{enumerate}
+\iffalse
+Algorithms for \textbf{Imitation Learning} are applicable in a
+permissive model interactions that allows querying of expert behaviour
+at specific states of the learner's choice
+\cite{ross2010efficient,ross2011reduction,ross2014reinforcement}. Successful
+algorithms for this setting often employ iterative regret minimisation
+procedures that gracefully negotiate the distributional mismatch
+between the experts trajectories and the learner's. 
+\fi
+
+\section{Linear Programming Formulations}
+
+Before we look at solution concepts, it is helpful to understand a
+different formulation of finding a optimal policy for a known MDP.
+
+\subsection{The Primal LP}
+
+Consider the optimization problem over $V \in \R^{|\Scal|}$:
+\begin{eqnarray*}
+\max  && \sum_s d_0(s) V(s)\\
+\textrm{ subject to } && V(s) \geq (1-\gamma) r(s,a) + \gamma \sum_{s'} P(s'|s,a) V(s')
+                         \, \quad \forall a \in\Acal, \, s\in\Scal\\
+\end{eqnarray*}
+
+The optimal value function $V^\star(d_0)$ is the value of this linear
+program, and the policy derived from the solution vector $V$ achieves
+the optimal value $V^\star(d_0)$.
+
+\subsection{The Dual LP}
+
+For a fixed (possibly stochastic) policy $\pi$, let us define the
+state-action visitation distribution $\mu_{d_0}^\pi$ as:
+\[
+\mu_{d_0}^\pi(s,a) = (1-\gamma) \sum_{t=0}^\infty \gamma^t
+{\Pr}^\pi(s_t=s, a_t=a)
+\]
+where $\Pr^\pi(s_t=s,a_t=a)$ is the state-action visitation
+probability, where we use $\pi$ in $M$ starting at state $s_0\sim d_0$.
+We drop the $d_0$ dependence when clear from context.
+% We
+%also write:
+%\[
+%d^\pi(s) = d_{d_0}^\pi(s) = \E_{s_0\sim d_0} \left[d_{s_0}^\pi(s)\right]
+%\]
+%where we drop the $d_0$ subscript when clear from context.
+
+It is possible to verify that $\mu$ satisfies, for all states
+$s \in \Scal$:
+\[
+\sum_a \mu^\pi(s,a) = (1-\gamma) d_0(s) + \gamma \sum_{s',a'} P(s|s',a') \mu^\pi(s',a')
+\]
+Now let us define the state-action polytope as follows:
+\[
+\mathcal{K}:=\{\mu |\, \mu\geq 0 \textrm{ and } \sum_a \mu(s,a) = (1-\gamma) d_0(s) + \gamma
+\sum_{s',a'} P(s|s',a') \mu(s',a')  \}
+\]
+Note that $\mathcal{K}$
+We now see that this set precisely characterizes all state-action visitation distributions.
+\begin{lemma}
+  \citep{puterman1994markov} We have that $\mathcal{K}$ is equal to
+  the set of all feasible state-action distributions, i.e. $\mu \in
+  \mathcal{K}$ if and only if there exists a (stationary) policy $\pi$
+  such that $\mu^\pi = \mu$.
+\end{lemma}
+% HW
+
+For $\mu \in \R^{\Scal\times\Acal}$, the dual LP formulation is as follows:
+\begin{eqnarray*}
+\max  && \sum_{s,a} \mu(s,a) r(s,a)\\
+\textrm{ subject to } && \mu \in \mathcal{K}\\
+\end{eqnarray*}
+
+If $\mu^\star$ is the solution to this LP, then we have that:
+\[
+\pi^\star(a|s) = \frac{\mu^\star(s,a)}{\sum_{a'} \mu^\star(s,a')} .
+\]
+An alternative optimal policy is $\argmax_a \mu^\star(s,a)$ (and these
+policies are identical if the optimal policy is unique).
+
+\section{Behavioral Cloning}
+
+Let us now suppose that we observe some expert behavior $\pi_e$, where
+we hope that $\pi_e$ has value near to that of an optimal policy.
+
+%\paragraph{Observation model}
+In the simplest setting, let us assume when we query the expert, we can
+get an independent sample:
+\[
+(s,a)\sim \mu^{\pi_e}\, .
+\]
+Note that if we were observing independent expert trajectories of
+length $\frac{c}{1-\gamma}$ (for a constant $c$), then
+each trajectory gives us $\frac{c}{1-\gamma}$ correlated samples.
+
+For analysis, it is more natural to abstract away this issue for now
+and assume the samples are independent. One can address this
+dependence issue in a algorithm dependent manner.
+
+Assume we obtain $m$ samples from the expert. Let us say that
+$\widehat{\mu}^{e}$ is the empirical estimate of $|\mu^{\pi_e}|$. It
+will also be natural to consider the effectiveness of various
+approaches when specialized do the tabular for setting. Here, it
+is helpful to observe that, with a standard concentration argument
+implies, we have with probability greater than
+$1-\delta$,
+\begin{equation}\label{eq:accuracy}
+\|\mu^{\pi_e} - \widehat{\mu}^{e}\|_1 \leq 2\sqrt{\frac{|\Scal| 
+    |\Acal| \log(1/\delta)}{m}}
+\end{equation}
+
+\iffalse
+In particular, let us assume we have a distribution
+$\widehat{\mu}^{e}$ such that:
+\begin{equation}\label{eq:accuracy}
+\|\mu^{\pi_e} - \widehat{\mu}^{e}\|_1 \leq \eps
+\end{equation}
+\fi
+
+
+\subsection{Behavioral Cloning via Supervised Learning}
+
+The supervised learning approach is to learn a policy that matches the
+behavioral policy. In the tabular setting, the most straightforward
+approach is to use the empirical samples $\widehat{\mu}^{e}$ to learn
+a deterministic multi-class classifier; note that this classifier is
+actually our policy as it is predicting our actions. Let us suppose
+that our \emph{classification error} is less than $\eps$; precisely,
+suppose
+\begin{equation}\label{eq:class_error}
+\E_{s,a \sim \mu^{\pi_e}} \left[ \mathds{1}\big[\pi_{\textrm{SL}}(s)\neq a\big]
+\right] \leq \eps \, .
+\end{equation}
+where $\pi_{\textrm{SL}}:\Scal \rightarrow \Acal$ is our deterministic policy.
+
+\begin{theorem}
+Suppose the classification error of $\pi_{\textrm{SL}}$ is less than
+$\eps$, as per Equation~\ref{eq:class_error}, then we have:
+  \[
+|V^{\pi_{\textrm{SL}}}(d_0) -V^{\pi_e}(d_0) |\leq \frac{\eps}{1-\gamma}
+  \]
+\end{theorem}
+
+\begin{proof}
+Due to that $A^{\pi_{\textrm{SL}}}(s,\pi_{\textrm{SL}}(s)) = 0$,
+the performance difference lemma (Lemma~\ref{lemma:perf_diff}) implies:
+\begin{eqnarray*}
+|V^{\pi_{\textrm{SL}}}(d_0) -V^{\pi_e}(d_0)| 
+&=& \frac{1}{1-\gamma}\big|\E_{s,a \sim \mu^{\pi_e} }
+\left[A^{\pi_{\textrm{SL}}}(s,a)\right] \big|\\
+&=& \frac{1}{1-\gamma}\left|\E_{s,a \sim \mu^{\pi_e} }
+\bigg[A^{\pi_{\textrm{SL}}}(s,a) \mathds{1}\big[\pi_{\textrm{SL}}(s)= a\big]\bigg]
++\E_{s,a \sim \mu^{\pi_e} }
+\bigg[A^{\pi_{\textrm{SL}}}(s,a) \mathds{1}\big[\pi_{\textrm{SL}}(s)\neq a\big]\bigg]\right|\\
+&=& \frac{1}{1-\gamma}\left|0
++\E_{s,a \sim \mu^{\pi_e} }
+\bigg[A^{\pi_{\textrm{SL}}}(s,a) \mathds{1}\big[\pi_{\textrm{SL}}(s)\neq a\big]\bigg]\right|\\
+&\leq& \frac{1}{1-\gamma} \|A^{\pi_{\textrm{SL}}}\|_\infty \cdot \E_{s,a \sim \mu^{\pi_e} }
+\bigg[\mathds{1}\big[\pi_{\textrm{SL}}(s)\neq a\big]\bigg]\\
+&\leq & \frac{\eps}{1-\gamma} \, ,
+\end{eqnarray*}
+which completes the proof.
+\end{proof}
+
+\iffalse
+The supervised learning approach is to learn a policy that matches the
+behavioral policy. In the tabular setting, the most straightforward
+approach is to use the empirical estimate $\widehat mu$. Specifically,
+for $s$ s.t. $\sum_{a'} \widehat{\mu}^{e}(s,a') > 0$, then we can use:
+\[
+\pi_{\textrm{SL}} (a|s) = \frac{\widehat{\mu}^{e}(s,a)}{\sum_{a'} \widehat{\mu}^{e}(s,a')} .
+\]
+else we can use any action at an unobserved state.
+
+\begin{theorem}
+We have that:
+  \[
+|V^{\pi_{\textrm{SL}}}(d_0) -V^{\pi_e}(d_0) |\leq \frac{2 \eps}{1-\gamma}
+  \]
+\end{theorem}
+
+\begin{proof}
+Using the performance difference lemma (Lemma~\ref{lemma:perf_diff}),
+\begin{eqnarray*}
+|V^{\pi_{\textrm{SL}}}(d_0) -V^{\pi_e}(d_0)| 
+&=& \frac{1}{1-\gamma}\bigg|\E_{s,a \sim \mu^{\pi_e} }
+\left[A^{\pi_{\textrm{SL}}}(s,a)\right] \bigg|\\
+&=& \frac{1}{1-\gamma}\bigg|\sum_{s,a} \mu^{\pi_e}(s,a) 
+A^{\pi_{\textrm{SL}}}(s,a)\bigg|\\
+&\leq & \frac{1}{1-\gamma}\left(\bigg|\sum_{s,a} \widehat{\mu}^{e}(s,a) 
+A^{\pi_{\textrm{SL}}}(s,a)\bigg|
++\bigg|\sum_{s,a} \bigg(\mu^{\pi_e}(s,a) -\widehat{\mu}^{e}(s,a)\bigg)
+A^{\pi_{\textrm{SL}}}(s,a)\bigg|\right)\\
+&\leq & \frac{1}{1-\gamma}\left(0+
+\|\mu^{\pi_e}-\widehat{\mu}^{e}\|_1
+\|A^{\pi_{\textrm{SL}}}\|_\infty\right)\\
+&\leq & \frac{2\eps}{1-\gamma} ,
+\end{eqnarray*}
+which completes the proof.
+\end{proof}
+\fi
+
+\paragraph{The tabular case:}
+In the tabular setting, the most straightforward
+approach is to use the empirical estimate $\widehat mu$. Specifically,
+for $s$ s.t. $\sum_{a'} \widehat{\mu}^{e}(s,a') > 0$, then we can use:
+\[
+\pi_{\textrm{SL}} (a|s) = \frac{\widehat{\mu}^{e}(s,a)}{\sum_{a'} \widehat{\mu}^{e}(s,a')} .
+\]
+else we can use any action at an unobserved state.
+
+\begin{corollary}
+Suppose the expert policy is deterministic.  In the tabular setting, with $m$ samples, we have that with
+  probability greater than $1-\delta$,
+  \[
+|V^{\pi_{\textrm{SL}}}(d_0) -V^{\pi_e}(d_0) |\leq \frac{2}{1-\gamma}    
+%\E_{s,a \sim \mu^{\pi_e}} \left[ \mathds{1}\big[\pi_{\textrm{SL}}(s)\neq a\big]\right]
+\sqrt{\frac{|\Scal| |\Acal| \log(1/\delta)}{m}}
+\]
+\end{corollary}
+
+\begin{proof}
+\begin{eqnarray*}
+\E_{s,a \sim \mu^{\pi_e}} \left[ \mathds{1}\big[\pi_{\textrm{SL}}(s)\neq a\big]\right]
+&=&
+\sum_{s,a} \mu^{\pi_e}(s,a) \left[ \mathds{1}\big[\pi_{\textrm{SL}}(s)\neq a\big]\right]\\
+&=&
+\sum_{s,a} \widehat{\mu}^{e}(s,a)  \left[ \mathds{1}\big[\pi_{\textrm{SL}}(s)\neq a\big]\right]
++
+\sum_{s,a} \bigg(\mu^{\pi_e}(s,a) -\widehat{\mu}^{e}(s,a)\bigg)  \left[ \mathds{1}\big[\pi_{\textrm{SL}}(s)\neq a\big]\right]\\
+&=&
+0+
+\|\mu^{\pi_e}-\widehat{\mu}^{e}\|_1 \, ,
+\end{eqnarray*}
+which completes the proof using Equation~\ref{eq:accuracy}.
+\end{proof}
+
+\paragraph{Lower bounds:}
+
+To be added...
+
+\subsection{Behavioral Cloning via Distribution Matching}
+
+Note the above algorithm does not need any further interaction with
+the MDP. We may hope that we can improve upon this algorithm if we
+allow for interaction with the world. In many cases, expert
+demonstrations are costly to obtain while interactions with the
+environment are far less costly.
+
+Let us consider now the case where the model dynamics $P$ are
+known. We now present an alternative algorithm, which provides a
+substantial improvement in the tabular case.
+
+Let us suppose we use a density estimation algorithm which has $\eps$ error in the following sense:
+\begin{equation}\label{eq:density_error}
+\|\mu^{\pi_e} - \widehat{\mu}^{e}\|_1 \leq \eps
+\end{equation}
+One natural algorithm is as follows:
+\begin{eqnarray}\label{program:lp_dm}
+\min  && \sum_{s,a} |\mu(s,a) -\widehat{\mu}^{e}(s,a)|\\
+\textrm{ subject to } && \mu \in \mathcal{K}\nonumber
+\end{eqnarray}
+Note that the cost function is convex subject to convex
+constraints. In fact, for the particular case of an $\ell_1$ cost
+function, we can actually formulate the optimization program as a
+linear program.
+
+If $\mu_{\textrm{DM}}$ is a solution to this LP, then let us define the
+policy to be:
+\[
+\pi_{\textrm{DM}}(a|s) =
+\frac{\mu_{\textrm{DM}} (s,a)}{\sum_{a'} \mu_{\textrm{DM}}(s,a')} .
+\]
+% HW
+
+\begin{theorem}
+Suppose the density estimation error of $\widehat{\mu}^{e}$ is less than
+$\eps$, as per Equation~\ref{eq:density_error}, then we have:
+\[
+|V^{\pi_{\textrm{DM}}}(d_0) -V^{\pi_e}(d_0)| \leq  2 \eps
+\]
+\end{theorem}
+
+\begin{proof}
+Note that $\mu^{\pi_e}$ is a feasible point in the linear program in
+Equation~\ref{program:lp_dm}, which has an objective value of
+$\eps$. Let $\mu^\star$ be the optimal solution, since  $\mu^\star$
+has a lower objective value, we have that:
+\[
+\|\mu_{\textrm{DM}} -\widehat{\mu}^{e}\|_1 \leq \eps
+\]
+By construction,
+$\mu_{\textrm{DM}} = \mu^{\pi_{\textrm{DM}}}$,
+so we have that:
+\begin{eqnarray*}
+|V^{\pi_{\textrm{DM}}}(d_0) -V^{\pi_e}(d_0)|
+&=&\bigg|\sum_{s,a} \mu_{\textrm{DM}}(s,a) r(s,a) -
+  \sum_{s,a} \mu^{\pi_e} r(s,a)|\\
+&=&\bigg|\sum_{s,a} \bigg(\mu_{\textrm{DM}}(s,a) -
+\mu^{\pi_e} \bigg) r(s,a) \bigg |\\
+&\leq &\|\mu_{\textrm{DM}} -\mu^{\pi_e}\|_1\\
+&\leq &\|\mu_{\textrm{DM}} -\widehat{\mu}^{e}\|_1+\|\widehat{\mu}^{e} -\mu^{\pi_e}\|_1\\
+&\leq &2\eps ,
+\end{eqnarray*}
+which completes the proof.
+\end{proof}
+
+\paragraph{The tabular case:}
+In the tabular setting, the most straightforward
+approach is to use the empirical plugin estimate, $\widehat{\mu}^{e}$,
+of $\mu^{\pi_e}$.  By Equation~\ref{eq:accuracy}), we have the
+immediate Corollary, which is an improvement by a factor of
+$1/(1-\gamma)$. 
+
+\begin{corollary}
+Suppose the expert policy is deterministic.  In the tabular setting, with $m$ samples, we have that with
+  probability greater than $1-\delta$,
+  \[
+|V^{\pi_{\textrm{SL}}}(d_0) -V^{\pi_e}(d_0) |\leq 4
+%\E_{s,a \sim \mu^{\pi_e}} \left[ \mathds{1}\big[\pi_{\textrm{SL}}(s)\neq a\big]\right]
+\sqrt{\frac{|\Scal| |\Acal| \log(1/\delta)}{m}}
+\]
+\end{corollary}
+
+\paragraph{Lower bounds:}
+
+To be added... (basically, with knowledge of $P$, this approach is
+sample optimal.)
+
+
+\subsection{Sample Efficiency: comparing the approaches}
+
+While density estimation is often considered more challenging than
+supervised learning (i.e. regression or classification), it is
+important to note that in the tabular setting, the distributional
+matching approach (when $P$ is known or when we have simulation
+access) is more sample efficient with regards to expert
+demonstrations. This suggest that the relying on supervised learning
+in setting with function approximation may be suboptimal and that
+alternative approaches may be more sample efficient.
+
+\section{Learning from Observation}
+
+Let us now suppose that we only observe the trajectories of states
+from an expert, as opposed to the state-action pairs. As before, we
+only assume sampling access to states via $\mu^{\pi_e}$. In
+particular, let us define the marginal distribution over states as:
+\[
+d^{\pi_e}(s)= \sum_a \mu^{\pi_e}(s,a) \,.
+\]
+Now, when we query the expert, assume we
+get an independent sample:
+\[
+s\sim d^{\pi_e}\, .
+\]
+Again, if we were observing independent expert trajectories of
+length $\frac{c}{1-\gamma}$ (for a constant $c$), then
+each trajectory gives us $\frac{c}{1-\gamma}$ correlated samples.
+For analysis, it is more natural to abstract away this issue for now
+and assume the samples are independent.
+
+\subsection{Learning from Observations via Distribution Matching}
+
+Again, assume the model dynamics $P$ are known. 
+Let us suppose we use a density estimation algorithm which has $\eps$ error in the following sense:
+\begin{equation}\label{eq:density_error_lfromo}
+\|d^{\pi_e} - \widehat{d}^{e}\|_1 \leq \eps
+\end{equation}
+One natural algorithm is as follows:
+\begin{eqnarray}\label{program:lp_dm_lfromo}
+\min  && \sum_{s} | \widehat{d}^{e}(s)-\sum_a \mu(s,a)|\\
+\textrm{ subject to } && \mu \in \mathcal{K}\nonumber
+\end{eqnarray}
+Note that the cost function is convex subject to convex constraints,
+and, for this cost function, we can actually formulate the
+optimization program as a linear program.
+
+If $\mu_{\textrm{DM}}$ is a solution to this LP, then let us define the
+policy to be:
+\[
+\pi_{\textrm{DM}}(a|s) =
+\frac{\mu_{\textrm{DM}} (s,a)}{\sum_{a'} \mu_{\textrm{DM}}(s,a')} .
+\]
+% HW
+
+\begin{theorem}
+Assume the reward function of the expert is only state dependent,
+i.e. $r^e(s,a)=r^e(s)$. 
+Suppose the density estimation error of $\widehat{d}^{e}$ is less than
+$\eps$, as per Equation~\ref{eq:density_error_lfromo}, then we have:
+\[
+|V^{\pi_{\textrm{DM}}}(d_0) -V^{\pi_e}(d_0)| \leq  2 \eps
+\]
+\end{theorem}
+
+\begin{proof}
+To be added...
+\end{proof}
+
+
+
+\section{Inverse Reinforcement Learning}
+
+In inverse reinforcement learning, let us say that the expert has an
+unknown reward function  $r^e(s,a)$. In many settings, writing down a
+an effective reward function down by hand is difficult. Here, we may
+hope that by using expert demonstrations, 
+we may seek to extract a reward
+function from the expert, such that if we planned according to the our
+learned reward function, our value would be as good as the expert (on
+the experts unknown reward function).
+
+Here let us assume we know some basis of reward functions $\phi_1, \ldots \phi_d$,
+where each $\phi_i: \Scal\times\Acal \rightarrow \R$, and that $r$
+lies in this basis. Specifically, suppose for all $s\in \Scal$ and $a
+\in\Acal$ that
+\begin{equation}\label{eq:r_span_condition}
+r^e(s,a) = \sum_{i=1}^d w_i \phi_i(s,a) ,
+\end{equation}
+where  $w$ are the unknown coefficients.
+
+Again, suppose that the model $P$ is known. Also, note that experts
+value function with respect to basis function $\phi_i$ (instead of
+$r^e$) is:
+\[
+  V^{\mu^{\pi_e}}_i(d_0) := \sum_{s,a} \mu^{\pi_e}(s,a) \phi_i(s,a) .
+\]
+We will use $V^{e}_i$ as shorthand for $V^{\mu^{\pi_e}}_i(d_0)$.
+Note that with samples we can estimate $V^{e}_i$ as follows:
+\[
+\widehat{V}^{e}_i := \sum_{s,a} \widehat{\mu}^{e}(s,a) \phi_i(s,a) .
+\]
+where we can take $\widehat{\mu}^{e}$  to be the plug-in estimator.
+
+For now, let us suppose that $\widehat{V}^{e}_i$ is known exactly in
+order to have a more transparent algorithm. Incorporating sampling
+error is possible. Consider the following feasibility problem for $\mu
+\in \R^{\Scal\times\Acal}$: 
+\begin{eqnarray*}
+\textrm{find}  && \mu \\
+\textrm{ subject to } && \mu \in \mathcal{K}\\
+ && V^{e}_i = \sum_{s,a} \mu(s,a) \phi_i(s,a)
+    \quad \forall i \in \{1,\ldots d\}\\
+\end{eqnarray*}
+Suppose
+$\mu_{\textrm{IRL}}$ is a feasible point in this LP. Let us define the implied policy
+to be:
+\[
+\pi_{\textrm{IRL}}(a|s) =
+\frac{\mu_{\textrm{IRL}} (s,a)}{\sum_{a'} \mu_{\textrm{IRL}}(s,a')} .
+\]
+
+\begin{theorem}
+The above feasibility problem is non-empty.  Furthermore, the
+implied policy $\pi_{\textrm{IRL}}$ (derived from the above LP)
+satisfies $V_M^{\pi_{\textrm{IRL}}}(d_0) = V_M^{\mu^{\pi_e}}(d_0)$,
+where   $M$ is the MDP with experts reward function $r^e$.
+\end{theorem}
+
+\begin{proof}
+By construction, $\mu^{\pi_e}$ is a feasible point. Now suppose 
+$\mu_{\textrm{IRL}}$ is a feasible point.  By construction,
+$V_i^{\pi_{\textrm{IRL}}}=\widehat{V}^{e}_i$ for all $i$, due to that
+$\pi_{\textrm{IRL}}$ has state-action visitation frequency
+$\mu_{\textrm{IRL}}$. The proof is completed using the span condition
+in Equation~\ref{eq:r_span_condition}.
+\end{proof}
+
+\fi

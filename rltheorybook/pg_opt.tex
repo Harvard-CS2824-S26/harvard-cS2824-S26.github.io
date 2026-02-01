@@ -1,0 +1,795 @@
+\chapter{Optimality}
+
+We now seek to understand the global convergence properties of policy
+gradient methods, when given exact gradients. Here, we will largely limit
+ourselves to the (tabular) softmax policy class in Example~\ref{ex:softmax}.
+
+Given our a starting distribution $\rho$ over states, recall our
+objective is:
+\[
+\max_{\theta \in \Theta}  V^{\pi_\theta}(\rho) \, .
+\]
+where $\{\pi_\theta| \theta \in \Theta \subset \R^d\}$
+is some class of parametric policies.
+
+While we are interested in good performance
+under $\rho$, we will see how it is helpful to optimize under
+a different measure $\mu$. Specifically, we consider optimizing
+$V^{\pi_\theta}(\mu)$, i.e.
+\[
+\max_{\theta \in \Theta}  V^{\pi_\theta}(\mu) \, ,
+\]
+even though our ultimate goal is performance
+under $V^{\pi_\theta}(\rho)$.
+
+We now consider the softmax policy parameterization~\eqref{eq:softmax}.
+Here, we still have a
+non-concave optimization problem in general, as shown in Lemma
+\ref{lemma:softmax-noncon}, though we do show that global optimality can
+be reached under certain regularity conditions. From a practical perspective, the softmax parameterization
+of policies is preferable to the direct
+parameterization, since the parameters $\theta$ are unconstrained
+and standard unconstrained optimization algorithms can be employed.
+However, optimization
+over this policy class creates other challenges as we study in this
+section, as the optimal policy (which is deterministic) is attained by
+sending the parameters to infinity.
+
+This chapter will study three algorithms for this
+problem, for the softmax policy class. The first performs direct policy gradient ascent on the
+objective without modification, while the second adds a log barrier
+regularizer to keep the parameters from becoming too large, as a
+means to ensure adequate exploration.
+%We first show that
+%gradient ascent converges in the limit; furthermore, provided we also use a
+%cross-entropy regularization penalty term, we then provide a
+%convergence rate.
+Finally, we study the natural policy gradient
+algorithm and establish a global optimality convergence rate,
+with no dependence on the dimension-dependent factors.
+
+The presentation in this chapter largely follows the results
+in~\cite{agarwal2019optimality}. 
+
+\input{Figures/fig_vanishing}
+
+\section{Vanishing Gradients and Saddle Points}
+\label{sec:vanishing-gradients}
+
+To understand the necessity of optimizing under a distribution $\mu$
+that is different from $\rho$, let us first give an informal argument that
+some condition on the state distribution of $\pi$, or equivalently
+$\mu$, is necessary for stationarity to imply optimality. For example,
+in a sparse-reward MDP (where the agent is only rewarded upon visiting
+some small set of states), a policy that does not visit \emph{any}
+rewarding states will have zero gradient, even though it is
+arbitrarily suboptimal in terms of values. Below, we give a more
+quantitative version of this intuition, which demonstrates that even
+if $\pi$ chooses all actions with reasonable probabilities (and hence
+the agent will visit all states if the MDP is connected), then there
+is an MDP where a large fraction of the policies $\pi$ have vanishingly small gradients, and yet
+these policies are highly suboptimal in terms of their value.
+
+Concretely, consider the chain MDP of length $H+2$ shown in
+Figure~\ref{fig:chain}. The starting state of interest is state $s_0$
+and the discount factor $\gamma = H/(H+1)$.
+Suppose we work with the direct parameterization, where $\pi_\theta(a | s) =
+\theta_{s,a}$ for $a = a_1,a_2,a_3$ and $\pi_\theta(a_4 | s) = 1 -
+\theta_{s,a_1} - \theta_{s,a_2} - \theta_{s,a_3}$. Note we do not
+over-parameterize the policy.
+%and, instead, enforce the normalization explicitly
+%in the parameterization.
+For this MDP and policy structure, if we were to initialize the
+probabilities over actions, say deterministically, then there is an
+MDP (obtained by permuting the actions) where all the probabilities
+for $a_1$ will be less than $1/4$.
+
+The following result not only shows that the gradient is exponentially
+small in $H$, it also shows that many higher order
+derivatives, up to $O(H/\log H)$, are also exponentially
+small in $H$.
+
+\begin{proposition} [Vanishing gradients at suboptimal parameters]
+\label{proposition:small_grad}
+Consider the chain MDP of Figure~\ref{fig:chain}, with $H+2$ states, $\gamma =
+H/(H+1)$, and with the direct
+policy parameterization (with $3|\Scal|$ parameters, as described in the
+text above).
+Suppose $\theta$ is such that $0<\theta<1$ (componentwise) and
+$\theta_{s,a_1} < 1/4$ (for all states $s$). For all
+$k \leq  \frac{H}{40\log(2 H)} - 1$, we have $\norm{\nabla_\theta^k V^{\pi_\theta}(s_0)} \leq
+(1/3)^{H/4}$, where $\nabla_\theta^k V^{\pi_\theta}(s_0)$ is a tensor of the $k_{th}$
+order derivatives of $V^{\pi_\theta}(s_0)$ and the norm is the operator norm of the
+tensor.\footnote{The operator norm of a $k_{th}$-order tensor $J \in
+  \R^{d^{\otimes k}}$ is defined as $\sup_{u_1,\ldots,u_k \in
+    \R^d~:~\|u_i\|_2 = 1} \langle J, u_1\otimes\ldots\otimes
+  u_d\rangle$.}  Furthermore, \mbox{$V^{\star}(s_0) - V^{\pi_\theta}(s_0) \geq
+(H+1)/8-(H+1)^2/3^H$}.
+\end{proposition}
+
+We do not prove this lemma here (see Section~\ref{bib:pg_opt}).
+The lemma illustrates that lack of good exploration can indeed be
+detrimental in policy gradient algorithms, since the gradient can be
+small either due to $\pi$ being near-optimal, or, simply because $\pi$ does
+not visit advantageous states often enough. Furthermore, this lemma also suggests that varied results in the
+non-convex optimization literature, on escaping from saddle
+points, do not directly imply global convergence due to that the higher order
+derivatives are small.
+
+While the chain MDP of Figure~\ref{fig:chain},
+is a common example where \emph{sample} based estimates of gradients
+will be $0$ under random exploration strategies; there is an
+exponentially small in $H$  chance of hitting the goal state under a
+random exploration strategy. Note
+that this lemma is with regards to \emph{exact} gradients. This
+suggests that even with exact computations (along with using exact higher
+order derivatives) we might expect numerical instabilities.
+
+
+\section{Policy Gradient Ascent}
+
+Let us now return to the softmax policy class, from
+Equation~\ref{eq:softmax}, where:
+\[
+\pi_\theta(a|s) = \frac{\exp(\theta_{s,a})}{\sum_{a'} \exp(\theta_{s,a'})}
+\, ,
+\]
+where the number of parameters in this policy class is $|\Scal| |\Acal|$.
+
+Observe that:
+\[
+\frac{\partial \log \pi_\theta(a|s)}{\partial \theta_{s',a'}} =
+\mathds{1} \Big[ s=s' \Big]\Big(\mathds{1} \Big[ a=a' \Big] - \pi_\theta(a'|s)\Big)
+\]
+where $\mathds{1}[\mathcal{E}]$ is the indicator of $\mathcal{E}$ being
+true.
+
+\begin{lemma}
+For the softmax policy class, we have:
+\begin{equation} \label{eq:softmax-grad}
+  \frac{\partial V^{\pi_\theta}(\mu)}{\partial \theta_{s,a}} =
+\frac{1}{1-\gamma} d_\mu^{\pi_\theta}(s)\pi_\theta(a|s)A^{\pi_\theta}(s,a)
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Using the advantage expression for the policy gradient (see Theorem~\ref{thm:pg_expressions}),
+  \begin{eqnarray*}
+          \frac{\partial V^{\pi_\theta}(\mu)}{\partial \theta_{s',a'}}    &=& 
+\frac{1}{1-\gamma}\E_{s\sim d^{\pi_\theta}_\mu }\E_{a\sim \pi_\theta(\cdot|s) }
+\Big[A^{\pi_\theta}(s,a) \frac{\partial \log  \pi_\theta(a|s)}{\partial \theta_{s',a'}}\Big]\\
+ &=& 
+\frac{1}{1-\gamma}\E_{s\sim d^{\pi_\theta}_\mu }\E_{a\sim \pi_\theta(\cdot|s) }
+\Big[A^{\pi_\theta}(s,a)
+\mathds{1} \Big[ s=s' \Big]\Big(\mathds{1} \Big[ a=a' \Big] - \pi_\theta(a'|s)\Big)\Big]\\
+ &=& 
+\frac{1}{1-\gamma}d _\mu^{\pi_\theta} (s')\E_{a\sim \pi_\theta(\cdot|s') }
+\Big[A^{\pi_\theta}(s',a)\Big(\mathds{1} \Big[ a=a' \Big] - \pi_\theta(a'|s')\Big)\Big]\\
+ &=& 
+\frac{1}{1-\gamma}d _\mu^{\pi_\theta} (s')\left(\E_{a\sim \pi_\theta(\cdot|s') }
+\Big[A^{\pi_\theta}(s',a)\mathds{1} \big[ a=a' \big] \Big]
+-\pi_\theta(a'|s')
+\E_{a\sim \pi_\theta(\cdot|s') }\Big[A^{\pi_\theta}(s',a)\Big]\right)\\
+&=&
+\frac{1}{1-\gamma}d _\mu^{\pi_\theta} (s') \pi_\theta(a'|s') A^{\pi_\theta}(s',a') -0\, ,
+      \end{eqnarray*}
+where the last step uses that for any policy $\sum_a \pi(a|s) A^\pi(s,a)=0$. 
+\end{proof}
+
+%\subsubsection*{Global Convergence}
+
+The update rule for gradient ascent is:
+\begin{equation}    \label{eqn:gd-softmax}
+    \theta^{(t+1)} = \theta^{(t)} + \eta \nabla_\theta V^{(t)}(\mu).
+\end{equation}
+
+Recall from Lemma~\ref{lemma:softmax-noncon} that, even for the case of the softmax policy class (which
+contains all stationary policies), our optimization problem is
+non-convex. Furthermore, due to the exponential scaling with the
+parameters $\theta$ in the softmax parameterization, \emph{any} policy
+that is nearly deterministic will have gradients close to $0$.
+Specifically, for any sequence of policies $\pi^{\theta_t}$
+that becomes deterministic, $\| \nabla
+V^{\pi^{\theta_t}}\|\rightarrow 0$.
+
+In spite of these difficulties, it turns out we have a positive result
+that gradient ascent asymptotically converges to the global optimum for the softmax
+parameterization.
+
+\begin{theorem} [Global convergence for softmax parameterization]
+	\label{thm:glb-softmax}
+Assume we follow the gradient ascent update rule as specified
+in Equation~\eqref{eqn:gd-softmax} and that the distribution
+$\mu$ is strictly positive i.e. $\mu(s)>0$ for all states $s$.
+Suppose $\eta \leq \frac{(1-\gamma)^3}{8}$, then we have that for all
+states $s$,
+$V^{(t)}(s) \rightarrow V^\star(s)$ as $t \rightarrow \infty$.
+\end{theorem}
+
+The proof is somewhat technical, and we do not provide a proof here
+(see Section~\ref{bib:pg_opt}). 
+
+
+A few remarks are in order. Theorem~\ref{thm:glb-softmax} assumed
+that optimization distribution $\mu$ was \emph{strictly} positive,
+i.e. $\mu(s)>0$ for all states $s$. We conjecture that any 
+gradient ascent may not globally converge if this condition is not met. 
+The concern is that if this condition is not met, then gradient ascent
+may not globally converge due to that $d^{\pi_\theta}_{\mu}(s)$
+effectively scales down the learning rate for the parameters
+associated with state $s$ (see Equation~\ref{eq:softmax-grad}).
+%\end{remark}
+
+Furthermore, there is strong reason to believe that the convergence
+rate for this is algorithm (in the worst case) is exponentially slow in some of the
+relevant quantities, such as in terms of the size of state space. We now turn to a regularization based approach
+to ensure convergence at a polynomial rate in all relevant quantities.
+
+\iffalse
+The complete proof is provided in the Appendix~\ref{app:gd-softmax}.  We
+now discuss the subtleties in the proof and show why the softmax
+parameterization precludes a direct application of the gradient
+domination lemma. In order to utilize the gradient domination
+property (in Lemma~\ref{thm:first}), we would desire to show that:
+$ \nabla_\pi V^{\pi}(\mu) \rightarrow 0 $. However, using the
+functional form of the softmax parameterization (see Equation
+\ref{eq:softmax-grad}) and \eqref{eq:grad_direct}, we have that:
+\begin{equation*}%\label{eq:softmax_grad}
+\frac{\partial V^{\pi_\theta}(\mu)}{\partial \theta_{s,a}} =
+\frac{1}{1-\gamma} d^{\pi_\theta}_{\mu}(s)\pi_{\theta}(a|s)A^{\pi_\theta}(s,a)
+= \pi_\theta(a|s) \, \frac{\partial V^{\pi_\theta}(\mu)}{\partial \pi_\theta(a|s)} .
+\end{equation*}
+Hence, we see that
+even if $\nabla_\theta V^{\pi_\theta}(\mu) \rightarrow 0$, we are not
+guaranteed that $\nabla_\pi V^{\pi_\theta}(\mu) \rightarrow 0$.
+
+We now briefly discuss the main technical challenges in the proof. The
+proof first
+shows that the sequence
+$V^{(t)}(s)$ is monotone increasing pointwise, i.e. for \emph{every} state $s$, $V^{(t+1)}(s) \geq V^{(t)}(s)$
+(Lemma \ref{lem:q-improv}). This implies the existence of a limit $V^{(\infty)}(s)$
+by the monotone convergence theorem (Lemma \ref{lem:delta}). Based on
+the limiting quantities $V^{(\infty)}(s)$
+and $Q^{(\infty)}(s,a)$, which we show exist, define the following limiting sets for each state $s$:
+\begin{eqnarray*}
+		I^s_{0} &:=&\{a | Q^{(\infty)}(s,a) = V^{(\infty)}(s)\}\\
+		I^s_{+} &:=&\{a | Q^{(\infty)}(s,a) > V^{(\infty)}(s)\}\\
+		I^s_{-} &:=&\{a | Q^{(\infty)}(s,a) < V^{(\infty)}(s)\} \, .
+\end{eqnarray*}
+The challenge is to then show that, for all states $s$, the
+set $I^s_{+} $ is the empty set, which would immediately imply
+$V^{(\infty)}(s) = V^\star(s)$.  The proof proceeds by contradiction,
+assuming that $I^s_{+} $ is non-empty. Using that $I^s_{+} $ is
+non-empty and that the gradient tends to zero in the limit, i.e.
+$\nabla_\theta V^{\pi_\theta}(\mu) \rightarrow 0$, we have
+that for all $a \in I^s_{+}$, $\pi^{(t)}(a|s) \rightarrow 0$ (see
+\eqref{eq:softmax_grad}).  This, along with the functional form of the
+softmax parameterization, implies that there must be divergence (in
+magnitude) among the set of parameters associated with \emph{some}
+action $a$ at state $s$, i.e. that
+$\max_{a\in \Acal} |\theta^{(t)}_{s,a}| \to \infty$. The primary
+technical challenge in the proof is to then use this divergence, along
+with the dynamics of gradient ascent, to show that $I^s_{+} $ is empty
+via a contradiction.
+\fi
+
+
+
+\section{Log Barrier Regularization}
+
+Due to the exponential scaling with the parameters $\theta$, policies
+can rapidly become near deterministic, when optimizing under the softmax
+parameterization, which can result in slow convergence. Indeed a key
+challenge in the asymptotic analysis in the previous section was to
+handle the growth of the absolute values of parameters as they tend to
+infinity. 
+Recall that the relative-entropy for
+distributions $p$ and $q$ is defined as:
+\[
+\textrm{KL}(p,q) := \E_{x\sim p}[-\log q(x)/p(x)].
+\]
+
+Denote the uniform distribution over a set $\mathcal{X}$ by
+$\textrm{Unif}_\mathcal{X}$, and define the  following log barrier
+regularized objective as:
+\begin{eqnarray}
+L_\lambda(\theta) &:=& V^{\pi_\theta}(\mu) - \lambda \,
+\E_{s\sim \textrm{Unif}_\Scal} \bigg[\textrm{KL} (\textrm{Unif}_\Acal,\pi_\theta(\cdot|s))
+\bigg]\nonumber\\
+&  = &  V^{\pi_\theta}(\mu) + \frac{\lambda}{|\Scal|\, |\Acal|} \sum_{s,a} \log \pi_\theta(a|s)
++\lambda \log |\Acal| \, , \label{eqn:loss-reg}
+\end{eqnarray}
+where $\lambda$ is a regularization parameter. The constant (i.e. the
+last term) is
+not relevant with regards to optimization.
+This
+regularizer is different from the more commonly utilized entropy
+regularizer, a point which we return to later.
+
+\iffalse
+A
+common practical remedy for this is to use entropy-based
+regularization to keep the probabilities from getting too
+small~\citep{williams1991function, mnih2016asynchronous}, and we study
+gradient ascent on a similarly regularized objective in this
+section.
+\fi
+
+
+The policy gradient ascent updates for
+$L_\lambda(\theta)$ are given by:
+\begin{equation}
+    \theta^{(t+1)} = \theta^{(t)} + \eta \nabla_\theta L_\lambda(\theta^{(t)}).
+    \label{eqn:gd-entropic}
+\end{equation}
+We now see that any approximate first-order stationary
+points of the entropy-regularized objective is
+approximately globally optimal, provided the regularization is
+sufficiently small.
+
+\begin{theorem} \label{thm:small-gradient}
+(Log barrier regularization)
+Suppose $\theta$ is such that:
+\[
+  \|\nabla_\theta L_\lambda(\theta)\|_2 \leq \epsopt
+\]
+and $\epsopt \leq \lambda/(2|\Scal|\, |\Acal|)$. Then we have
+that for all starting state distributions $\rho$:
+\begin{eqnarray*}
+  V^{\pi_\theta}(\rho)
+  &\geq& V^\star (\rho) -
+         \frac{2 \lambda}{1-\gamma} \Norm{\frac{d^{\pi^\star}_{\rho}}{\mu } }_\infty         .
+\end{eqnarray*}
+%\label{lem:small-gradient}
+\end{theorem}
+
+We refer to $\Norm{\frac{d^{\pi^\star}_{\rho}}{\mu} }_\infty$ as the
+\emph{distribution mismatch coefficient}. The above theorem shows the
+importance of having an appropriate measure $\mu(s)$ in order for the
+approximate first-order stationary points to be near optimal.
+
+
+\begin{proof}
+  The proof consists of showing that
+  $\max_{a}A^{\pi_\theta}(s,a) \le 2\lambda/(\mu(s)|\Scal|)$ for all
+  states. To see that this is sufficient, observe that by the
+  performance difference lemma (Lemma~\ref{lemma:perf_diff}),
+\begin{align*}
+V^\star(\rho) -V^{\pi_\theta}(\rho)
+&= \frac{1}{1-\gamma} \sum_{s,a} d^{\pi^\star}_{\rho}(s) \pi^\star (a|s) A^{\pi_\theta}(s,a) \\
+&\le \frac{1}{1-\gamma} \sum_{s} d^{\pi^\star}_{\rho}(s) \max_{a\in\Acal}A^{\pi_\theta}(s,a)\\
+&\leq
+\frac{1}{1-\gamma} \sum_{s} 2 d^{\pi^\star}_{\rho} (s) \lambda/(\mu(s) |\Scal|)\\&
+\leq
+\frac{2 \lambda}{1-\gamma} \max_s\left( \frac{d^{\pi^\star}_{\rho}(s)}{\mu (s)} \right).
+\end{align*}
+which would then complete the proof.
+
+We now proceed to show that $\max_{a}A^{\pi_\theta}(s,a) \le 2\lambda/(\mu(s)|\Scal|)$. For this, it
+suffices to bound $A^{\pi_\theta}(s,a)$ for any state-action pair
+$s,a$ where $A^{\pi_\theta}(s,a)\geq 0$ else the claim is trivially
+true.  Consider an $(s,a)$ pair such that $A^{\pi_\theta}(s,a)>0 $.
+%We drop the $\mu$ dependence on $d_{\mu}^{\pi_\theta}(s)$ and write
+%$d^{\pi_\theta}(s)$ when clear from context.
+\iffalse
+Due to that
+\[
+L_\lambda(\theta) =V^{\pi_\theta}(\mu)+
+\frac{\lambda}{|\Scal|\,|\Acal|} \sum_{s,a} \left(\theta_{s,a}- \log\left(\sum_{a'}\exp(\theta_{s,a'})\right)\right)
+\, ,
+\]
+\fi
+Using the policy gradient expression for the softmax parameterization
+(see Equation~\ref{eq:softmax-grad}),
+\begin{equation}\label{eqn:grad-KLobjective}
+\frac{\partial L_\lambda(\theta)}{\partial \theta_{s,a}}
+= \frac{1}{1-\gamma}
+d^{\pi_\theta}_\mu(s) \pi_\theta(a|s)A^{\pi_\theta}(s,a)
++ \frac{\lambda}{|\Scal|} \left(\frac{1}{|\Acal|}-\pi_\theta(a|s)\right)
+\, .
+\end{equation}
+The gradient norm assumption $\|\nabla_\theta L_\lambda(\theta)\|_2 \leq \epsopt$ implies that:
+\begin{align*}
+\epsopt \geq
+\frac{\partial L_\lambda(\theta)}{\partial \theta_{s,a}}
+&= \frac{1}{1-\gamma}
+d^{\pi_\theta}_\mu(s)\pi_\theta(a|s)A^{\pi_\theta}(s,a)
++ \frac{\lambda}{|\Scal|} \left(\frac{1}{|\Acal|}-\pi_\theta(a|s)\right)\\&
+\geq  \frac{\lambda}{|\Scal|} \left(\frac{1}{|\Acal|}-\pi_\theta(a|s)\right),
+\end{align*}
+where we have used $A^{\pi_\theta}(s,a)\geq 0$. Rearranging and using our assumption $\epsopt \leq \lambda/(2 |\Scal|\,|\Acal|)$,
+\[
+\pi_\theta(a|s) \geq \frac{1}{|\Acal|} - \frac{\epsopt|\Scal|}{\lambda} \geq \frac{1}{2|\Acal|} \, .
+\]
+Solving for $A^{\pi_\theta}(s,a)$ in \eqref{eqn:grad-KLobjective}, we have:
+\begin{eqnarray*}
+A^{\pi_\theta}(s,a)
+&=& \frac{1-\gamma}{d^{\pi_\theta}_\mu(s) }
+\left(\frac{1}{\pi_\theta(a|s)} \frac{\partial L_\lambda(\theta)}{\partial \theta_{s,a}} +\frac{\lambda}{|\Scal|} \left(1-\frac{1}{\pi_\theta(a|s)|\Acal|}\right) \right)\\
+&\leq& \frac{1-\gamma}{d^{\pi_\theta}_\mu(s)}\left( 2|\Acal| \epsopt+\frac{\lambda}{|\Scal|} \right) \\
+&\leq& 2 \frac{1-\gamma}{d^{\pi_\theta}_\mu(s)} \frac{\lambda}{|\Scal|} \\
+&\leq& 2 \lambda /(\mu(s) |\Scal|) \, ,
+\end{eqnarray*}
+where the penultimate step uses $\epsopt \leq \lambda/(2 |\Scal|\,|\Acal|)$ and the
+final step uses $d^{\pi_\theta}_{\mu}(s)\geq
+(1-\gamma)\mu(s)$. This completes the proof.
+\end{proof}
+
+The policy gradient ascent updates for
+$L_\lambda(\theta)$ are given by: 
+\begin{equation}
+    \theta^{(t+1)} = \theta^{(t)} + \eta \nabla_\theta L_\lambda(\theta^{(t)}).
+    \label{eqn:gd-entropic}
+\end{equation}
+
+
+By combining the above theorem with the
+convergence of gradient ascent to first order stationary points
+(Lemma~\ref{lemma:stationary}), we obtain the following corollary. 
+\begin{corollary}
+(Iteration complexity with log barrier regularization)
+Let $\beta_\lambda :=\frac{8\gamma }{(1-\gamma)^3} + \frac{2\lambda
+}{|\Scal|}$.
+  Starting from any initial
+  $\theta^{(0)}$, consider the updates~\eqref{eqn:gd-entropic} with
+  \mbox{$\lambda = \frac{\epsilon(1-\gamma)}{2\Norm{\frac{d^{\pi^\star}_{\rho}}{\mu} }_\infty}$} and $\eta = 1/\beta_\lambda$.
+Then for all starting state distributions $\rho$, we have
+    \[
+      \min_{t< T} \left\{ V^\star(\rho) - V^{(t)}(\rho)\right\}
+      \leq \epsilon \quad \mbox{whenever}
+      \quad T \geq \frac{320 |\Scal|^2|\Acal|^2}{(1-\gamma)^6\,\epsilon^2} \Norm{\frac{d^{\pi^\star}_{\rho}}{\mu } }_\infty^2.
+    \]
+\label{corollary:entropy}
+\end{corollary}
+
+The corollary shows the
+importance of  balancing how the regularization parameter $\lambda$
+is set relative to the desired
+accuracy $\epsilon$, as well as the importance of the initial
+distribution $\mu$ to obtain global optimality.
+
+\begin{proof}[\textbf{of Corollary~\ref{corollary:entropy}}]
+Let $\beta_\lambda$ be the smoothness of
+$L_\lambda(\theta)$. A valid upper bound on $\beta_\lambda$ is:
+\[
+\beta_\lambda = \frac{8\gamma }{(1-\gamma)^3} + \frac{2\lambda
+}{|\Scal|} \, ,
+\]
+where we leave the proof as an exercise to the reader.
+
+Using Theorem~\ref{thm:small-gradient}, the desired optimality gap
+$\epsilon$ will follow if we set 
+$
+\lambda = \frac{\epsilon(1-\gamma)}{2\Norm{\frac{d^{\pi^\star}_{\rho}}{\mu} }_\infty}
+$
+and if $\|\nabla_\theta L_\lambda(\theta)\|_2 \leq \lambda/(2|\Scal|\, |\Acal|)$.
+In order to complete the proof, we need to bound the iteration
+complexity of making the gradient sufficiently small.
+
+By Lemma~\ref{lemma:stationary}, after $T$ iterations of gradient ascent with stepsize of
+$1/\beta_\lambda$, we have
+\begin{equation}
+\min_{t \leq T} \norm{\nabla_\theta L_\lambda(\theta^{(t)})}_2^2 \leq \frac{2\beta_\lambda (L_\lambda(\theta^{\star}) - L_\lambda(\theta^{(0)}))}{T} \leq \frac{2\beta_\lambda}{(1-\gamma)\, T},
+\end{equation}
+%
+where $\beta_\lambda$ is an upper bound on the smoothness of
+$L_\lambda(\theta)$.
+We seek to ensure
+\begin{align*}
+\epsopt \leq \sqrt{\frac{2\beta_\lambda}{(1-\gamma)\, T}} \leq \frac{\lambda}{2 |\Scal|\,|\Acal|}
+\end{align*}
+
+Choosing $T \geq \frac{8\beta_\lambda\,
+	|\Scal|^2|\Acal|^2}{(1-\gamma)\, \lambda^2}$ satisfies  the
+above inequality. Hence,
+\begin{eqnarray*}
+	\frac{8\beta_\lambda\,
+		|\Scal|^2|\Acal|^2}{(1-\gamma)\, \lambda^2}&\leq& \frac{64\,
+		|\Scal|^2|\Acal|^2}{(1-\gamma)^4\, \lambda^2}
+	+\frac{16\, |\Scal| |\Acal|^{2}}{(1-\gamma)\, \lambda}\\
+	&\leq& \frac{80\,
+		|\Scal|^2|\Acal|^2}{(1-\gamma)^4\, \lambda^2}\\
+	&=& \frac{320\,
+		|\Scal|^2|\Acal|^2 }{(1-\gamma)^6\, \eps^2}\Norm{\frac{d^{\pi^\star}_{\rho}}{\mu} }_\infty^2
+\end{eqnarray*}
+where we have used that $\lambda<1$. This completes the proof.
+\end{proof}
+
+\paragraph{Entropy vs. log barrier regularization.}
+A commonly considered regularizer is the entropy, where the regularizer would be:
+\[
+\frac{1}{|\Scal|}   \sum_s H(\pi_{\theta}(\cdot|s)) = \frac{1}{|\Scal|}  \sum_{s} \sum_a -\pi_{\theta}(a|s)
+\log \pi_{\theta}(a|s).
+\]
+Note the entropy is far less aggressive in penalizing small
+probabilities, in comparison to the log barrier, which is equivalent
+to the relative entropy. In particular, the entropy regularizer is
+always bounded between $0$ and $\log |\Acal|$, while the relative
+entropy (against the uniform distribution over actions), is bounded
+between $0$ and infinity, where it tends to infinity as probabilities
+tend to $0$. Here, it can be shown that the convergence rate is
+asymptotically $O(1\eps)$ (see Section~\ref{bib:pg_opt}) though
+it is unlikely that the convergence rate for this method
+is polynomial in other relevant quantities, including  $|\Scal|$, $|\Acal|$, $1/(1-\gamma)$, and the
+  distribution mismatch coefficient.
+The polynomial convergence rate using the log barrier ($\textrm{KL}$) regularizer
+crucially relies on the aggressive nature in which the relative
+entropy prevents small probabilities.
+
+\section{The Natural Policy Gradient}
+
+Observe that a policy constitutes a family of probability
+distributions $\{\pi_\theta(\cdot|s) | s\in \Scal\}$. We now consider
+a pre-conditioned gradient descent method based on this family of
+distributions. Recall that the Fisher information matrix of a parameterized density
+$p_\theta(x)$ is defined as
+$
+%\textrm{Fisher}(\theta) = 
+\E_{x\sim p_\theta } \left[
+\nabla \log p_\theta(x) \nabla \log p_\theta(x)^\top
+\right]
+$.
+Now we let us define $\mathcal{F}^\theta_\rho$ as an (average) Fisher information matrix on
+the family of distributions $\{\pi_\theta(\cdot|s) | s\in
+\Scal\}$ as follows:
+\[
+\mathcal{F}^\theta_\rho  := 
+\E_{s\sim d^{\pi_\theta}_\rho }\E_{a\sim \pi_\theta(\cdot|s) } \left[
+(\nabla \log \pi_\theta(a|s)) \nabla \log \pi_\theta(a|s)^\top
+\right] \, .
+\]
+Note that the average is under the
+state-action visitation frequencies.
+The NPG algorithm performs gradient updates in the geometry
+induced by this matrix as follows:
+\begin{align}\label{eqn:npg}
+%  F_\rho(\theta) &= \E_{s \sim d^{\pi_\theta}_{\rho}}
+%\E_{a\sim \pi_\theta(\cdot | s) }\Big[ \nabla_\theta \log
+%\pi_\theta(a| s) \Big(\nabla_\theta \log \pi_\theta(a|
+%s)\Big)^\top \Big] \nonumber\\
+\theta^{(t+1)} &= \theta^{(t)} + \eta F_\rho(\theta^{(t)})^\dagger \nabla_\theta V^{(t)}(\rho),
+\end{align}
+where $M ^\dagger$ denotes the Moore-Penrose pseudoinverse of the
+matrix $M$.  
+
+Throughout this section, we restrict to using the initial
+state distribution $\rho\in \Delta(\Scal)$ in our update rule in
+\eqref{eqn:npg} (so our optimization measure $\mu$ and the performance
+measure $\rho$ are identical). Also, we restrict attention to states
+$s\in\Sset$ reachable from $\rho$, since, without loss of generality,
+we can exclude states that are not reachable under this start state
+distribution\footnote{Specifically, we restrict the MDP to the set of
+  states
+  $\{s\in\Sset~:~\exists \pi ~~\text{such that}~~ d^\pi_\rho(s) >
+  0\}$.}.
+
+For the softmax parameterization, this method takes a particularly
+convenient form; it can be viewed as a soft policy iteration update.
+% the update takes 
+% (see ~\citet{Kakade01}). For completeness, we provide a proof in
+%Appendix~\ref{app:npg}.
+
+\begin{lemma}
+(Softmax NPG as soft policy iteration) For the softmax parameterization~\eqref{eq:softmax}, the NPG
+updates~\eqref{eqn:npg} take the form:
+\[
+\theta^{(t+1)} = \theta^{(t)} + \frac{\eta}{1-\gamma} A^{(t)}+\eta v \quad \mbox{and}\quad \pi^{(t+1)}(a| s) = \pi^{(t)}(a| s) \frac{\exp\big(\eta A^{(t)}(s,a)/(1-\gamma)\big)}{Z_t(s)},
+\]
+where $Z_t(s) = \sum_{a \in \Acal} \pi^{(t)}(a| s)  \exp\big(\eta A^{(t)}(s,a)/(1-\gamma)\big)$.
+\label{lemma:npg-softmax}
+Here, $v$ is only a state dependent 
+offset (i.e. $v_{s,a} = c_s$ for some $c_s\in \R$ for each state $s$),
+and, owing to the normalization $Z_t(s)$, $v$ has no effect on the update rule.
+\end{lemma}
+
+It is important to note that while the ascent direction was derived
+using the gradient $\nabla_\theta V^{(t)}(\rho)$, which depends on
+$\rho$, the NPG update rule actually has no dependence on the measure
+$\rho$. Furthermore, there is no dependence on the state distribution
+$d^{(t)}_{\rho}$, which is due to the pseudoinverse of
+the Fisher information  cancelling out the effect of the state
+distribution in NPG. 
+
+\begin{proof}
+By definition of the Moore-Penrose pseudoinverse, we have that
+$(\mathcal{F}^\theta_\rho)^{\dagger}\nabla V^{\pi_\theta}(\rho)=w_\star$
+if an only if $w_\star$ is the minimum norm solution of:
+\[
+\min_w \| \nabla V^{\pi_\theta}(\rho) - \mathcal{F}^\theta_\rho w\|^2 \, .
+\]
+
+Let us first evaluate $\mathcal{F}^\theta_\rho w$.
+For the softmax policy parameterization, Lemma~\ref{eq:softmax-grad} implies:
+\[
+w^\top \nabla_\theta \log \pi_\theta(a|s) = w_{s,a} - \sum_{a'\in \Acal} w_{s,a'} \pi_\theta(a'|s)
+:= w_{s,a} - \overline{w}_s
+\]
+where $\overline{w}_s$ is not a function of $a$.
+This implies that:
+\begin{align*}
+\mathcal{F}^\theta_\rho w 
+&= \E_{s\sim d^{\pi_\theta}_\rho }\E_{a\sim \pi_\theta(\cdot|s) } \left[
+\nabla \log \pi_\theta(a|s) \bigg(w^\top \nabla_\theta \log \pi_\theta(a|s)\bigg)
+\right] \\
+&= \E_{s\sim d^{\pi_\theta}_\rho }\E_{a\sim \pi_\theta(\cdot|s) } \left[
+\nabla \log \pi_\theta(a|s) \bigg(w_{s,a} - \overline{w}_s\bigg)
+\right] 
+= \E_{s\sim d^{\pi_\theta}_\rho }\E_{a\sim \pi_\theta(\cdot|s) } \Big[
+w_{s,a} \nabla \log \pi_\theta(a|s) 
+\Big] ,
+\end{align*}
+where the last equality uses that $\overline{w}_s$ is not a function
+of $s$.
+Again using the functional form of derivative of the softmax policy
+parameterization, we have:
+\[
+\bigg[\mathcal{F}^\theta_\rho w \bigg]_{s',a'} =
+d^{\pi_\theta}(s')\pi_\theta(a'|s') \bigg(w_{s',a'} - \overline{w}_{s'}\bigg).
+\]
+This implies:
+\begin{align*}
+\| \nabla V^{\pi_\theta}(\rho) - \mathcal{F}^\theta_\rho w \|^2 &=
+\sum_{s,a} \left( d^{\pi_\theta}(s)\pi_\theta(a|s) \bigg(
+\frac{1}{1-\gamma}A^{\pi_\theta}(s,a) - \big[\mathcal{F}^\theta_\rho w\big]_{s,a}\bigg) \right)^2\\
+&=
+\sum_{s,a} \left( d^{\pi_\theta}(s)\pi_\theta(a|s)  \bigg(\frac{1}{1-\gamma}A^{\pi_\theta}(s,a)  - w_{s,a} 
+- \sum_{a'\in \Acal} w_{s,a'} \pi_\theta(a'|s) \bigg) \right)^2.
+\end{align*}
+Due to that $w=\frac{1}{1-\gamma}A^{\pi_\theta}$ leads to $0$ error,
+the above implies that all $0$ error solutions are of the form
+$w=\frac{1}{1-\gamma}A^{\pi_\theta}+v$, where $v$ is only a state dependent 
+offset (i.e. $v_{s,a} = c_s$ for some $c_s\in \R$ for each state $s$).
+The first claim follows due to that the minimum norm solution is one
+of these solutions. The proof of the second
+claim now follows by the definition of the NPG update rule, along with
+that $v$ has no effect on the update rule due to the normalization constant $Z_t(s)$.
+\end{proof}
+
+We now see that this algorithm enjoys a dimension free convergence rate.
+
+\begin{theorem}[Global convergence for NPG]
+Suppose we run the NPG updates~\eqref{eqn:npg} using $\rho\in
+\Delta(\Scal)$ and with
+$\theta^{(0)}=0$. Fix $\eta>0$. For all $T>0$, we have:
+\[
+V^{(T)}(\rho) \geq V^\ast(\rho) - \frac{\log |\Acal|}{\eta T} - \frac{1}{(1-\gamma)^2T}.
+\]
+\label{thm:npg}
+\end{theorem}
+
+Note in the above the theorem that the NPG algorithm is directly applied to the performance
+measure $V^{\pi}(\rho)$, and the guarantees are also with respect to
+$\rho$. In particular, there is no distribution mismatch coefficient
+in the rate of convergence.
+
+Now setting $\eta \geq (1-\gamma)^2 \log |\Acal|$, we see that
+NPG finds an $\epsilon$-optimal policy in a number of iterations that is at most:
+\[
+T \leq \frac{2}{(1-\gamma)^2\epsilon} ,
+\]
+which has no dependence on the number of states or actions, despite the
+non-concavity of the underlying optimization problem.
+
+The proof strategy we take borrows ideas from the classical
+multiplicative weights algorithm (see Section!\ref{bib:pg_opt}).
+
+First, the following improvement lemma is helpful:
+
+\begin{lemma}[Improvement lower bound for NPG]
+	\label{lemma:npg-gap}
+For the iterates $\pi^{(t)}$ generated by the NPG
+updates~\eqref{eqn:npg}, we have for all starting state distributions $\mu$
+\[
+  V^{(t+1)}(\mu) - V^{(t)}(\mu) \geq \frac{(1-\gamma)}{\eta} \E_{s\sim
+    \mu} \log Z_t(s) \geq 0 .
+\]
+\end{lemma}
+
+\begin{proof}
+First, let us show that $\log Z_t(s)\geq 0$. To see this, observe:
+\begin{multline*}
+    \log Z_t(s) = \log \sum_a \pi^{(t)}(a| s)\exp(\eta A^{(t)}(s,a)/(1-\gamma))\\
+    \geq \sum_a \pi^{(t)}(a| s) \log \exp(\eta A^{(t)}(s,a)/(1-\gamma))
+    = \frac{\eta}{1-\gamma}\sum_a \pi^{(t)}(a| s) A^{(t)}(s,a) = 0.
+\end{multline*}
+where we have used Jensen's inequality
+on the concave function $\log x$ and that $\sum_a
+\pi^{(t)}(a| s)A^{(t)}(s,a) = 0$.
+By the performance
+difference lemma,
+\begin{align*}
+    V^{(t+1)}(\mu) - V^{(t)}(\mu) &= \frac{1}{1-\gamma} \E_{s\sim d^{(t+1)}_{\mu}} \sum_a \pi^{(t+1)}(a| s) A^{(t)}(s,a)\\
+    &= \frac{1}{\eta} \E_{s\sim d^{(t+1)}_{\mu}} \sum_a \pi^{(t+1)}(a| s) \log \frac{\pi^{(t+1)}(a| s)Z_t(s)}{\pi^{(t)}(a| s)}\\
+    &= \frac{1}{\eta} \E_{s\sim d^{(t+1)}_{\mu}}
+      \kl(\pi^{(t+1)}_s||\pi^{(t)}_s) + \frac{1}{\eta} \E_{s\sim
+      d^{(t+1)}_{\mu}} \log Z_t(s)\\
+&\geq \frac{1}{\eta} \E_{s\sim d^{(t+1)}_{\mu}} \log Z_t(s)
+\geq \frac{1-\gamma}{\eta} \E_{s\sim \mu} \log Z_t(s),
+\end{align*}
+where the last step uses that $d^{(t+1)}_{\mu} \geq (1-\gamma)
+\mu$ (by~\eqref{eqn:dpi}) and that $\log Z_t(s)\geq 0$.
+\end{proof}
+
+With this lemma, we now prove Theorem~\ref{thm:npg}.
+
+\begin{proof}[\textbf{of Theorem~\ref{thm:npg}}]
+Since $\rho$ is fixed, we use $d^\star$ as shorthand for
+$d^{\pi^\star}_{\rho}$; we also use $\pi_s$ as shorthand for the vector of
+$\pi(\cdot| s)$.
+By the performance difference lemma (Lemma~\ref{lemma:perf_diff}),
+\begin{align*}
+  V^{\pi^\star}(\rho) &- V^{(t)}(\rho)
+= \frac{1}{1-\gamma} \E_{s\sim d^{\star}} \sum_a \pi^\star(a| s) A^{(t)}(s,a)\\
+&= \frac{1}{\eta} \E_{s\sim d^{\star}} \sum_a \pi^\star(a| s) \log \frac{\pi^{(t+1)}(a| s) Z_t(s)}{\pi^{(t)}(a| s)}\\
+&= \frac{1}{\eta} \E_{s\sim d^{\star}} \left(\kl(\pi^\star_s ||
+\pi^{(t)}_s) - \kl(\pi^\star_s || \pi^{(t+1)}_s) + \sum_a \pi^*(a| s) \log Z_t(s)\right) \\
+&= \frac{1}{\eta} \E_{s\sim d^{\star}} \left(\kl(\pi^\star_s ||
+\pi^{(t)}_s) - \kl(\pi^\star_s || \pi^{(t+1)}_s) + \log Z_t(s)\right),
+\end{align*}
+where we have used the closed form of our updates from
+Lemma~\ref{lemma:npg-softmax} in the second step.
+%, we can substitute for $A^{(t)}(s,a)$ in the above equality in terms
+%of the successive policies to obtain Since $V^{(t+1)}(s_0) \geq
+%V^{(t)}(s_0)$ under the NPG update, due to
+%Lemma~\ref{lemma:npg-gap}, we see that
+
+By applying Lemma~\ref{lemma:npg-gap} with $d^{\star}$ as the
+starting state distribution, we have:
+\[
+\frac{1}{\eta} \E_{s\sim d^{\star}} \log Z_t(s) \leq \frac{1}{1-\gamma}
+\Big(V^{(t+1)}(d^{\star}) - V^{(t)}(d^{\star})\Big)
+\]
+which gives us a bound on $\E_{s\sim d^{\star}} \log Z_t(s)$.
+
+Using the above equation and that $V^{(t+1)}(\rho) \geq V^{(t)}(\rho)$ (as $V^{(t+1)}(s) \geq V^{(t)}(s)$ for all states $s$ by
+Lemma~\ref{lemma:npg-gap}), we have:
+\begin{align*}
+%V^{\pi^\star}(\rho) - V^{(T-1)}(\rho) &\leq V^{\pi^\star}(\rho) - V^{(T-1)}(\rho)\\
+V^{\pi^\star}(\rho) &- V^{(T-1)}(\rho)
+\leq \frac{1}{T} \sum_{t=0}^{T-1} (V^{\pi^\star}(\rho) - V^{(t)}(\rho)) \\
+&= \frac{1}{\eta T} \sum_{t=0}^{T-1} \E_{s\sim d^{\star}}
+(\kl(\pi^\star_s || \pi^{(t)}_s) - \kl(\pi^\star_s || \pi^{(t+1)}_s))
++ \frac{1}{\eta T} \sum_{t=0}^{T-1} \E_{s\sim d^{\star}} \log Z_t(s) \\
+&\leq \frac{\E_{s\sim d^{\star}} \kl(\pi^\star_s||\pi^{(0)})}{\eta T}
++ \frac{1}{(1-\gamma) T} \sum_{t=0}^{T-1} \Big(V^{(t+1)}(d^{\star}) - V^{(t)}(d^{\star})\Big) \\
+&= \frac{\E_{s\sim d^{\star}}
+\kl(\pi^\star_s||\pi^{(0)})}{\eta T}
++ \frac{V^{(T)}(d^{\star}) - V^{(0)}(d^{\star})}{(1-\gamma)T} \\
+&\leq \frac{\log |\Acal|}{\eta T} + \frac{1}{(1-\gamma)^2T}.
+\end{align*}
+The proof is  completed using that $V^{(T)}(\rho) \geq V^{(T-1)}(\rho)$.
+\end{proof}
+
+
+
+
+\section{Bibliographic Remarks and Further Readings}\label{bib:pg_opt}
+
+The natural policy gradient method was originally presented in
+\cite{Kakade01}; a number of arguments for this method have been provided based on
+information geometry~\citep{Kakade01,bagnell2003covariant,Peters:2008:NA:1352927.1352986}.
+
+The convergence rates in this chapter are largely derived
+from~\cite{agarwal2019optimality}. The proof strategy for the NPG analysis has origins in the online regret
+framework in changing MDPs~\citep{even-dar2009online}, which would
+result in a worst rate in comparison
+to~\cite{agarwal2019optimality}.  This observation that the proof
+strategy from ~\citep{even-dar2009online} provided  a convergence rate
+for the NPG was made in~\cite{DBLP:journals/corr/NeuJG17}.
+The faster NPG rate we present here is due to~\cite{agarwal2019optimality}.
+The analysis of the MD-MPI algorithm~\citep{geist2019theory} also
+implies a $O(1/T)$ rate for the NPG, though with worse dependencies on
+other parameters.
+
+Building on ideas
+in~\cite{agarwal2019optimality}, \cite{mei2020global} showed that, for
+the softmax policy class, both the gradient ascent and entropy
+regularized gradient ascent asymptotically converge at a $O(1/t)$; it
+is unlikely these methods are have finite rate which are polynomial in
+other quantities (such as the $|\Scal|$, $|\Acal|$, $1/(1-\gamma)$, and the
+  distribution mismatch coefficient).
+
+
+\cite{mnih2016asynchronous} introduces the entropy regularizer (also
+see~\cite{ahmed2019understanding} for a more detailed empirical
+investigation).
