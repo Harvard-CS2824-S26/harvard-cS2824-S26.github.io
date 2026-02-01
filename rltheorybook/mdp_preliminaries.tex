@@ -82,6 +82,7 @@ Q_M^\pi(s,a) = \Expe{\sum_{t=0}^\infty \gamma^t  r(s_t, a_t) \cond \pi, s_0 = s,
 \]
 and $Q_M^\pi(s,a)$ is also bounded by $1/(1-\gamma)$.
 
+
 \paragraph{Goal.}
 Given a state $s$, the goal of the agent is to find a policy $\pi$ that maximizes the value:
 \begin{align}\label{eq:expected_return_discounted}
@@ -551,25 +552,25 @@ $L(P,r,\gamma)$).
 
 \begin{table*}[t!]
 \centering
-\begin{tabular}{ |c|c|c|c| }
+\setlength{\tabcolsep}{7pt}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{ |c|c|c| }
 \hline
-& Value Iteration & Policy Iteration & LP Algorithms\\ \hline
-Poly?  &
-$|\Scal|^2 |\Acal|\dfrac{ L(P,r,\gamma)\, \log \frac{1}{1-\gamma}}{1-\gamma}$
-&
-$(|\Scal|^3 +|\Scal|^2|\Acal|)\dfrac{ L(P,r,\gamma)\, \log \frac{1}{1-\gamma}}{1-\gamma}$
-&
-$|\Scal|^3 |\Acal|\, L(P,r,\gamma)$\\ \hline
-Strongly Poly? &
-\xmark
-&
+ & \textbf{Poly?} & \textbf{Strongly Poly?} \\ \hline
+\textbf{Value Iteration} &
+$|\Scal|^2 |\Acal|\dfrac{ L(P,r,\gamma)\, \log \frac{1}{1-\gamma}}{1-\gamma}$ &
+\xmark \\ \hline
+\textbf{Policy Iteration} &
+$(|\Scal|^3 +|\Scal|^2|\Acal|)\dfrac{ L(P,r,\gamma)\, \log \frac{1}{1-\gamma}}{1-\gamma}$ &
 $(|\Scal|^3 +|\Scal|^2|\Acal|)\cdot \min\left\{ \dfrac{|\Acal|^{|\Scal|}}{|\Scal|},
 \dfrac{|\Scal|^2 |\Acal| \log\frac{|\Scal|^2 }{1-\gamma}}{1-\gamma}
-\right\}$
-&
+\right\}$ \\ \hline
+\textbf{LP Algorithms} &
+$|\Scal|^3 |\Acal|\, L(P,r,\gamma)$ &
 $|\Scal|^4 |\Acal|^4 \log\frac{|\Scal| }{1-\gamma}$ \\ \hline
 \end{tabular}
-\caption{Computational complexities of various approaches (universal constants are omitted).
+\caption{Computational complexities of various approaches (universal
+  constants are omitted) to find an \emph{exact} solution.
 Polynomial-time algorithms may depend on the bit complexity $L(P,r,\gamma)$, while
 strongly polynomial algorithms do not.
 Note that value iteration and policy iteration have iteration complexity scaling
@@ -585,6 +586,7 @@ and $|\Scal|^3 +|\Scal|^2|\Acal|$ is the assumed runtime per iteration of policy
 iteration; these are consistent with cubic-time linear system solves.}
 \label{table:computation}
 \end{table*}
+
 
 The next two subsections cover classical \emph{iterative} algorithms that compute
 $Q^\star$. We then discuss the linear programming approach.
