@@ -1,79 +1,6 @@
 \chapter{Sample Complexity with a Generative Model}
 \label{chap:generative}
 
-\iffalse
-Much of reinforcement learning is concerned with finding a near
-optimal policy (or obtaining near optimal reward) in settings where
-the MDPs is not known to the learner. We will study these questions
-in a few different contexts.
-%, when we are in an \emph{episodic
-%setting} and when we have access to a \emph{generative model}.
-
-\paragraph{The Episodic Setting.}
-In the episodic setting, in every episode, the
-learner acts for some finite number of steps, starting from a fixed starting state
-$s_0\sim \mu$, the learner observes the trajectory, and the state
-resets to $s_0\sim \mu$.  This episodic
-model of feedback is applicable to both the finte-horizon and infinite
-horizon settings.
-\begin{itemize}
-\item (Finite Horizon MDPs) Here, each episode lasts for $H$-steps,
-  and then the state is reset to $s_0\sim \mu$.
-\item (Infinite Horizon MDPs) Even for infinite horizon MDPs it is
-  natural to work in an episodic model for learning, where each
-  episode terminates after a finite number of steps. Here, it is often
-  natural to assume either the agent can terminate the episode at will
-  or that the episode will terminate at each step with probability
-  $1-\gamma$. After termination, we again assume that the state is
-  reset to  $s_0\sim \mu$.  Note that, if each step in an episode is terminated with probability
-  $1-\gamma$, then the observed cumulative reward in an episode of a policy
-  provides an unbiased estimate of the infinite-horizon, discounted
-  value of that policy.
-\end{itemize}
-In this setting, we are often interested in either the number
-of episodes it takes to find a near optimal policy, which is a PAC (probably,
-approximately correct) guarantee, or we are interested in a regret
-guarantee (which we will study in
-Chapter~\ref{chap:tabular_exploration}).  Both of these questions are
-with regards to statistical complexity (i.e. the sample complexity) of learning.
-
-The episodic setting is challenging in that the agent has to engage in
-some exploration in order to gain information at the relevant
-state. As we shall see in Chapter~\ref{chap:tabular_exploration}, this
-exploration must be strategic, in the sense that simply behaving
-randomly will not lead to information being gathered quickly
-enough. It is often helpful to study the statistical
-complexity of learning in a more abstract sampling model, a
-generative model, which allows to avoid having to directly address
-this exploration issue. Furthermore, this sampling model is natural in
-its own right. 
-
-\paragraph{The generative model setting.} A \emph{generative model}
-provides us with a sample $s'\sim P(\cdot|s, a)$ upon input of a state
-action pair $(s,a)$. Let us consider the most naive approach to learning (when
-we have access to a generative model):
- suppose we call our
-simulator $N$ times at each state action pair. Let $\widehat P$ be our
-empirical model, defined as follows:
-\[
-\widehat P(s'|s,a) =  \frac{\textrm{count}(s',s,a)}{N}
-\]
-where $\textrm{count}(s',s,a)$ is the number of times the state-action
-pair $(s,a)$ transitions to state $s'$. As the $N$ is the number of
-calls for each state action pair, the total number of
-calls to our generative model is $|\Scal||\Acal|N$. As before, we can
-view $\widehat P$ as a matrix of size $|\Scal||\Acal| \times |\Scal|$.
-
-\paragraph{The offline RL setting.} The \emph{offline RL setting} is
-where the agent has access to an offline dataset, say generated under
-some policy (or collection of policies). In the simplest of these
-settings, we may assume our dataset is of the form $\{(s,a,s',r)\}$
-where $r$ is the reward (corresponding to $r(s,a)$ if the reward is
-deterministic, and $s'\sim P(\cdot|s, a)$. Furthermore, we may assume
-that the $s,a$ pairs in this dataset were sampled i.i.d. from some
-fixed distribution $\nu$ over $\Scal \times \Acal$.
-\fi
-
 This chapter begins our study of the sample complexity, where we focus on the (minmax)
 number of transitions we need to observe in order to accurately
 %optimal sample complexity of estimating 
@@ -88,14 +15,26 @@ due to the uncertainty in the transition model $P$).
 %This will also
 %not effect the minmax sample complexity.
 
+\iffalse
 This chapter follows the results due to ~\cite{azar2013minimax}, along
-with some improved rates due to~\cite{pmlr-v125-agarwal20b}.  One of
+with some improved rates due to~\cite{pmlr-v125-agarwal20b}.
+\fi
+
+\iffalse
+One of
 the key observations in this chapter is that we can find a near
 optimal policy using a number of observed transitions that is
 \emph{sublinear} in the model size, i.e. use a number of samples that
 is smaller than $O(|\Scal|^2|\Acal|)$. In other words, we do not need
 to learn an accurate model of the world in order to learn to act near optimally.
 
+SK: basically, i want to setup the reader with the right high level questions.
+1. maybe give a clearer question here, in that the ``answer'' we want
+is SA params.
+2. say that releative accuracy is eps/(1-gamma)^2. and then ask about
+the horizon dependence. above that we have ``horizon amplification''
+3. mention the sublinear point
+\fi
 
 \paragraph{Notation.} We define $\widehat M$ to be the empirical MDP that is identical to
 the original $M$, except that it uses $\widehat P$ instead of $P$ for
