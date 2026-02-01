@@ -6,6 +6,8 @@ MATLAB*
 
 .DS_Store*
 prompts.txt
+main.tex
+
 
 *.idx
 *.thm
