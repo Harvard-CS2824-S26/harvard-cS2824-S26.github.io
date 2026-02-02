@@ -863,46 +863,33 @@ $\|\widehat Q^\star-Q^\star\|_\infty$.
 Combining the two sides gives the stated $\ell_\infty$ error bound (with a possibly different absolute constant $c$).
 \end{proof}
 
+\section{Bibliographic Remarks and Further Reading}\label{bib:sample_complexity}
 
+The generative model framework (also known as a simulator oracle) was introduced by \citet{kearns1999finite}, who established that model-based and model-free methods have comparable sample complexity up to horizon and logarithmic factors. \citet{kakade2003sample} provided improved rates analogous to the ``crude'' bounds presented in Proposition~\ref{proposition:crude}.
 
+The sharp value estimation bound (the first claim in
+Theorem~\ref{thm:minimax_upper_discounted}) is due to
+\citet{azar2013minimax}; the analysis in Section~\ref{sec:analysis}
+largely follows their technique. Regarding the sub-optimality of the
+learned policy $\widehat \pi^\star$, a naive analysis suggests an
+amplification of the error by
+$(1-\gamma)^{-1}$. \citet{sidford2018vnear} provided the first proof
+that this amplification can be avoided, achieving the optimal rate
+using a variance-reduced value iteration algorithm. Subsequently,
+\citet{pmlr-v125-agarwal20b} showed that the naive model-based
+approach (the ``plug-in'' estimator) is also sufficient to achieve
+this optimal rate (the second claim in
+Theorem~\ref{thm:minimax_upper_discounted}). The minimax lower bound
+(Theorem~\ref{thm:minimax_lower_discounted}) is due to
+\citet{azar2013minimax}. 
 
-\section{Bibliographic Remarks and Further Readings}\label{bib:sample_complexity}
+We also note that the sub-optimality bounds presented here require $\eps$ to be sufficiently small (roughly $\eps \lesssim 1/\sqrt{1-\gamma}$). \citet{li2020breaking} showed that the optimal rate is achievable for the full range of meaningful accuracy (up to $\eps \approx 1/(1-\gamma)$) using a perturbed model-based algorithm. It remains an open question whether the standard (unperturbed) model-based approach achieves this optimal non-asymptotic behavior for large $\eps$.
 
-The notion of a generative model was first introduced
-in~\cite{kearns1999finite}, which made the argument that, up to
-horizon factors and logarithmic factors, both model based methods and
-model free methods are comparable. \cite{kakade2003sample} gave an improved version of this rate
-(analogous to the crude bounds seen here). 
-
-The first claim in Theorem~\ref{thm:sample_complexity} is due to ~\cite{azar2013minimax},
-and the proof in this section largely follows this work. Improvements
-are possible with regards to bounding the quality of  $\widehat
-\pi^\star$; here, Theorem~\ref{thm:sample_complexity} shows that 
-the model based approach is near optimal even for policy itself;
-showing that the quality of $\widehat
-\pi^\star$ does suffer any amplification factor of
-$1/(1-\gamma)$.  \cite{sidford2018vnear} provides the first proof of
-this improvement using a
-variance reduction algorithm with value iteration. The second claim in Theorem~\ref{thm:sample_complexity} is due
-to~\cite{pmlr-v125-agarwal20b}, which shows that 
-the naive model based approach is sufficient. The lower bound in
-Theorem~\ref{thm:lower_sample_complexity} is due to ~\cite{azar2013minimax}.
-
-We also remark that we may hope for the sub-optimality bounds (on the value
-of the argmax policy) to hold up to for ``large'' $\eps$, i.e. up to
-$\eps\leq 1/(1-\gamma)$ (see the second claim in Theorem~\ref{thm:sample_complexity}).
- Here, the work in
-~\cite{li2020breaking} shows this limit is achievable, albeit
-with a slightly different algorithm where they introduce
-perturbations. It is currently an open question if the naive model based
-approach also achieves the non-asymptotic statistical limit.
-
-This chapter also provided results, without proof, on the optimal sample complexity in
-the finite horizon setting (see
-Section~\ref{sec:finite_horizon_sc}). The proof of this claim
-would also follow from the line of reasoning  in~\cite{azar2013minimax}, with the added
+Finally, this chapter presented optimal sample complexity results for
+the finite-horizon setting (Section~\ref{sec:finite_horizon_sc})
+without proof. These results follow from the line of reasoning in
+\citet{azar2013minimax}, with the added
 simplification that the sub-optimality analysis is simpler in the
-finite-horizon setting with time-dependent transition matrices
-(e.g. see~\cite{Yin2021NearOP}).
-
+finite-horizon setting with time-dependent transition matrices (see,
+e.g., \cite{Yin2021NearOP}).
 
