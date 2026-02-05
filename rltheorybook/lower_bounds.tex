@@ -66,20 +66,20 @@ in~\cite{du2019good,wang2020statistical,WeiszAS21,Wang_linear_lower}.
 \section{Agnostic Learning}
 
 Suppose we have a hypothesis class $\Hcal$ (either finite or
-infinite), where for each $f \in \H$ we have an associated policy
+infinite), where for each $f \in \Hcal$ we have an associated policy
 $\pi_f:\Scal \rightarrow \Acal$, which, for simplicity, we assume is deterministic.
 Here, we could have that:
 \begin{itemize}
-\item $\H$ itself is a class of policies.
-\item $\H$ is a set of state-action values, where for $f \in \Hcal$,
+\item $\Hcal$ itself is a class of policies.
+\item $\Hcal$ is a set of state-action values, where for $f \in \Hcal$,
   we associate it with the greedy policy $\pi_f(s,h) = \argmax_a
   f_h(s,a)$, where $s\in\Scal$ and $h\in[H]$.
-\item $\H$ could be a class of models (i.e. each $f \in \Hcal$ is an
+\item $\Hcal$ could be a class of models (i.e. each $f \in \Hcal$ is an
   MDP itself). Here, for each $f \in \Hcal$, we can let $\pi_f$ be the
   optimal policy in the MDP $f$. 
 \end{itemize}
 We let $\Pi$ denote the induced set of policies from our hypothesis
-class $\Hcal$, i.e. $\Pi= \{\pi_f | f \in \H\}$.
+class $\Hcal$, i.e. $\Pi= \{\pi_f | f \in \Hcal\}$.
 
 
 The goal of agnostic learning can be formulated by the following optimization problem:
@@ -121,9 +121,9 @@ the question of generalization in reinforcement learning.
 
 Consider the problem of binary classification with $N$ labeled
 examples of the form $(x_i, y_i)_{i=1}^N$, with $x_i \in
-\Xset$ and $y_i \in \{0,1\}$. Suppose we have a (finite or infinte) set $\Hcal$ of
+\Xcal$ and $y_i \in \{0,1\}$. Suppose we have a (finite or infinte) set $\Hcal$ of
 binary classifiers where each $h \in \Hcal$ is a mapping of the form
-$h :\Xset \to \{0,1\}$. Let $\ind(h(x) \ne y)$ be an indicator which
+$h :\Xcal \to \{0,1\}$. Let $\ind(h(x) \ne y)$ be an indicator which
 takes the value $0$ if $h(x) = y$ and $1$ otherwise. We assume that our samples
 are drawn i.i.d. according to a fixed joint distribution $D$ over $(x,y)$.
 
