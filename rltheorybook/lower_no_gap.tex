@@ -1,0 +1,605 @@
+%===========================================================
+% linearQstar_lowerbound_gapless.tex  (cleaned + consistent)
+%===========================================================
+
+\section{A Hard Family with Linearly Realizable $Q^\star$}
+\label{sec:linearQstar_gapless_lb}
+
+This section records a trajectory-tree hard instance in which $Q^\star$
+is linear in a given feature map, yet identifying a near-optimal policy
+requires exponentially many samples in $\min\{d,H\}$ (once the action
+set is taken to be exponentially large in $d$).  We focus here on
+making the construction and the realizability verification clean; the
+information-theoretic argument (e.g.\ Fano/Le Cam) is deferred.
+
+\subsection{Construction}
+
+Fix a horizon $H\ge 1$ and a feature dimension $d$. Let $\rho\in(0,1/6]$
+be a constant.
+
+\paragraph{Nearly orthogonal vectors.}
+Assume we are given unit vectors $\{v(a)\}_{a\in[A]}\subset\R^d$ such that
+\[
+\forall a\neq a',\qquad |\langle v(a),v(a')\rangle|\le \rho.
+\]
+Such a set exists for $A\le \exp(c_0\rho^2 d)$ (Johnson--Lindenstrauss packing).
+
+\paragraph{State space.}
+For each layer $h\in\{0,1,\dots,H\}$, define the set of nonterminal states
+\[
+\Scal_h^{\mathrm{nt}}
+:= \big\{ \overline{a_{1:h}} : a_1,\dots,a_h\in[A]\ \text{are all distinct}\big\},
+\]
+with $\Scal_0^{\mathrm{nt}}=\{\overline{\emptyset}\}$.
+Let $f$ be an absorbing terminal state and set $\Scal_h:=\Scal_h^{\mathrm{nt}}\cup\{f\}$.
+
+\paragraph{MDP family.}
+The family is indexed by $a^\star\in[A]$.  We write $\mathcal{M}_{a^\star}$ for the MDP
+with optimal-action index $a^\star$.  The action space is $\Acal=[A]$.
+The initial state is $s_0=\overline{\emptyset}$.
+
+\paragraph{Transitions.}
+For $h\le H-1$, if $s_h=f$ then $s_{h+1}=f$ surely.
+If $s_h=\overline{a_{1:h}}$ is nonterminal and the agent chooses $a\in[A]$, then
+\[
+s_{h+1} :=
+\begin{cases}
+f, & a\in\{a_1,\dots,a_h\} \qquad\text{(repeat an action already on the path)}\\
+f, & a=a^\star \qquad\qquad\quad\text{(the distinguished action)}\\
+\overline{a_{1:h}a}, & \text{otherwise}.
+\end{cases}
+\]
+Thus along any \emph{nonterminal} trajectory, the actions are distinct and never equal to $a^\star$.
+
+%-----------------------------
+% Bias sequence (0-indexed)
+%-----------------------------
+
+\paragraph{Bias sequence.}
+Set $b_0:=1$ and define recursively for $h=0,1,\dots,H-1$,
+\[
+b_{h+1} := 3\rho\, b_h .
+\]
+Equivalently, $b_h=(3\rho)^h$ for $h\ge 0$ (note $3\rho\le 1/2$ when $\rho\le 1/6$).
+
+%-----------------------------
+% Feature map (with repeat-action truncation)
+%-----------------------------
+
+\paragraph{Feature map.}
+Define $\phi_h:\Scal_h\times\Acal\to\R^d$ recursively as follows.
+For the terminal state, set $\phi_h(f,a)=0$ for all $h$ and $a$.
+For the root,
+\[
+\phi_0(\overline{\emptyset},a_1) := b_0\, v(a_1)=v(a_1).
+\]
+For $h\ge 1$ and a nonterminal state $s_h=\overline{a_{1:h}}$, define for each $a\in[A]$,
+\[
+\phi_h(\overline{a_{1:h}},a)
+:=
+\begin{cases}
+0, & a\in\{a_1,\dots,a_h\} \qquad\text{(repeat action)}\\[3pt]
+\Big(\big\langle \phi_{h-1}(\overline{a_{1:h-1}},a_h),\, v(a)\big\rangle + b_h\Big)\, v(a),
+& a\notin\{a_1,\dots,a_h\}.
+\end{cases}
+\]
+(As usual, $\phi_{h-1}(\overline{a_{1:h-1}},a_h)$ is the feature on the edge entering $\overline{a_{1:h}}$.)
+
+%-----------------------------
+% Candidate parameter and Q
+%-----------------------------
+\paragraph{Parameter and candidate $Q$.}
+Fix $a^\star\in[A]$ and set $\theta^\star := v(a^\star)$.
+Define the \emph{candidate} action-value function
+\[
+\widetilde Q_h(s,a) := \langle \phi_h(s,a), \theta^\star\rangle,\qquad h=0,1,\dots,H-1,
+\]
+and $\widetilde V_h(s):=\max_{a\in\Acal}\widetilde Q_h(s,a)$, with $\widetilde V_H\equiv 0$.
+
+%-----------------------------
+% Rewards
+%-----------------------------
+
+
+\paragraph{Rewards (explicit, piecewise).}
+Define deterministic rewards $r_h:\Scal_h\times\Acal\to\R$ by:
+\begin{itemize}
+\item For the last layer $h=H-1$:
+\[
+r_{H-1}(s,a) := \widetilde Q_{H-1}(s,a)=\langle \phi_{H-1}(s,a),\theta^\star\rangle.
+\]
+\item For layers $h=0,1,\dots,H-2$:
+\[
+r_h(s,a) :=
+\begin{cases}
+\widetilde Q_h(s,a), & \text{if } s_{h+1}=f,\\
+-b_{h+1}, & \text{if } s_{h+1}\in\Scal_{h+1}^{\mathrm{nt}}.
+\end{cases}
+\]
+\end{itemize}
+
+\paragraph{Observed rewards (Gaussian noise model).}
+The environment has deterministic mean rewards $r_h(s,a)$ defined below, but the learner observes
+\[
+R_h = r_h(s,a) + \xi_h,\qquad \xi_h\sim\mathcal{N}(0,1)\ \text{i.i.d.}
+\]
+independently across all queries (and independent of the learner's randomness).
+
+
+%===========================================================
+\subsection{Key inequality: $a^\star$ is greedy everywhere}
+
+\begin{lemma}[Fresh-direction correlation bound]
+\label{lem:fresh_corr_bound}
+For any $t\in\{0,1,\dots,H-1\}$, any nonterminal $\overline{a_{1:t}}\in\Scal_t^{\mathrm{nt}}$,
+any action $a_{t+1}\notin\{a_1,\dots,a_t\}$, and any
+$a'\notin\{a_1,\dots,a_t,a_{t+1}\}$, we have
+\[
+\big|\big\langle \phi_t(\overline{a_{1:t}},a_{t+1}),\, v(a')\big\rangle\big|
+\le \frac{1}{2}\, b_{t+1}.
+\]
+\end{lemma}
+
+\begin{proof}
+We proceed by induction on $t$.
+
+\emph{Base case $t=0$.}
+$\phi_0(\overline{\emptyset},a_1)=b_0 v(a_1)=v(a_1)$, hence for $a'\neq a_1$,
+\[
+|\langle \phi_0(\overline{\emptyset},a_1),v(a')\rangle|
+= |\langle v(a_1),v(a')\rangle|
+\le \rho
+= \frac{1}{3} b_1
+\le \frac{1}{2} b_1,
+\]
+since $b_1=3\rho b_0=3\rho$.
+
+\emph{Inductive step.}
+Assume the claim holds for $t-1\ge 0$. Let $a'\notin\{a_1,\dots,a_{t+1}\}$.
+By definition (and since $a_{t+1}$ is not a repeat),
+\[
+\phi_t(\overline{a_{1:t}},a_{t+1})
+=
+\Big(\langle \phi_{t-1}(\overline{a_{1:t-1}},a_t), v(a_{t+1})\rangle + b_t\Big) v(a_{t+1}).
+\]
+Thus
+\begin{align*}
+\big|\langle \phi_t(\overline{a_{1:t}},a_{t+1}), v(a')\rangle\big|
+&= |\langle v(a_{t+1}), v(a')\rangle|\,
+\Big|\langle \phi_{t-1}(\overline{a_{1:t-1}},a_t), v(a_{t+1})\rangle + b_t\Big|\\
+&\le \rho\Big(\frac{1}{2}b_t + b_t\Big)
+= \frac{3}{2}\rho b_t
+= \frac{1}{2} b_{t+1},
+\end{align*}
+using the induction hypothesis with $a'=a_{t+1}$ and the recursion $b_{t+1}=3\rho b_t$.
+\end{proof}
+
+\begin{lemma}[Greedy action is $a^\star$ everywhere]
+\label{lem:greedy_astar}
+For every $h\in\{0,1,\dots,H-1\}$ and every nonterminal state $s_h\in\Scal_h^{\mathrm{nt}}$,
+\[
+\widetilde Q_h(s_h,a^\star)\ \ge\ \frac{1}{2} b_h
+\qquad\text{and}\qquad
+\max_{a\neq a^\star}\widetilde Q_h(s_h,a)\ \le\ \frac{1}{4} b_h,
+\]
+hence $a^\star\in\argmax_a \widetilde Q_h(s_h,a)$.
+\end{lemma}
+
+\begin{proof}
+Fix $h$ and $s_h=\overline{a_{1:h}}\in\Scal_h^{\mathrm{nt}}$.
+
+\emph{Lower bound for $a^\star$.}
+If $h=0$, then $\widetilde Q_0(\overline{\emptyset},a^\star)=\langle v(a^\star),v(a^\star)\rangle=1=b_0$.
+If $h\ge 1$, then $a^\star\notin\{a_1,\dots,a_h\}$ along any nonterminal path, so
+\[
+\widetilde Q_h(s_h,a^\star)
+= \langle \phi_h(s_h,a^\star), v(a^\star)\rangle
+= \langle \phi_{h-1}(\overline{a_{1:h-1}},a_h), v(a^\star)\rangle + b_h .
+\]
+By Lemma~\ref{lem:fresh_corr_bound} applied at time $t=h-1$ with $a_{t+1}=a_h$ and $a'=a^\star$,
+we have
+$\big|\langle \phi_{h-1}(\overline{a_{1:h-1}},a_h), v(a^\star)\rangle\big|\le \frac12 b_h$.
+Hence $\widetilde Q_h(s_h,a^\star)\ge \frac12 b_h$.
+
+\emph{Upper bound for $a\neq a^\star$.}
+Let $a\neq a^\star$.
+If $a$ is a repeat action (i.e.\ $a\in\{a_1,\dots,a_h\}$), then by construction $\phi_h(s_h,a)=0$,
+so $\widetilde Q_h(s_h,a)=0\le \frac14 b_h$.
+
+Otherwise $a\notin\{a_1,\dots,a_h\}$, and
+\[
+\widetilde Q_h(s_h,a)
+= \langle \phi_h(s_h,a), v(a^\star)\rangle
+= \Big(\langle \phi_{h-1}(\overline{a_{1:h-1}},a_h), v(a)\rangle + b_h\Big)\langle v(a),v(a^\star)\rangle.
+\]
+By Lemma~\ref{lem:fresh_corr_bound} (with $t=h-1$, $a_{t+1}=a_h$, $a'=a$),
+$|\langle \phi_{h-1}(\overline{a_{1:h-1}},a_h), v(a)\rangle|\le \frac12 b_h$.
+Also $|\langle v(a),v(a^\star)\rangle|\le \rho$.
+Therefore,
+\[
+\widetilde Q_h(s_h,a)
+\le \Big(\tfrac12 b_h + b_h\Big)\rho
+= \tfrac32 \rho\, b_h
+\le \tfrac14 b_h,
+\]
+using $\rho\le 1/6$.
+\end{proof}
+
+%===========================================================
+\subsection{Realizability and Bellman optimality}
+
+\begin{lemma}[Bellman optimality of $\widetilde Q$]
+\label{lem:realizability_bellman}
+In $\mathcal{M}_{a^\star}$, the function $\widetilde Q$ satisfies the Bellman optimality equations:
+for all $h\in\{0,\dots,H-1\}$ and $(s,a)\in\Scal_h\times\Acal$,
+\[
+\widetilde Q_h(s,a)= r_h(s,a)+ \E\!\left[\widetilde V_{h+1}(s_{h+1})\mid s_h=s,a_h=a\right].
+\]
+Consequently, $\widetilde Q=Q^\star$ and the greedy policy is optimal.
+\end{lemma}
+
+\begin{proof}
+We verify the Bellman equation case-by-case.
+
+If $h=H-1$, then $\widetilde V_H\equiv 0$ and $r_{H-1}(s,a)=\widetilde Q_{H-1}(s,a)$ by definition.
+
+Now fix $h\le H-2$.
+If $s_{h+1}=f$, then $\widetilde V_{h+1}(f)=0$ and $r_h(s,a)=\widetilde Q_h(s,a)$ by definition.
+
+Otherwise $s_{h+1}\in\Scal_{h+1}^{\mathrm{nt}}$. By Lemma~\ref{lem:greedy_astar},
+the greedy action at $s_{h+1}$ is $a^\star$, hence
+\[
+\widetilde V_{h+1}(s_{h+1}) = \widetilde Q_{h+1}(s_{h+1},a^\star)
+= \langle \phi_{h+1}(s_{h+1},a^\star), \theta^\star\rangle.
+\]
+By the feature recursion and $\theta^\star=v(a^\star)$,
+\[
+\langle \phi_{h+1}(s_{h+1},a^\star),\theta^\star\rangle
+= \langle \phi_h(s,a),\theta^\star\rangle + b_{h+1}
+= \widetilde Q_h(s,a) + b_{h+1}.
+\]
+Therefore, using $r_h(s,a)=-b_{h+1}$ on this branch,
+\[
+r_h(s,a)+\widetilde V_{h+1}(s_{h+1})
+= (-b_{h+1}) + (\widetilde Q_h(s,a)+b_{h+1})
+= \widetilde Q_h(s,a),
+\]
+which is exactly the Bellman equation.
+
+Finally, since $\widetilde Q$ satisfies Bellman optimality, it equals $Q^\star$.
+\end{proof}
+
+\newpage
+%===========================================================
+% Clean theorem statement + tight proof sketch
+%===========================================================
+
+\begin{theorem}[Linear $Q^\star$ realizability can be exponentially hard (generative model)]
+\label{thm:lower_gen_gapless_simple}
+Consider any algorithm $\mathcal{A}$ that has access to a generative model and
+is given as input a feature map $\phi:\Scal\times\Acal\times[H]\to\R^d$.
+There exists a finite-horizon MDP $M$ with horizon $H$, together with a feature map $\phi$,
+such that Assumption~\ref{assumption:realizability} holds (i.e.\ for each $h\in[H]$,
+$Q_h^\star(\cdot,\cdot)$ is linear in $\phi(\cdot,\cdot,h)$), and such that the following is true:
+
+If $\mathcal{A}$ outputs a policy $\pi$ satisfying
+\[
+V_0^{\pi}(s_0) \;\ge\; V_0^\star(s_0)-0.05
+\]
+with probability at least $0.1$, then $\mathcal{A}$ must make $\exp(\Omega(d))$
+calls to the generative model.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+We instantiate $M$ as one member of the trajectory-tree family $\{M_{a^\star}\}$ from
+Section~\ref{sec:linearQstar_gapless_lb}, with Gaussian reward noise as defined above.
+In this family the feature map $\phi$ is shared across all instances; the index $a^\star$
+only appears through the parameter $\theta^\star=v(a^\star)$ inside $Q^\star$ (and hence the mean reward).
+
+\smallskip\noindent
+\textbf{Step 1: Near-optimality forces identifying $a^\star$.}
+By Lemma~\ref{lem:greedy_astar} (greedy action is $a^\star$ at every nonterminal state),
+in particular at the start state $s_0$ the unique optimal action is $a^\star$ and any $a\neq a^\star$
+incurs a constant value loss at $s_0$. Hence any policy that is $0.05$-optimal must select $a^\star$
+at $s_0$ with constant probability, i.e.\ it must identify $a^\star$ with constant probability.
+
+\smallskip\noindent
+\textbf{Step 2: Until $\mathcal{A}$ queries $a^\star$, its transcript carries (essentially) no information about $a^\star$.}
+Fix any query $(s,a,h)$ with $a\neq a^\star$. In the construction, the transition is independent of $a^\star$
+and the mean reward $r_h(s,a)$ is also independent of $a^\star$; with Gaussian noise added, the full conditional
+distribution of the observed reward remains independent of $a^\star$.
+Therefore, the entire transcript distribution is identical across different $a^\star$ unless $\mathcal{A}$
+queries an action equal to $a^\star$ at least once.
+
+\smallskip\noindent
+\textbf{Step 3: A Fano/averaging bound gives $T=\Omega(|\Acal|)$.}
+Let $A:=|\Acal|$, and take $a^\star$ uniformly random in $[A]$.
+Let $T$ be the number of generative-model queries made by $\mathcal{A}$, and let $N_a$ be the number of times
+$\mathcal{A}$ queries action $a$. Then $\sum_{a=1}^A N_a = T$, so
+\[
+\Pr(\text{$\mathcal{A}$ ever queries $a^\star$}) \;=\; \E\!\left[\frac{N_{a^\star}}{1}\right]
+\;=\; \frac{1}{A}\sum_{a=1}^A \Pr(\text{$\mathcal{A}$ queries $a$ at least once})
+\;\le\; \frac{T}{A}.
+\]
+On the complementary event (probability $\ge 1-T/A$), the transcript is independent of $a^\star$ (Step 2),
+so $\mathcal{A}$ cannot identify $a^\star$ with probability better than $1/A$ on that event.
+Thus the overall success probability of identifying $a^\star$ is at most
+\[
+\Pr(\text{identify $a^\star$}) \;\le\; \frac{T}{A} + \frac{1}{A}.
+\]
+Choosing $T \le cA$ for a sufficiently small constant $c$ makes this strictly smaller than $0.1$.
+By Step 1, failing to identify $a^\star$ with constant probability implies failing to output a $0.05$-optimal
+policy with probability $0.1$.
+
+Finally, in our instantiation we take $A=\exp(\Theta(d))$ (via the packing lemma), yielding the stated
+$\exp(\Omega(d))$ lower bound on the required number of generative-model queries.
+\end{proof}
+
+\newpage
+
+%===========================================================
+% Polished replacement for the start of the Linear Realizability section
+%===========================================================
+
+\section{Linear Realizability}
+\label{sec:linear_Qvalues}
+
+In supervised learning, two canonical settings are linear regression
+and binary classification with halfspaces.  In both cases, standard
+assumptions (bounded features/noise, realizability, and coverage) lead
+to sample complexity bounds that are polynomial in the feature
+dimension.  It is therefore natural to ask whether analogous
+``linear realizability'' assumptions can similarly support
+dimension-dependent guarantees in reinforcement learning.
+
+When the state space is large (or even infinite), one might hope that a
+feature map $\phi$ together with a linear representation of relevant
+value functions could allow learning with sample complexity depending
+polynomially on $d$ (and $H$), with little to no explicit dependence on
+$|\Scal|$ or $|\Acal|$.  We begin with the most basic analogue of linear
+regression in RL: offline policy evaluation under linear realizability
+of $Q^\pi$.  We then turn to online learning under linear realizability
+of $Q^\star$ (with access to either a generative model or episodic
+interaction).
+
+\subsection{Offline Policy Evaluation with Linearly Realizable Values}
+
+In Chapter~\ref{chap:Bellman_complete}, we saw that LSVI/LSPE can be
+used for offline policy evaluation under a \emph{linear Bellman
+completeness} assumption.  Here we ask what can be guaranteed under the
+strictly weaker assumption of \emph{linear realizability} alone.  The
+answer is negative: even under a very strong coverage condition,
+realizability does not prevent an exponential dependence on the
+horizon.  In fact, in a minimax sense, \emph{every} estimator is
+sample-inefficient.
+
+\paragraph{Offline data model.}
+We work in a finite-horizon MDP with horizon $H$.  The learner does not
+interact with the MDP, and instead receives $H$ datasets
+$\{D_h\}_{h=0}^{H-1}$.  For each $h\in\{0,\dots,H-1\}$, there is an
+associated data distribution $\mu_h\in\Delta(\Scal_h\times\Acal)$, and
+$D_h$ consists of $n$ i.i.d.\ samples of the form
+\[
+(s,a,r,s')\in \Scal_h\times\Acal\times\mathbb{R}\times \Scal_{h+1},
+\qquad (s,a)\sim \mu_h,\ \ r\sim r_h(s,a),\ \ s'\sim P_h(\cdot\mid s,a).
+\]
+(For simplicity we take the same sample size $n$ at each level; the
+statements can be written in terms of $\{n_h\}$ as well.)
+
+\paragraph{Offline policy evaluation.}
+Given a policy $\pi:\Scal\to\Delta(\Acal)$ and a feature map
+$\phi:\Scal\times\Acal\to\R^d$, the goal is to output an estimate of
+$V^\pi_0(s_0)$ (or more generally $V^\pi_0$) using the offline datasets,
+with as few samples as possible.
+
+\paragraph{Realizability assumption.}
+We assume that $Q^\pi$ is linear in the features \emph{for every}
+policy.
+\begin{assumption}[Realizable Linear Function Approximation]
+\label{assmp:realizability}
+For every policy $\pi:\Scal\to\Delta(\Acal)$, there exist parameter
+vectors $\theta_0^\pi,\dots,\theta_{H-1}^\pi\in\R^d$ such that for all
+$h\in\{0,\dots,H-1\}$ and all $(s,a)\in\Scal_h\times\Acal$,
+\[
+Q_h^\pi(s,a)=\langle \theta_h^\pi,\phi(s,a)\rangle.
+\]
+\end{assumption}
+This assumption is substantially stronger than realizability for a
+\emph{single} target policy (e.g.\ the policy we wish to evaluate): it
+postulates a linear representation for $Q_h^\pi$ simultaneously over
+\emph{all} policies $\pi$.
+
+\paragraph{Coverage assumption.}
+Realizability is meaningless without coverage of the feature directions
+present in $\phi$.  We therefore impose a very strong coverage
+assumption---in fact, essentially the best-conditioned feature
+covariance one could hope for under $\|\phi\|_2\le 1$.
+\begin{assumption}[Coverage]
+\label{assmp:coverage}
+Assume $\|\phi(s,a)\|_2\le 1$ for all $(s,a)\in\Scal\times\Acal$.  For
+each $h\in\{0,\dots,H-1\}$, the data distribution $\mu_h$ satisfies
+\[
+\EE_{(s,a)\sim\mu_h}\big[\phi(s,a)\phi(s,a)^\top\big]=\frac{1}{d}\,I.
+\]
+\end{assumption}
+The minimum eigenvalue of the above matrix is $1/d$, which is the
+largest possible value (up to constants) under the constraint
+$\|\phi(s,a)\|_2\le 1$; equivalently, $\mu_h$ is a maximally ``spread
+out'' (indeed $D$-optimal) design over the feature directions.
+
+For $H=1$, Assumptions~\ref{assmp:realizability} and~\ref{assmp:coverage}
+reduce to the standard linear regression setting: ordinary least squares
+recovers $\theta_0^\pi$ (and hence $V_0^\pi$) with error on the order of
+$\sqrt{d/n}$.  The next theorem shows that this intuition fails
+dramatically once the horizon is large.
+
+\begin{theorem}
+\label{thm:hard_det_1}
+Suppose Assumption~\ref{assmp:coverage} holds.  Fix any algorithm that,
+given as input $(\pi,\phi)$ and the offline datasets
+$\{D_h\}_{h=0}^{H-1}$, outputs an estimate of $V_0^\pi(s_0)$.  There
+exists a deterministic finite-horizon MDP satisfying
+Assumption~\ref{assmp:realizability} such that for \emph{every} policy
+$\pi:\Scal\to\Delta(\Acal)$, the algorithm requires
+$\Omega\!\big((d/2)^H\big)$ samples to obtain a constant additive
+approximation to $V_0^\pi(s_0)$ with probability at least $0.9$.
+\end{theorem}
+
+\paragraph{A reduction to offline control.}
+Although stated for policy evaluation, the hardness also applies to
+offline control under Assumption~\ref{assmp:realizability}.  Indeed, add
+a new initial state in which action $a_1$ yields reward $0.5$ and
+terminates, while action $a_2$ transitions into the hard instance above.
+Any algorithm that returns a policy with suboptimality at most $0.5$
+must, in particular, estimate the value of the (unknown) optimal policy
+in the hard instance to within $0.5$, and therefore inherits the same
+lower bound.
+
+\paragraph{LSPE has exponential variance.}
+Least-Squares Policy Evaluation (Algorithm~\ref{alg:lspe}) is an
+unbiased estimator under full-rank feature covariance (which holds with
+high probability under Assumption~\ref{assmp:coverage}).  As an immediate
+corollary of Theorem~\ref{thm:hard_det_1}, the variance of any such
+unbiased estimator---including LSPE---must grow exponentially with the
+horizon $H$.  More broadly, the theorem implies that no estimator can
+avoid an exponential dependence on $H$ in this offline setting under
+realizability alone.
+%===========================================================
+
+\subsubsection*{A Hard Instance for Offline Policy Evaluation}
+
+We describe the hard instance used in Theorem~\ref{thm:hard_det_1}.
+Let $m\ge 1$ be an integer and set the feature dimension to be
+\[
+d := 2m.
+\]
+The action space is $\Acal=\{a_1,a_2\}$. The construction depends on a scalar
+parameter $r_\infty\in[0,m^{-H/2}]$.
+
+\paragraph{State space and transitions.}
+For each layer $h\in\{0,1,\dots,H-1\}$, define
+\[
+\Scal_h := \{x_h^1,\dots,x_h^m\}\ \cup\ \{g_h\},
+\]
+where $g_h$ is the special ``amplifier'' state. The initial state is $s_0=g_0$.
+For each $h\in\{0,1,\dots,H-2\}$ the transitions are deterministic and given by:
+\begin{align*}
+P(g_{h+1}\mid s,a_1) &= 1 \qquad\qquad\ \ \text{for all } s\in\Scal_h,\\
+P(x_{h+1}^i\mid x_h^i,a_2) &= 1 \qquad\ \ \text{for all } i\in[m],\\
+P(g_{h+1}\mid g_h,a_2) &= 1.
+\end{align*}
+(Equivalently: action $a_1$ always transitions to $g_{h+1}$, while $a_2$ preserves the index $i$ on the
+$x$-states and keeps $g$ on the $g$-state.)
+
+\paragraph{Reward distributions.}
+For layers $h=0,1,\dots,H-2$ the rewards are deterministic:
+\begin{align*}
+r_h(x_h^i,a) &= 0 \qquad\text{for all } i\in[m],\ a\in\{a_1,a_2\},\\
+r_h(g_h,a) &= r_\infty\big(\sqrt{m}-1\big)\, m^{(H-h-1)/2}
+\qquad\text{for all } a\in\{a_1,a_2\}.
+\end{align*}
+At the last layer $h=H-1$:
+\begin{align*}
+r_{H-1}(x_{H-1}^i,a) &=
+\begin{cases}
+1 & \text{with prob. } (1+r_\infty)/2,\\
+-1 & \text{with prob. } (1-r_\infty)/2,
+\end{cases}
+\qquad\text{for all } i\in[m],\ a\in\{a_1,a_2\},\\
+r_{H-1}(g_{H-1},a) &= r_\infty\sqrt{m}
+\qquad\text{for all } a\in\{a_1,a_2\}.
+\end{align*}
+Thus $\E[r_{H-1}(x_{H-1}^i,a)]=r_\infty$ and $r_{H-1}(g_{H-1},a)$ is deterministic.
+
+\paragraph{Feature mapping.}
+Let $e_1,\dots,e_{2m}$ be an orthonormal basis of $\R^{2m}$.
+Define $\phi:\Scal\times\Acal\to\R^{2m}$ by, for each $h$:
+\begin{align*}
+\phi(x_h^i,a_1) &= e_i, \qquad
+\phi(x_h^i,a_2) = e_{m+i} \qquad\text{for all } i\in[m],\\
+\phi(g_h,a_1) &= \phi(g_h,a_2) = \frac{1}{\sqrt{m}}\sum_{i=1}^m e_i.
+\end{align*}
+Note $\|\phi(s,a)\|_2\le 1$ for all $(s,a)$.
+
+\paragraph{Offline data distributions.}
+For each layer $h\in[H]$, let $\mu_h$ be the uniform distribution over
+\[
+\{(x_h^i,a_1),(x_h^i,a_2): i\in[m]\}.
+\]
+In particular, $(g_h,a)$ is not in the support of $\mu_h$ for any $a$.
+A direct calculation gives
+\[
+\E_{(s,a)\sim\mu_h}[\phi(s,a)\phi(s,a)^\top]
+= \frac{1}{2m}\sum_{j=1}^{2m} e_j e_j^\top
+= \frac{1}{d}I,
+\]
+so Assumption~\ref{assmp:coverage} holds.
+
+\paragraph{Verifying Assumption~\ref{assmp:realizability}.}
+\begin{lemma}\label{lem:q_linear_offline_hard}
+For every policy $\pi:\Scal\to\Delta(\Acal)$, for each $h\in[H]$, there exists
+$\theta_h^\pi\in\R^{2m}$ such that for all $(s,a)\in\Scal_h\times\Acal$,
+\[
+Q_h^\pi(s,a) = \langle \theta_h^\pi, \phi(s,a)\rangle.
+\]
+\end{lemma}
+
+\begin{proof}
+First note that from any amplifier state $g_h$, the next state is always $g_{h+1}$
+(regardless of the action), and rewards at $g_h$ do not depend on the action. Hence
+$V_h^\pi(g_h)=Q_h^\pi(g_h,a_1)=Q_h^\pi(g_h,a_2)$ for all $h$ and $\pi$.
+
+We compute $V_h^\pi(g_h)$ by backward induction.
+At $h=H-1$,
+\[
+V_{H-1}^\pi(g_{H-1}) = r_{H-1}(g_{H-1},\cdot)= r_\infty\sqrt{m}.
+\]
+For $h\le H-2$,
+\begin{align*}
+V_h^\pi(g_h)
+&= r_h(g_h,\cdot) + V_{h+1}^\pi(g_{h+1})\\
+&= r_\infty(\sqrt{m}-1)m^{(H-h-1)/2} + r_\infty m^{(H-(h+1))/2}
+= r_\infty m^{(H-h)/2}.
+\end{align*}
+In particular, for $h\le H-2$ and any $i\in[m]$,
+\[
+Q_h^\pi(x_h^i,a_1)
+= r_h(x_h^i,a_1) + V_{h+1}^\pi(g_{h+1})
+= r_\infty m^{(H-h-1)/2}.
+\]
+Also, for any $i\in[m]$ and $h\le H-2$,
+\[
+Q_h^\pi(x_h^i,a_2)
+= r_h(x_h^i,a_2) + V_{h+1}^\pi(x_{h+1}^i)
+= V_{h+1}^\pi(x_{h+1}^i),
+\]
+which may depend on $\pi$ but is a scalar we can represent.
+
+Now define, for $h\le H-2$,
+\[
+\theta_h^\pi
+:= \sum_{i=1}^m \Big(r_\infty m^{(H-h-1)/2}\Big)e_i
+\;+\; \sum_{i=1}^m Q_h^\pi(x_h^i,a_2)\, e_{m+i}.
+\]
+Then for $i\in[m]$,
+\[
+\langle \theta_h^\pi,\phi(x_h^i,a_1)\rangle = r_\infty m^{(H-h-1)/2} = Q_h^\pi(x_h^i,a_1),
+\qquad
+\langle \theta_h^\pi,\phi(x_h^i,a_2)\rangle = Q_h^\pi(x_h^i,a_2).
+\]
+Moreover,
+\[
+\langle \theta_h^\pi,\phi(g_h,\cdot)\rangle
+= \Big(r_\infty m^{(H-h-1)/2}\Big)\cdot \frac{1}{\sqrt{m}}\sum_{i=1}^m \langle e_i,e_i\rangle
+= r_\infty m^{(H-h)/2}
+= Q_h^\pi(g_h,\cdot).
+\]
+At the last layer $h=H-1$, $\E[r_{H-1}(x_{H-1}^i,a)]=r_\infty$ for both actions, so
+$Q_{H-1}^\pi(x_{H-1}^i,a_1)=Q_{H-1}^\pi(x_{H-1}^i,a_2)=r_\infty$ and
+$Q_{H-1}^\pi(g_{H-1},\cdot)=r_\infty\sqrt{m}$.
+Setting
+\[
+\theta_{H-1}^\pi := \sum_{j=1}^{2m} r_\infty e_j
+\]
+makes $Q_{H-1}^\pi(s,a)=\langle \theta_{H-1}^\pi,\phi(s,a)\rangle$ for all $(s,a)$.
+\end{proof}

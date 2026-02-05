@@ -1,0 +1,99 @@
+\documentclass{book}
+
+% Load centralized package file and custom definitions
+\usepackage{rl_packages}
+\input{template}
+\input{macros}
+%------------
+%LEGACY MACROS
+%SK: I am cleaning up macros, chapter by chapter. As of now,
+%everything up to and including the samp_comp chapter is fine with
+%only macros.tex. 
+%--------
+\input{legacy_macros}
+
+
+\title{Reinforcement Learning: \\ Theory and Algorithms}
+\author{Alekh Agarwal \and Kiant\'{e} Brantley \and Nan Jiang \and Sham M. Kakade \and Wen Sun}
+\date{\today}
+
+\begin{document}
+
+\frontmatter
+
+\begin{titlepage}
+    \begin{center}
+        \vspace*{1cm}
+        {\Huge \textbf{Reinforcement Learning: \\ Theory and Algorithms} \par}
+        
+        \vspace{1.5cm} % Increased spacing between Title and Authors
+        
+        {\LARGE Alekh Agarwal \hspace{0.5cm} Kiant\'{e} Brantley \hspace{0.5cm} Nan Jiang \par}
+        \vspace{0.3cm}
+        {\LARGE Sham M. Kakade \hspace{0.5cm} Wen Sun \par}
+        
+        \vspace{1cm}
+        {\LARGE \today \par}
+        
+        \vfill % Pushes the "Working Draft" notice to the bottom
+        
+        {\Large \textcolor{red}{WORKING DRAFT} \par}
+        Please email
+        \textcolor{blue}{{\tt bookrltheory@gmail.com\/}} with any
+        typos or errors you find. We appreciate it.
+        \vspace{1cm}
+    \end{center}
+\end{titlepage}
+
+\tableofcontents
+
+% Keep notation in frontmatter if you want it before Chapter 1
+\include{notation}
+
+\mainmatter
+
+% --- PART 1: Fundamentals ---
+\part{Fundamentals}
+%\include{mdp_preliminaries}
+%\include{sample_complexity}
+
+\include{lower_no_gap}
+\include{lower_bounds}
+
+\iffalse
+\include{bellman_complete}
+\include{fitted_DP}
+
+% --- Strategic Exploration ---
+\part{Strategic Exploration}
+\label{part:explore}
+\include{bandits}
+\include{ucbvi}
+\include{linear_MDPs}
+\include{bellman_rank}
+\include{deterministic_Q_star}
+\include{lower_bounds}
+
+% --- Policy Optimization ---
+\part{Policy Optimization}
+\label{part:opt}
+\include{pg_basics}
+\include{pg_opt}
+\include{pg_approx}
+\include{cpi}
+
+% --- Further Topics ---
+\part{Further Topics}
+\include{il_learning}
+\include{LQR}
+\fi
+
+\appendix
+\include{appendix}
+
+\backmatter
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+
+\end{document}
