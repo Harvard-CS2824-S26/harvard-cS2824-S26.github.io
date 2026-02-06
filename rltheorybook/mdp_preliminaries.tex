@@ -473,6 +473,22 @@ Q_h^\pi(s,a) \;=\; \Expe{\sum_{t=h}^{H-1} r_t(S_t, A_t)\;\Big|\;\pi,\; S_h=s,\; 
 \]
 We also write $V^\pi(s)=V_0^\pi(s)$, and note that $V_H^\pi(s)\equiv 0$ for all $s$.
 
+In terms of finite horizon \emph{Bellman operators}, we can write this
+recursion as follows:
+for a function $f:\Scal\times\Acal\to\R$, define the stage-$h$ \emph{optimal}
+Bellman operator $\Tcal_h$ by
+\[
+(\Tcal_h f)(s,a)
+\;:=\;
+r_h(s,a) + \E_{s'\sim P_h(\cdot\mid s,a)}\Big[\,\max_{a'\in\Acal} f(s',a')\,\Big].
+\]
+Under this definition, the optimal $Q$-functions satisfy the
+recursion:
+\begin{align*}
+  Q^\star_H &\equiv 0\\
+  Q^\star_h &= \Tcal_h Q^\star_{h+1} \quad\quad \textrm{for } \, h=H-1,\dots,0/
+\end{align*}
+
 Given a starting state $s$, the goal is to find a policy maximizing the value,
 i.e.,
 \begin{align}

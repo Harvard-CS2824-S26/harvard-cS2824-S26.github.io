@@ -96,4 +96,13 @@ V^\pi(\mu) := \E_{s\sim \mu} \left[V^\pi(s)\right].
   \Tcal^\pi Q := r + \gamma P^\pi Q.
   \]
 
+\item In the finite-horizon setting (with time-dependent transitions $P_h$ and rewards $r_h$),
+  we define the time-dependent operators $\Tcal_h, \Tcal_h^\pi: \R^{|\Scal||\Acal|} \to \R^{|\Scal||\Acal|}$
+  (which map the value at step $h+1$ to step $h$) as:
+  \begin{align*}
+  \Tcal_h Q &:= r_h + P_h V_Q, \\
+  \Tcal_h^\pi Q &:= r_h + P_h^\pi Q.
+  \end{align*}
+
+  
 \end{itemize}

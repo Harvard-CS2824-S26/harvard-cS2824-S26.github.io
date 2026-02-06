@@ -1,9 +1,5 @@
-%===========================================================
-% linearQstar_lowerbound_gapless.tex  (cleaned + consistent)
-%===========================================================
-
-\section{A Hard Family with Linearly Realizable $Q^\star$}
-\label{sec:linearQstar_gapless_lb}
+\chapter{Linearly Realizable $Q^\star$ Lower Bound}
+%\label{sec:linearQstar_gapless_lb}
 
 This section records a trajectory-tree hard instance in which $Q^\star$
 is linear in a given feature map, yet identifying a near-optimal policy
@@ -12,7 +8,7 @@ set is taken to be exponentially large in $d$).  We focus here on
 making the construction and the realizability verification clean; the
 information-theoretic argument (e.g.\ Fano/Le Cam) is deferred.
 
-\subsection{Construction}
+\subsection*{Construction}
 
 Fix a horizon $H\ge 1$ and a feature dimension $d$. Let $\rho\in(0,1/6]$
 be a constant.
@@ -127,7 +123,7 @@ independently across all queries (and independent of the learner's randomness).
 
 
 %===========================================================
-\subsection{Key inequality: $a^\star$ is greedy everywhere}
+\subsection*{Key inequality: $a^\star$ is greedy everywhere}
 
 \begin{lemma}[Fresh-direction correlation bound]
 \label{lem:fresh_corr_bound}
@@ -226,7 +222,7 @@ using $\rho\le 1/6$.
 \end{proof}
 
 %===========================================================
-\subsection{Realizability and Bellman optimality}
+\subsection*{Realizability and Bellman optimality}
 
 \begin{lemma}[Bellman optimality of $\widetilde Q$]
 \label{lem:realizability_bellman}
@@ -341,7 +337,7 @@ $\exp(\Omega(d))$ lower bound on the required number of generative-model queries
 % Polished replacement for the start of the Linear Realizability section
 %===========================================================
 
-\section{Linear Realizability}
+\section*{Linear Realizability}
 \label{sec:linear_Qvalues}
 
 In supervised learning, two canonical settings are linear regression
@@ -362,7 +358,7 @@ of $Q^\pi$.  We then turn to online learning under linear realizability
 of $Q^\star$ (with access to either a generative model or episodic
 interaction).
 
-\subsection{Offline Policy Evaluation with Linearly Realizable Values}
+\subsection*{Offline Policy Evaluation with Linearly Realizable Values}
 
 In Chapter~\ref{chap:Bellman_complete}, we saw that LSVI/LSPE can be
 used for offline policy evaluation under a \emph{linear Bellman

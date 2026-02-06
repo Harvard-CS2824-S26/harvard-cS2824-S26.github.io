@@ -1,578 +1,864 @@
-\chapter{RL with Linear Realizability}
-\label{chap:Bellman_complete}
-%\chapter{Linear Bellman Completion under a Generative Model}
+\chapter{RL with Linear Features: When Does It Work, and When Does It Fail?}
+\label{chap:linear_features}
 
-%\emph{To be added...}
-%\iffalse
-
-Up to now we have focussed on ``tabular'' MDPs, where the sample
-complexity (and the computational complexity) scaled polynomially in
-the size of the state and action spaces. Ultimately, we seek to obtain
-methods which are applicable to cases where number of states and
-actions is large (or, possibly, countably or uncountably infinite).
-%This is essentially a question of generalization.
-
-In this chapter, we focus on doing RL where we have access to some
-feature mapping $\phi:\Scal\times\Acal\mapsto
-\mathbb{R}^{d}$. Here we hope that class of linear functions $\{
-f(s,a) := \theta^{\top} \phi(s,a)| \theta \in \R^d$ has some good
-approximation properties to to the value function, in some precise
-sense.  We seek to understand under what conditions we can do sample
-efficient reinforcement learning, i.e. only $poly(d)$ dependencies.
-
-For this chapter we will work in the finite horizon setting.
-SK: maybe say why? in some ways, it is more intuitive to think in
-terms of the backward induction view of dynamic programming.
-
-
-SK: I need help organizing the below. The chapter outline will be:
-
-something about agnostic learning and then diff notions of linear
-realiziability
-
-then we will just do regression detour
-
-then we will do LSPE/LSVI with BC.
-- offline RL will be corollary
-
-then we will do lower bounds
-
-%\section{Agnostic RL with Linear Features}
-
-Note that we can view our features as a matrix of size $|\Scal|\cdot
-|\Acal| \times d$, which we will denote by $\Phi$.
-
-The most ambitious objective would be fine some $w$ which solves the
-following opitmization problem:
+Up to now we have focused on tabular Markov decision processes, where both
+sample complexity and computation scale polynomially with $|\Scal|$ and $|\Acal|$.
+In many problems of interest, however, the state and action spaces are so large
+that tabular methods are not viable. A standard response is to introduce a
+feature map
 \[
-\min_{w\in\R^d}\|Q^\star - \Phi w\|_{\star}
+\phi:\Scal\times\Acal \to \R^d
 \]
-where $\|\cdot \|_\star$ is either some norm like the $\ell_\infty$
-norm or distributionally weighted error measure.
+and to approximate value functions using linear predictors
+$f_\theta(s,a) = \theta^\top \phi(s,a)$.
 
-For the case of supervised learning, the analgous problem is that of:
+A natural hope is that the relevant complexity parameter becomes $d$
+rather than $|\Scal||\Acal|$.
+This chapter asks a single organizing question:
+
+\begin{quote}
+\emph{When do linear features actually buy you $\poly(d)$ sample
+  complexity --- and when do they fundamentally not?} 
+\end{quote}
+
+The answer is subtle.
+On the positive side, there are structural conditions under which linear methods
+reduce reinforcement learning to a sequence of well-conditioned regression
+problems, yielding $\poly(d,H,1/\eps)$ guarantees without explicit dependence on
+$|\Scal|$ or $|\Acal|$.
+On the negative side, several seemingly natural ``linear realizability''
+assumptions are \emph{not} enough: even with excellent coverage, and even when
+an algorithm is given the feature map as input, the sample complexity can be
+exponential in the horizon.
+
+The chapter is organized around a short ladder of assumptions.
+We first introduce these assumptions and their relationships at a high level.
+We then present a sharp positive result under a completeness condition
+(Least-Squares Value Iteration with a well-conditioned design), followed by
+information-theoretic lower bounds showing that weaker notions of realizability
+do not suffice.
+
+\section{Setup and an Assumption Ladder}
+\label{sec:assumption_ladder}
+
+We work with a fixed feature map $\phi:\Scal\times\Acal\to\R^d$.
+For a parameter vector $\theta\in\R^d$, define the associated linear function
+$f_\theta(s,a)=\theta^\top\phi(s,a)$, and let
 \[
-\min_{w\in\R^d} \EE \min_{(x,y)\sim D} [(y-w\cdot \psi(x))^2].
+\mathcal{F} := \{ f_\theta : \theta\in\R^d \}
 \]
-We would say the problem is realizable if $E[y|x] = w^\star \cdot
-\psi(x)$. However, even when the the problem is not realizable. 
+denote the corresponding linear function class.
 
-\section{Notions of Linear Realizability}
+There are multiple distinct ways that ``linear features'' can enter reinforcement learning.
+The following assumptions form a useful ladder: as we move down the list, the
+assumptions become stronger and increasingly algorithmically useful.
 
-\section{The Linear Bellman Completeness Condition}
+\paragraph{(A) Agnostic linear approximation (no realizability).}
+The weakest perspective is purely approximation-based: we do \emph{not} assume that any
+relevant value function is linear. Instead, we measure the best approximation error
+of $\mathcal{F}$ to some target (e.g.\ $Q^\star$, or the iterates of a fitted value
+iteration procedure) under a chosen norm or data distribution.
+This is the analogue of agnostic supervised learning.
+We defer this viewpoint---and its attendant distribution-shift / concentrability
+issues---to the chapter on fitted value iteration. However, this
+chapter alone shows how the agnostic viewpoint alone can lead to
+subexponential results (in the relevant parameters).
 
-We will work with given a feature mapping $\phi:\Scal\times\Acal\mapsto
-\mathbb{R}^{d}$, where we assume the following property is true: given any linear
-function $f(s,a) := \theta^{\top} \phi(s,a)$, we have that the Bellman
-operator applied to $f(s,a)$ also returns a linear function with
-respect to $\phi$. Precisely, we have: 
-\begin{definition}[Linear Bellman Completeness] 
-  \iffalse The reward function is linear in feature $\phi$, i.e.,
-  $r(s,a) = (w^\star)^{\top} \phi(s,a)$ with
-  $r(s,a) \in [0,1],\forall s,a\in\Scal\times\Acal$.  \sk{we do not
-    need the reward condition.}  \wen{i think we do? since
-    $Q^\star_{H-1} = r$ which means to be linear?}  \fi We say the
-  features $\phi$ satisfy the \emph{linear Bellman completeness}
-  property if for all $\theta \in \mathbb{R}^d$ and
-  $(s,a,h) \in \Scal\times\Acal\times[H]$, there exists
-  $ w\in\mathbb{R}^d$ such that:
-%linear function $f(s,a) :=
-%\theta^{\top} \phi(s,a)$ for some $\theta \in \mathbb{R}^d$, we have: 
-\begin{align*}
-%\forall h\in [H]:  \exists w\in\mathbb{R}^d, \text{s.t., }  
-w^{\top} \phi(s,a) = r(s,a) + \mathbb{E}_{s'\sim P_h(s,a)} \max_{a'} \theta^{\top} \phi(s',a').
-\end{align*} 
-As $w$ depends on $\theta$, we use the notation $\Tcal_h: \mathbb{R}^d\mapsto \mathbb{R}^d$ to
-represent such a $w$, i.e., $w := \Tcal_h( \theta )$ in the above equation.  \label{def:linear_bellman_complete}
-\end{definition} 
-Note that the above implies that $r(s,a) $ is in the span of
-$\phi$ (to see this, take $\theta=0$). Furthermore, it also implies that 
-%Note that the above model implies that 
-$Q^\star_h(s,a)$ is linear in
-$\phi$, i.e., there exists $\theta_h^\star$ such that
-$Q^\star_h(s,a) = (\theta_h^\star)^{\top} \phi(s,a)$. We can easily
-see that tabular MDP is captured by the linear Bellman completeness
-with $\phi(s,a) \in \mathbb{R}^{|\Scal||\Acal|}$ being a one-hot
-encoding vector with zeros everywhere except one at the entry
-corresponding to state-action $(s,a)$. 
-%Note that here we do not place
-%any restriction on the norm of the feature $\phi$. 
-In Chapters~\ref{chap:linear_MDPs} and ~\ref{chap:Bellman_rank}, we
-will provide precise examples of models which satisfy the linear
-Bellman completeness condition. 
+\paragraph{(B) Linear $Q^\star$ realizability.}
+A common structural assumption is that the \emph{optimal} action-value function is linear:
+for each stage $h$ there exists $\theta_h^\star\in\R^d$ such that
+\[
+Q_h^\star(s,a) = (\theta_h^\star)^\top \phi(s,a)\qquad \forall (s,a).
+\]
+This is the most direct analogue of realizable linear regression.
+A tempting intuition is that this should allow $\poly(d)$ learning.
+We will see that this intuition is false in a strong information-theoretic sense.
 
-We focus on the generative model setting, i.e., where we can input any
-$(s,a)$ pair to obtain a next state sample $s' \sim P(s,a)$ and reward
-$r(s,a)$. Our goal here is to design an algorithm that finds a policy
-$\widehat\pi$ such that $V^{\widehat\pi} \geq V^\star - \epsilon$,
-with number of samples scaling polynomially with respect to all
-relevant parameters $d, H, 1/\epsilon$.
+\paragraph{(C) All-policies linear realizability.}
+A stronger assumption requires linear realizability not just for $Q^\star$, but for
+\emph{every} policy:
+for each $\pi$ and each stage $h$, there exists $\theta_h^\pi$ such that
+\[
+Q_h^\pi(s,a) = (\theta_h^\pi)^\top \phi(s,a)\qquad \forall (s,a).
+\]
+This assumption is substantially stronger than (B).
+Nevertheless, it still does \emph{not} guarantee sample-efficient offline policy
+evaluation: even with extremely strong feature coverage, any estimator can require
+exponentially many samples.
 
-%Since we assume reward is always bounded $r(s,a) \in [0,1]$, we have $Q^\star_h(s,a) := (\theta_h^\star)^{\top} \phi(s,a) \in [0, H]$, for all $h \in [H]$.
+\paragraph{(D) Linear Bellman completeness (a closure property).}
+The most algorithmically useful assumption in this chapter is a \emph{closure}
+condition: roughly, applying the Bellman optimality operator to a linear function
+yields another linear function (with respect to the same feature map).
+One convenient way to state this is: for each stage $h$ and each $\theta\in\R^d$,
+there exists $w\in\R^d$ such that the function
+\[
+(s,a)\ \mapsto\ r_h(s,a) + \E_{s'\sim P_h(\cdot\mid s,a)}\Big[\max_{a'} \theta^\top\phi(s',a')\Big]
+\]
+is exactly $w^\top\phi(s,a)$ for all $(s,a)$.
+Equivalently, letting $\Fcal := \{(s,a)\mapsto w^\top\phi(s,a)\mid w\in\R^d\}$ denote the
+class of functions linear in $\phi$, the Bellman completeness property can be written as
+\begin{equation}\label{def:bc}
+f\in \Fcal \quad\Longrightarrow\quad \Tcal_h f \in \Fcal \qquad \text{for each } h\in[H],
+\end{equation}
+where $\Tcal_h$ is the stage-$h$ Bellman optimality operator.
+This assumption turns dynamic programming into a sequence of regression problems, and it
+is what underlies the positive results in this chapter.
 
-\section{The LSVI Algorithm}
+\paragraph{Relationships.}
+A few simple implications are worth keeping in mind.
+First, linear Bellman completeness immediately implies that rewards are linear in $\phi$
+(take $\theta=0$ above). It also implies linear $Q^\star$ realizability (by backward
+induction / value iteration carried out within $\Fcal$).
+In contrast, (C) and (D) are not comparable in general: (C) asserts realizability for
+\emph{all} policies but does not impose closure under the \emph{optimality} operator,
+while (D) enforces closure under the optimality operator but does not a priori assert
+that $Q^\pi$ is linear for every policy $\pi$.
 
-We first present the least square value iteration (LSVI) algorithm (Alg.~\ref{alg:lsvi}) here. The algorithm takes $H$ many datasets $\Dcal_0,\dots, \Dcal_{H-1}$ as inputs, where each $\Dcal_h = \{ s,a,r, s' \}$. 
+\paragraph{A remark on strength.}
+Bellman completeness should be read as a structural condition on the MDP itself (via the
+transition kernel and reward), not merely a property of $Q^\star$.
+We will give concrete examples of model classes satisfying Bellman completeness
+(e.g.\ linear MDPs and related low-complexity transition models) later in
+Chapters~\ref{chap:linear_MDPs} and~\ref{chap:Bellman_rank}, once our algorithmic
+guarantees are on the table.
+
+With our ladder in place, the remainder of the chapter answers our organizing question
+by pairing a sharp positive result under (D) with lower bounds showing that (B) and (C)
+can fail dramatically.
+
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Positive results under Bellman completeness
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Positive results under Bellman completeness}
+\label{sec:BC_positive}
+
+This section gives the affirmative path for linear features: under the right
+structural condition, dynamic programming reduces to a sequence of (supervised)
+regression problems, yielding sample complexity polynomial in the feature
+dimension. We state the algorithm in a way that will be reused in both the
+generative-model and offline settings; the difference will be only in how the
+stage-wise datasets are obtained.
+
+\subsection{Setup and data model}
+\label{subsec:BC_setup}
+
+Throughout this section we assume the Bellman completeness condition stated earlier
+(Section~\ref{subsec:BC_assumption}).
+
+We work in the finite-horizon setting with stages $h\in[H] := \{0,1,\dots,H-1\}$.
+An MDP is specified by a state space $\Scal$, an action space $\Acal$, an initial
+distribution $\mu$ over $\Scal$, stage-dependent transition kernels
+$\{P_h(\cdot\mid s,a)\}_{h=0}^{H-1}$, and stage-dependent rewards
+$\{r_h(s,a)\}_{h=0}^{H-1}$. Throughout we assume rewards are bounded,
+$r_h(s,a)\in[0,1]$.\footnote{Allowing stochastic rewards with bounded support is
+routine; to keep notation light we write rewards as deterministic.}
+
+We are given a feature map $\phi:\Scal\times\Acal\to\R^d$, and we consider the
+linear function class
+\[
+\Fcal \;:=\; \bigl\{\, f_w:\Scal\times\Acal\to\R \ \big|\ f_w(s,a)=w^\top\phi(s,a),\ w\in\R^d \,\bigr\}.
+\]
+(As usual, one can rescale features so that $\sup_{s,a}\|\phi(s,a)\|_2\le 1$; we
+will be explicit about boundedness assumptions when they matter.)
+
+\paragraph{Stage-wise datasets (offline view).}
+To keep the algorithm reusable, we phrase everything in terms of per-stage
+datasets. For each $h\in[H]$, let
+\[
+D_h = \{(s_i,a_i,r_i,s_i')\}_{i=1}^N
+\]
+be a dataset of $N$ transitions at stage $h$, where each
+$s_i'\sim P_h(\cdot\mid s_i,a_i)$ is sampled independently conditional on
+$(s_i,a_i)$ and $r_i=r_h(s_i,a_i)$.
+In the generative-model setting we will \emph{construct} these datasets; in the
+offline setting the datasets are given and we will impose an explicit coverage
+condition.
+
+\paragraph{Bellman operators.}
+Recall from
+Section~\ref{section:finite_horizon}, that
+for a function $f:\Scal\times\Acal\to\R$, we have that our stage-$h$ \emph{optimal}
+Bellman operator $\Tcal_h$ is defined by
+\[
+(\Tcal_h f)(s,a)
+\;:=\;
+r_h(s,a) + \E_{s'\sim P_h(\cdot\mid s,a)}\Big[\,\max_{a'\in\Acal} f(s',a')\,\Big].
+\]
+In the finite-horizon problem, the optimal $Q$-functions satisfy the recursion
+$Q^\star_H \equiv 0$ and $Q^\star_h = \Tcal_h Q^\star_{h+1}$ for $h=H-1,\dots,0$.
+
+The remainder of Section~\ref{sec:BC_positive} shows that, under Bellman
+completeness, ordinary least squares can drive Bellman residuals uniformly small,
+which in turn yields a near-optimal greedy policy.
+
+\subsection{Algorithm: Least-Squares Value Iteration (LSVI)}
+\label{subsec:BC_lsvi_alg}
+
+LSVI runs a backward dynamic program, where each Bellman backup is implemented by
+a least-squares regression onto the feature class $\Fcal$.
 
 \begin{algorithm}[t]
 \begin{algorithmic}[1]
-%\State Compute the D-optimal design $\rho$ (Eq.~\ref{eq:d_design})
-\State \textbf{Input}: $\Dcal_0,\dots, \Dcal_{H-1}$ %Set $V_{H}(s) = 0$ for all $s\in\Scal$
-\State Set $V_{H}(s) = 0$ for all $s\in \Scal$
-\For{$h = H-1 \to 0$}
-    %\State  $\forall (s,a) \in \text{support}(\rho)$, i.i.d sample $\lceil N\rho(s,a) \rceil$ many next states $\Dcal_{s,a} : = \{{s'}^i\}_{i=1}^{\lceil \rho(s,a)N \rceil}$ with ${s'}^i \sim P_h(\cdot | s,a)$
-    \State Solve least squares 
-    \begin{align}
-    \theta_{h} = \arg\min_{\theta }  \sum_{s,a,r, s'\in \Dcal_{h}} \left( \theta^{\top} \phi(s,a)  - r - V_{h+1}({s'}) \right)^2 \label{eq:ls_bc}
-    \end{align}  \label{line:lsvi_regression}
-    \State Set $V_{h}(s) = \max_{a\in\Acal} \theta_h^{\top} \phi(s,a), \forall s$
+\State \textbf{Input:} datasets $D_0,\dots,D_{H-1}$, feature map $\phi$
+\State Initialize $\widehat V_{H}(s) \gets 0$ for all $s\in\Scal$
+\For{$h = H-1, H-2, \dots, 0$}
+    \State $\displaystyle
+    \widehat\theta_{h}
+    \in \arg\min_{\theta\in\R^d}
+    \sum_{(s,a,r,s')\in D_h}
+    \Big(\theta^\top\phi(s,a) - r - \widehat V_{h+1}(s')\Big)^2$
+    \State Define $\widehat Q_h(s,a) \gets \widehat\theta_h^\top\phi(s,a)$ for all $(s,a)$
+    \State Define $\widehat V_h(s) \gets \max_{a\in\Acal}\widehat Q_h(s,a)$ for all $s$
 \EndFor
-\State \textbf{Return:} $\{\widehat\pi_h(s)\}_{h=0}^{H-1}$ where $\widehat{\pi}_h(s) := \arg\max_{a} \theta_h^{\top} \phi(s,a), \forall s, h$.
+\State \textbf{Return:} greedy policy $\widehat\pi=\{\widehat\pi_h\}_{h=0}^{H-1}$ where
+$\widehat\pi_h(s)\in\arg\max_{a\in\Acal}\widehat Q_h(s,a)$
 \end{algorithmic}
-\caption{Least Squares Value Iteration}
+\caption{Least-Squares Value Iteration (LSVI)}
 \label{alg:lsvi}
 \end{algorithm}
-%\wen{tuples, make math equation}
 
-For each time step, LSVI  estimate $Q^\star_h(s,a)$ via $\theta_h^{\top} \phi(s,a)$ with $\theta_h$ computed from a least square problem. 
+\paragraph{Remark.}
+If the empirical covariance at a stage is singular, one can take a minimum-norm
+solution (or add a small ridge). In the settings we analyze (D-optimal sampling
+from a generative model, or explicit coverage assumptions offline), the design
+is well-conditioned and this technicality is inessential.
 
-To make sure the algorithm succeeds in terms of finding a near optimal policy, we need to design the datasets $\Dcal_0,\dots, \Dcal_{H-1}$. Intuitively, we may want to make sure that in each $\Dcal_h$, we have $\sum_{s,a\in\Dcal_h} \phi(s,a) \phi(s,a)^{\top}$ being full rank, so that least square has closed-form solution, and $\theta_h$ has a good generalization bound.  In the next section, we will leverage the generative model setting and the D-optimal design to construct such datasets.  
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Main Guarantee: LSVI with a Generative Model
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%The algorithm consists of two procedures: (1) designing a state-action sampling distribution $\rho\in\Delta(\Scal\times\Acal)$, and (2) running \emph{least square value iteration} using samples $\{s,a,r,s'\}$ with $s,a\sim \rho, r = r(s,a)$ and $s'\sim P_h(\cdot | s,a)$. 
+\subsection{Main guarantee: LSVI with a generative model}
+\label{subsec:BC_generative_main}
 
+We now prove the main positive result under Bellman completeness in the
+generative-model setting. The proof uses three ingredients:
+(i) a geometric sampling lemma (D-optimal design),
+(ii) a uniform generalization bound for ordinary least squares (Appendix),
+and (iii) a standard approximate dynamic programming lemma converting small
+Bellman residuals into near-optimality.
 
-\section{LSVI with D-Optimal Design}
+\subsubsection{Tool lemma: D-optimal design}
+\label{subsubsec:BC_dopt}
 
-In this section, we start by introducing the D-optimal design and its properties.  We then use the D-optimal design to construct a dataset and give a generalization bound for the solution to the least squares problem on the constructed dataset. Finally, we present the sample complexity bound for LSVI and its analysis.  
+Let $\Phi := \{\phi(s,a): (s,a)\in\Scal\times\Acal\}\subset\R^d$ denote the set of
+feature vectors. We assume $\Phi$ is bounded and full-dimensional (otherwise we
+may restrict to $\mathrm{span}(\Phi)$).
 
-We will use the notation $\|x\|_M^2 = x^\top M x$ for a matrix $M$ and
-vector $x$ of appropriate dimensions.
-
-\subsection{D-Optimal Design}
-
-We now specify a sampling distribution which, roughly speaking, ensures
-good coverage (in a spectral sense) over our feature set.
-
-\begin{theorem} \label{them:design_rho} Suppose $\mathcal{X}\subset
-  \R^d$ is a compact set (and full dimensional). There exists a distribution  $\rho$  on
-  $\mathcal{X}$ such that:
-\begin{itemize}
-\item $\rho$ is supported on at most $d(d+1)/ 2$ points (all of which
-  are in $\mathcal{X}$).
-\item Define
+\begin{lemma}[D-optimal design]\label{lem:d_opt_design}
+There exists a distribution $\rho$ supported on at most $d(d+1)/2$ state--action
+pairs such that, letting
 \[
-\Sigma = \mathbb{E}_{x\sim \rho} [xx^{\top}.]
-\] 
-We have that for all $x\in \mathcal{X}$, 
-\[
-\left\| x \right\|^2_{\Sigma^{-1}}  \leq d.
+\Sigma := \E_{(s,a)\sim\rho}\big[\phi(s,a)\phi(s,a)^\top\big],
 \]
-\end{itemize}
-The distribution $\rho$ is referred to as the D-optimal design.
-\end{theorem}
-With these two properties, one can show that for any $x\in\Xcal$, it can be written as a linear combination of the points on the support of $\rho$, i.e., $x = \sum_{x_i\in\text{support}(\rho)} \alpha_{i}  \rho(x_i) x_i $, where $\|\alpha\|^2_2 \leq d$. %This implies that without loss of generality, we can express any $x\in\Xcal$ via its coordinates $\alpha$ 
-
-The following specifies an explicit construction: $\rho$ is the
-following maximizer:
-\begin{align}
-\rho \in \argmax_{\nu \in \Delta(\mathcal{X})} \ln\det\left( \mathbb{E}_{x\sim
-  \nu} x x^{\top}  \right).
-\label{eq:d_design}
-\end{align} 
-(and there exists an optimizer which is supported on at most $d(d+1)/ 2$ points).
-The design
-$\rho$ has a geometric interpretation: the centered ellipsoid
-$\mathcal{E} = \{ v: \|v\|^2_{\Sigma^{-1}} \leq d\}$ is the unique
-minimum volume centered ellipsoid containing $\mathcal{X}$
-We do not provide the proof here (See Section~\ref{chapterBC_bib}).
-%\sk{Let's only provide references at the start of chapters and in the
-  %bib section of consistency. this makes it read more like a book
-%  rather than a paper. I moved the refs to the bib section.}
-
-In our setting, we will utilize the D-optimal design on the set $\Phi := \{ \phi(s,a): s,a\in\Scal\times\Acal \}$. 
-
-\paragraph{Change of basis interpretation with D-optimal design.} Consider the
-coordinate transformation:
+we have $\Sigma \succ 0$ and
 \[
-\widetilde x := \Sigma^{-1/2} x.
+\sup_{(s,a)\in\Scal\times\Acal} \; \phi(s,a)^\top \Sigma^{-1} \phi(s,a) \;\le\; d .
 \]
-Here we have that:
-\[
-\widetilde\Sigma := \mathbb{E}_{x\sim \rho} [\widetilde x \widetilde x^{\top}] = I.
-\]
-Furthermore, we still have that $\left\| \widetilde x
-\right\|^2_{\widetilde{\Sigma}^{-1}}  \leq d$.
-In this sense, we can interpret the D-optimal design as providing a
-well-conditioned sampling distribution for the set $\mathcal{X}$.
-
-\iffalse
-We design the sampling distribution $\rho$ using John's ellipsoid. Denote $\Phi := \{ \phi(s,a): s,a\in\Scal\times\Acal \}$. Assume $\Phi$ is compact and without loss of generality, we also assume $\text{span}(\Phi) = \mathbb{R}^d$. Denote $\rho$ as the maximizer of the following equation:
-\begin{align}
-\rho = \argmax_{\nu \in \Delta(\Scal\times\Acal)} \ln\det\left( \mathbb{E}_{s,a\sim \nu} \phi(s,a) \phi(s,a)^{\top}  \right).
-\label{eq:d_design}
-\end{align} This $\rho$ is often called D-optimal design. D-optimal design has the following property:
-
-\begin{lemma} \label{lemma:design_rho}For the D-optimal design $\rho$ shown in Eq.~\ref{eq:d_design}, we have (1) $|\text{support}(\rho)| \leq d(d+1)/ 2$, (2) denote $\Sigma = \mathbb{E}_{s,a\sim \rho} \phi(s,a)\phi(s,a)^{\top}$, we have $\max_{s,a\in\Scal\times\Acal} \left\| \phi(s,a) \right\|^2_{\Sigma^{-1}}  \leq d$.
 \end{lemma}
 
-Also note that  since $\text{span}(\Phi) = \mathbb{R}^d$, we must have $\text{rank}(\Sigma) = d$. 
-
-
-Intuitively, $\rho$ is a diverse distribution over $\Scal\times\Acal$
-such that every possible $\phi(s,a)$ is covered by $\rho$ in the sense
-that $\phi(s,a)^{\top} \Sigma^{-1} \phi(s,a) \leq d$. The design
-$\rho$ has a geometric interpretation: the centered ellipsoid
-$\mathcal{E} = \{ x: \|x\|^2_{\Sigma^{-1}} \leq d\}$ is the unique
-minimum volume centered ellipsoid containing $\Phi$ (i.e., $\Phi
-\subset \mathcal{E}$).  We do not provide the proof here (See Section~\ref{chapterBC_bib}).
-\sk{let's only provide references at the start of chapters and in the
-  bib section of consistency. this makes it read more like a book
-  rather than a paper.}
-\fi
-
-
-
-\subsection{Performance Guarantees}
-
-%\sk{why not just do this for fixed design? if we have $2N$ total
-%  samples, then, on the support points, why not take $\lceil \rho(s,a)
-%  N \rceil$, which is at most $2N$ samples. Then the covariance on
-%  these points is bigger than $d N$. And the guarantee for fixed
-%  design regression should be immediate. Then we can just cite
-%  the self-norm sum in the appendix for the proof.}
-
-Now we explain how we can construct a dataset $\Dcal_h$ for $h = 0,\dots, H-1$ using the D-optimal design $\rho$ and the generative model:
-
-%\wen{combine bullet point 1 and 2 --- get rid of the $D_{s,a}$ notation.}
-\begin{itemize}
-\item At $h$, for each $s,a\in\text{support}(\rho)$, we sample $n_{s,a} := \lceil \rho(s,a) N \rceil$ many next states independently from $P_h(\cdot | s,a)$; combine all $(s,a,r(s,a),s')$ and denote the whole dataset as $\Dcal_h$ %, and denote the set $\Dcal_{s,a} = \{{s^i}' \}_{i=1}^{\lceil\rho(s,a) N \rceil}$ where ${s^i}' \sim P_h(\cdot | s,a)$. 
-%\item Set $\Dcal_h = \cup_{s,a\in\text{support}(\rho)} \Dcal_{s,a}$. 
-\item Repeat for all $h\in [0,\dots, H-1]$ to construct $\Dcal_0,\dots, \Dcal_{H-1}$.
-\end{itemize}
-
-%For each $s,a$ such that $\phi(s,a) \in \text{support}(\rho)$ (for simplicity, we abuse notation and write $s,a\in\text{support}(\rho)$), we sample in total $n_{s,a} := \left\lceil \rho(s,a) N  \right\rceil$ many next states, denoting $\Dcal_{s,a} = \{{s^i}' \}_{i=1}^{n_{s,a}}$ with ${s^i}'\sim P_h(\cdot | s,a)$. Thus, our dataset $\Dcal_{h} := \cup_{s,a\in\text{support}(\rho)} \Dcal_{s,a}$. We repeat the same procedure for all $h$. 
-
-
-
-%For each $s,a$ such that $\phi(s,a) \in \text{support}(\rho)$, we sample in total $n_{s,a}$ many next states, denoting $\Dcal_{s,a} = \{{s^i}' \}_{i=1}^{n_{s,a}}$ with ${s^i}'\sim P(\cdot | s,a)$. We set $n_{s,a}$ as follows: $$n_{s,a} =  \left\lceil \frac{ c \rho(s,a) g(\rho) }{\epsilon^2} \ln(|\Scal||\Acal|/\delta) \right\rceil,$$ where $c$ is some positive constant.
-%Denote $\Lambda = \sum_{s,a\in \text{support}(\rho)  }n_{s,a} \phi(s,a)\phi(s,a)^{\top} $, we can show that 
-%\begin{align}
-%\label{eq:lambda_property}
-%\Lambda \succcurlyeq \frac{c g(\rho)}{\epsilon^2} \ln(|\Scal||\Acal|/\delta) \Sigma,
-%\end{align} which also implies that $\text{rank}(\Lambda) = d$ since $\Sigma$ has rank $d$.
-
-The key property of the dataset $\Dcal_h$ is that the empirical covariance matrix $\sum_{s,a\in\Dcal_h} \phi(s,a)\phi(s,a)^{\top}$ is full rank. Denote $\Lambda_h = \sum_{s,a\in \Dcal_h  }\phi(s,a)\phi(s,a)^{\top} $, we can verify that 
+%\paragraph{Remark (John / Kiefer--Wolfowitz).}
+One convenient characterization of $\rho$ is as a maximizer of a log-determinant
+objective:
 \begin{align}
-\label{eq:lambda_property}
-\Lambda_h  = \sum_{s,a \in \Dcal} \phi(s,a)\phi(s,a)^{\top}   \succcurlyeq N \Sigma
-\end{align} where the inequality comes from the fact that in $\Dcal_h$, for each $s,a\in\text{support}(\rho)$, we have $\lceil \rho(s,a) N \rceil$ many copies of it. 
-%\wen{inequality as it's ceiling.}which also implies that $\text{rank}(\Lambda) = d$ since $\Sigma$ has rank $d$. More importantly, 
-The D-optimal design ensures that $\Lambda$ covers all $\phi(s,a)$ in the sense that $\max_{s,a} \phi(s,a)^{\top} \Lambda_h^{-1} \phi(s,a)^{\top} \leq d$ due to the property of the D-optimal design. This is the key property that ensures  the solution of the least squares on $\Dcal_h$ is accurate globally.  
+\rho \in \argmax_{\nu \in \Delta(\Scal\times\Acal)}
+\ln\det\!\left(\E_{(s,a)\sim\nu}\big[\phi(s,a)\phi(s,a)^\top\big]\right),
+\label{eq:d_design}
+\end{align}
+(which is the Kiefer--Wolfowitz Theorem).
+Equivalently, the ellipsoid $\mathcal{E}=\{v:\|v\|_{\Sigma^{-1}}^2\le d\}$ is the
+unique minimum-volume centered ellipsoid containing $\Phi$, which
+John's Theorem. We do not provide a
+proof of either claim here (both of which lead to the D-optimal design
+lemma).  See Section~\ref{chapterBC_bib} for references and further discussion.
 
-Now we state the main sample complexity bound theorem for LSVI. 
-\begin{theorem} [Sample Complexity of LSVI]\label{them:main_lsvi_bell_complete}
-Suppose our features satisfy the linear Bellman completion property.
-Fix $\delta \in (0, 1)$ and
-  $\epsilon \in (0,1)$.  Set parameter
-  $N := \left\lceil \frac{ 64 H^6 d^2 {\ln(1/\delta)}}{\epsilon^2}
-  \right\rceil$.
-  With probability at least $1-\delta$, Algorithm~\ref{alg:lsvi}
-  outputs $\widehat\pi$ such that:
-\begin{align*}
-\mathbb{E}_{s\sim \mu} V^\star_0(s) - \mathbb{E}_{s\sim \mu} V^{\widehat\pi}_0(s) \leq  \epsilon,
-\end{align*} with total number of samples $H \left( d^2 +   \frac{ 64H^6 d^2 {\ln(1/\delta)}  }{\epsilon^2}    \right)$.
+\subsubsection{Main theorem}
+\label{subsubsec:BC_main_thm}
+
+We assume a generative model that can be queried at any stage $h$ and any
+$(s,a)$ to obtain an independent sample $s'\sim P_h(\cdot\mid s,a)$ (along with
+the reward $r_h(s,a)$).
+
+\begin{theorem}[LSVI under Bellman completeness; generative model]
+\label{thm:lsvi_bc_generative}
+Assume Bellman completeness (Section~\ref{subsec:BC_assumption}) and bounded rewards
+$r_h(s,a)\in[0,1]$. Let $\rho$ be a D-optimal design as in
+Lemma~\ref{lem:d_opt_design}. Fix $\epsilon\in(0,1)$ and $\delta\in(0,1)$, and set
+\[
+N \;:=\; \left\lceil \frac{c\,H^6 d^2 \log(H/\delta)}{\epsilon^2}\right\rceil,
+\]
+for a sufficiently large absolute constant $c$.
+
+Construct datasets $\{D_h\}_{h=0}^{H-1}$ as follows: for each $h$ and each support
+point $(s,a)\in\mathrm{supp}(\rho)$, query the generative model
+$n_{s,a}=\lceil N\rho(s,a)\rceil$ times to obtain i.i.d.\ next-state samples, and
+include the corresponding tuples in $D_h$.
+
+Then, with probability at least $1-\delta$, running LSVI
+(Algorithm~\ref{alg:lsvi}) on $\{D_h\}_{h=0}^{H-1}$ returns a greedy policy
+$\widehat\pi$ satisfying
+\[
+\E_{s\sim\mu}\big[V_0^\star(s) - V_0^{\widehat\pi}(s)\big] \;\le\; \epsilon.
+\]
+Moreover, the total number of samples is at most
+\[
+\sum_{h=0}^{H-1} |D_h|
+\;\le\;
+H\Bigl(N + \tfrac{d(d+1)}{2}\Bigr)
+\;=\;
+O\!\left(Hd^2 + \frac{H^7 d^2 \log(H/\delta)}{\epsilon^2}\right).
+\]
 \end{theorem}
 
+\subsubsection{Proof of Theorem~\ref{thm:lsvi_bc_generative}}
+\label{subsubsec:BC_main_proof}
 
-%\wen{just refer the equation in the algorithm.}
-%Now let us consider the following ridge least square regression problems on $\Dcal_h$:
-%\begin{align}
-%\hat\theta := \argmin_{\theta} \sum_{s,a,s'\in\Dcal_h}  \left(  \theta^{\top} \phi(s,a) -  r(s,a) - V({s'})  \right)^2 ,
-%\label{eq:ls_bc}
-%\end{align} where for now  we assume $V(s') := \max_{a' \in \Acal } w^{\top} \phi(s',a')$ for some $w$ that is independent of the randomness in $\Dcal_{h}$ here. Using the linear Bellman completion assumption, we know that $\Tcal_h(w)^{\top} \phi(s,a) = r(s,a) + \mathbb{E}_{s'\sim P_h(s,a)} \max_{a'} w^{\top}\phi(s',a')$, and  $\theta^\star := \Tcal_h(w)$  is the Bayes optimal solution of the above least square problem.   The following theorem quantifies the quality of the learned linear predictor $\hat\theta$.
+We begin with a standard lemma: small Bellman residuals imply near-optimality of
+the greedy policy.
 
+For any sequence of functions $\{\widehat Q_h\}_{h=0}^{H}$ with $\widehat Q_H\equiv 0$,
+define $\widehat V_h(s):=\max_{a\in\Acal}\widehat Q_h(s,a)$ and the greedy policy
+$\widehat\pi_h(s)\in\arg\max_a \widehat Q_h(s,a)$. Define the stage-$h$ Bellman
+residual
+\[
+\mathrm{Res}_h \;:=\; \big\|\widehat Q_h - \Tcal_h \widehat Q_{h+1}\big\|_\infty.
+\]
 
-%\sk{we should give the performance guarantee here. notice the change
-%  section titles.}
-
-%\sk{let's move this into the analysis section}
-
-%\wen{just refer the equation in the algorithm.}
-%Now let us consider the following ridge least square regression problems on $\Dcal_h$:
-%\begin{align}
-%\hat\theta := \argmin_{\theta} \sum_{s,a,s'\in\Dcal_h}  \left(  \theta^{\top} \phi(s,a) -  r(s,a) - V({s'})  \right)^2 ,
-%\label{eq:ls_bc}
-%\end{align} where for now  we assume $V(s') := \max_{a' \in \Acal } w^{\top} \phi(s',a')$ for some $w$ that is independent of the randomness in $\Dcal_{h}$ here. Using the linear Bellman completion assumption, we know that $\Tcal_h(w)^{\top} \phi(s,a) = r(s,a) + \mathbb{E}_{s'\sim P_h(s,a)} \max_{a'} w^{\top}\phi(s',a')$, and  $\theta^\star := \Tcal_h(w)$  is the Bayes optimal solution of the above least square problem.   The following theorem quantifies the quality of the learned linear predictor $\hat\theta$.
-
-
-
-
-\subsection{Analysis}
-
-\iffalse
-\begin{theorem}\label{thm:design_lr}Fix $(\delta, \epsilon)$. Denote $\hat{\theta}$ as the least square solution of Eq.~\ref{eq:ls_bc} and assume $\max_{s} | V(s) | \leq W \in \mathbb{R}^+$. %Set $n_{s,a} = \left\lceil \frac{8W^2 \rho(s,a) g(\rho) }{\epsilon^2} \ln(|\Scal||\Acal|/\delta) \right\rceil$.
-With probability at least $1-\delta$, we have:
-\begin{align*}
-\forall s,a \in \Scal\times\Acal: \left\langle \hat{\theta} - \theta^\star, \phi(s,a)  \right\rangle \leq 2W \sqrt{ 2 d \ln(|\Scal| |\Acal| / \delta) / N  }.
-\end{align*}
-\end{theorem}
-\textbf{Remark} Note that the above theorem holds for all $s,a$, i.e., $\hat\theta$ is accurate globally due to the property of $\Lambda_h$. Based on Theorem~\ref{thm:design_lr}, we can see that in order to achieve $\epsilon$ approximation error in regression, we just need to set $N = \frac{8W^2 d \ln(|\Scal||\Acal| / \delta)}{\epsilon^2}$ (or equivalently, $n_{s,a} := \frac{8W^2 d \rho(s,a) \ln(|\Scal||\Acal| / \delta)}{\epsilon^2}$).
-
-\begin{proof} 
-Given the D-optimal design $\rho$, recall that we define $\Sigma = \mathbb{E}_{s,a\sim \rho} \phi(s,a) \phi(s,a)^{\top}$.
-
-%Since $\Lambda$ is full rank, $\hat\theta$ has a closed-form solution:
-%The closed-form solution of the ridge regression is in the following form:
-%\begin{align*}
-%\hat\theta := \Lambda^{-1} \sum_{s,a\in\text{support}(\rho)}\sum_{s'\in \Dcal_{s,a}} \phi(s,a) (r(s,a) + V(s')).
-%\end{align*} Note $r(s,a) + \EE_{s'\sim P_h(s,a)}\left[ V(s') \right] = (\theta^\star)^{\top} \phi(s,a)$. Denote $\epsilon_{s,a,i} = (\theta^\star)^{\top} \phi(s,a) -  (r(s,a) + V(s')) $, we have $\EE[\epsilon_{s,a,i}] = 0$, and $\{\epsilon_{s,a,i}\}$ are independent. Now we can compute $\hat\theta - \theta^\star$ as follows:
-%\begin{align*}
-%\hat\theta - \theta^\star &= \Lambda^{-1} \sum_{s,a\in\text{support}(\rho)}\sum_{s'\in \Dcal_{s,a}} \phi(s,a) (\epsilon_{s,a,i} + \phi(s,a)^{\top} \theta^\star) - \theta^\star \\
-%& = \Lambda^{-1} \sum_{s,a\in\text{support}(\rho)}\sum_{s'\in \Dcal_{s,a}} \phi(s,a) \epsilon_{s,a,i} + \theta^\star - \theta^\star  - \lambda \Lambda^{-1} \theta^\star \\
-%& = \Lambda^{-1} \sum_{s,a\in\text{support}(\rho)}\sum_{s'\in \Dcal_{s,a}} \phi(s,a) \epsilon_{s,a,i} - \lambda \Lambda^{-1} \theta^\star. 
-%\end{align*}
-%Multiple $\Lambda^{1/2}$ on both sides, we have:
-%\begin{align*}
-%\Lambda^{1/2} (\hat\theta - \theta^\star) = \Lambda^{-1/2} \sum_{s,a\in\text{support}(\rho)}\sum_{s'\in \Dcal_{s,a}} \phi(s,a) \epsilon_{s,a,i} - \lambda \Lambda^{-1/2} \theta^\star.
-%\end{align*}Note that $|\epsilon_{s,a,i}| \leq ( H + 1 + W ) \leq 2(H+W)$. Via the self-normalized Martingale bound Lemma~\ref{lemma:self_norm}, we know that with probability at least $1-\delta$:
-%\begin{align*}
-%\left\|\Lambda^{-1/2} \sum_{s,a\in\text{support}(\rho)}\sum_{s'\in \Dcal_{s,a}} \phi(s,a) \epsilon_{s,a,i}\right\|_2^2 \leq 4(H+W)^2 \ln\left( \frac{ \det( \Lambda )  / \det(\lambda I) }{\delta}  \right) \leq  4(H+W)^2 d \ln\left( 1 +    \right)
-%\end{align*} 
-
-
-Since $\max_{s} |V(s)| \leq W$, we have that for any $(s,a, s'^i)$, $\left\lvert \mathbb{E}_{s'\sim P_h(s,a)} V(s') - V(s'^i)    \right\rvert \leq 2W$, and $V(s'^i)$ is an unbiased estimate of $\mathbb{E}_{s'\sim P(s,a)} V(s')$. Thus based on Lemma~\ref{lemma:least_square}, for a fixed direction $\phi(s,a)$, with probability at least $1-\delta$, we have:
-\begin{align*}
-\langle \hat\theta - \theta^\star,  \phi(s,a)  \rangle \leq  2W \sqrt{2 \| \phi(s,a) \|^2_{\Lambda^{-1}} \ln(1/\delta) }.
-\end{align*} Apply a union bound over $\Scal\times\Acal$, we have that with probability at least $1-\delta$, for all $s,a\in\Scal\times\Acal$,
-\begin{align*}
-\langle \hat\theta - \theta^\star,  \phi(s,a)  \rangle \leq  2W \sqrt{2 \| \phi(s,a) \|^2_{\Lambda^{-1}} \ln(|\Scal||\Acal|/\delta) }.
-\end{align*}
-
-Using the property of the $\Lambda \geq N\Sigma$ (Eq.~\ref{eq:lambda_property}), we must have:
-\begin{align*}
-\| \phi(s,a) \|^2_{\Lambda^{-1}} \leq  \phi(s,a)^{\top} \Sigma^{-1} \phi(s,a) / N \leq d / N, \forall s,a,
-% \frac{\epsilon^2}{ 8W^2 \ln(|\Scal||\Acal|/\delta) g(\rho) } \phi(s,a) \Sigma^{-1} \phi(s,a) \leq \frac{\epsilon^2}{ 8W^2\ln(|\Scal||\Acal|/\delta)}.
-\end{align*} where the last inequality uses the property of the D-optimal design: $\max_{s,a} \|\phi(s,a)\|^2_{\Sigma^{-1}} \leq d$.    
-Thus, with probability at least $1-\delta$, for all $s,a$, we have:
-\begin{align*}
-\langle \hat{\theta} - \theta^\star, \phi(s,a) \rangle \leq 2W \sqrt{ 2 d \ln(|\Scal| |\Acal| / \delta) / N  },
-\end{align*} which concludes the proof.
-\end{proof}
-
-\begin{lemma}\label{lemma:least_square} Fix $\delta \in (0,1)$. Consider the following linear regression setting.  Given a set of $N$ data points $\{x_i, y_i\}_{i=1}^N$ with $x_i \in \mathbb{R}^d$ and $y_i \in \mathbb{R}$, where $y_i = (w^\star)^{\top} x_i + \epsilon_i$ with $\mathbb{E}[\epsilon_i] =0$, $| \epsilon_i | \leq \alpha \in \mathbb{R}^+$, and $\{\epsilon_i\}$ are independent from each other.  Further assume that $\Lambda := \sum_{i=1}^N x_i x_i^{\top}$ is full rank. Denote $\widehat{w}$ as the linear regression solution, i.e., $\widehat{w} := \arg\min_{w} \sum_{i=1}^N (w^{\top} x_i - y_i )^2$. Consider a fixed $x\in\mathbb{R}^d$, with probability at least $1-\delta$, we have:
-\begin{align*}
-\left\langle \widehat{w} - w^\star, x  \right\rangle \leq \sqrt{ 2 \sigma^2 \| x  \|^2_{\Lambda^{-1}}  \ln(1/\delta)  }.
-\end{align*}
-\end{lemma}
-\begin{proof} Since $\widehat{w}$ is the ordinary least square solution, we have $\widehat{w} = \Lambda^{-1} \sum_{i=1}^N x_i y_i$.  
-\begin{align*}
-\left( \widehat{w} - w^\star\right)^{\top} x =\left(  \Lambda^{-1} \sum_{i=1}^N x_i (x_i^{\top} w^\star + \epsilon_i) - w^\star \right)^{\top} x =x^{\top}  \Lambda ^{-1}\sum_{i=1}^N x_i \epsilon_i 
-\end{align*} Since $\epsilon_i$ is a $\sigma$-subGaussian random variables (a random variable with zero mean and bounded norm is a sub-Gaussian random variable), via Lemma~\ref{lemma:sub_gaussian_property_2}, we have that $x^{\top} \Lambda^{-1} \sum_{i=1}^N x_i \epsilon_i$ being a $\sqrt{  \sum_{i=1}^N (x^{\top} \Lambda^{-1} x_i )^2 \sigma^2 }$-subGaussian random variable.  Thus via the tail property of a subGaussian random variable shown in Theorem~\ref{them:sub_gaussian_property_1}, we have:
-\begin{align*}
-\mathrm{Pr}\left(  \left( \widehat{w} - w^\star\right)^{\top} x \geq  \xi  \right) \leq \exp\left( -\frac{\xi^2}{ 2\sigma^2 \sum_{i=1}^N (x^{\top}\Lambda^{-1} x_i)^2  } \right)
-\end{align*}Set  $\exp\left( -\frac{\xi^2}{ 2\sigma^2 \sum_{i=1}^N (x^{\top}\Lambda^{-1} x_i)^2  } \right) = \delta$, and note the fact that $\sum_{i=1}^N (x^{\top} \Lambda^{-1} x_i)^2 =  x^{\top} \Lambda^{-1} \sum_{i=1}^N x_i x_i^{\top} \Lambda^{-1} x    = x^{\top} \Lambda^{-1} x$, we conclude the proof. 
-\end{proof}
-
-
-
-%Now we are ready to analyze the LSVI algorithm.  We first present the main theorem for the LSVI algorithm. 
-%\begin{theorem} [Sample Complexity of LSVI]\label{them:main_lsvi_bell_complete}Fix $\delta \in (0, 1/H)$ and $\epsilon \in (0,1/(2H))$.  For $s,a \in \text{support}(\rho)$, set parameter  $n_{s,a} := \left\lceil \frac{ 32H^2 \rho(s,a) d }{\epsilon^2} \ln(|\Scal||\Acal| / \delta)\right\rceil$. With probability at least $1-H\delta$, Algorithm~\ref{alg:lsvi} outputs  $\widehat\pi$ such that:
-%\begin{align*}
-%\mathbb{E}_{s\sim \mu} V^\star_0(s) - \mathbb{E}_{s\sim \mu} V^{\widehat\pi}_0(s) \leq  2H^2 \epsilon,
-%\end{align*} with total number of samples $O\left(  H  d^2 +   \frac{ H^3 d  }{\epsilon^2} \ln(|\Scal||\Acal| / \delta)  \right)$.
-%\end{theorem}
-
-Below we first present some key lemmas.
-\wen{use T notation and ell infty norms, combine 3.6 and 3.7 together..}
-Let us denote $\widehat{Q}_h(s,a) : = \theta_h^{\top} \phi(s,a)$ where $\theta_h$ is the learned Q functions in Alg.~\ref{alg:lsvi}. Our goal is to show that for all $s,a,h$, we have $\widehat{Q}_h(s,a)$ being close to $Q^\star_h(s,a)$. Then, the induced greedy policy $\widehat\pi_h(s) := \arg\max_{a} \widehat{Q}_h(s,a)$ will be near optimal. The following lemma bounds the difference between $\widehat{Q}_h(s,a)$ and $Q^\star_h(s,a)$.
-\fi
-
-To prove the theorem, we first show that if we had $\{\widehat{Q}_{h}\}_{h}$ such that the Bellman residual $\| \widehat{Q}_h- \Tcal_h\widehat{Q}_{h+1} \|_{\infty}$ is small, then the performance of the greedy policies with respect to $\widehat{Q}_h$ is already near optimal. Note that this result is general and has nothing to do with the LSVI algorithm.
-
-\begin{lemma} \label{lem:perturbation_Q}Assume that for all $h$, we have $\left\| \widehat{Q}_h - \Tcal_{h+1} \widehat{Q}_{h+1}  \right\|_{\infty} \leq \epsilon$. Then we have:
+\begin{lemma}[Small residual $\Rightarrow$ good policy]
+\label{lem:residual_to_policy}
+Assume $\widehat Q_H\equiv 0$ and that $\mathrm{Res}_h \le \eta$ for all $h\in[H]$.
+Then:
 \begin{enumerate}
-\item Accuracy of $\widehat{Q}_h$: for all $h$:  $\left\| \widehat{Q}_h - Q^\star_h  \right\|_{\infty} \leq (H-h)\epsilon$, 
-\item Policy performance: for $\widehat\pi_h(s) := \argmax_{a} \widehat{Q}_h(s,a)$, we have $\left\lvert V^{\widehat\pi} - V^\star  \right\rvert \leq 2 H^2 \epsilon$.
+\item For all $h\in[H]$, $\|\widehat Q_h - Q_h^\star\|_\infty \le (H-h)\eta$.
+\item For the greedy policy $\widehat\pi$, for all $s\in\Scal$,
+\[
+V_0^\star(s) - V^{\widehat\pi}_0(s) \;\le\; 2H^2\eta.
+\]
 \end{enumerate}
 \end{lemma}
 
 \begin{proof}
-The proof of this lemma is elementary, which is analog to what we have proved in Value Iteration in the discounted setting. For completeness, we provide a proof here. 
-
-Starting from $Q_{H}(s,a) = 0, \forall s,a$, we have $\Tcal_{H-1} Q_H = r$ by definition. The condition implies that $\|\widehat{Q}_{H-1} - r  \|_{\infty} \leq \epsilon$, which means that $\|\widehat{Q}_{H-1} - Q^\star_{H-1}  \|_{\infty} \leq \epsilon$. This proves the base case. 
-
-Our inductive hypothesis is that $ \| \widehat{Q}_{h+1} -  Q^\star_{h+1} \|_{\infty} \leq (H - h-1)\epsilon$. Note that:
+For (1), we proceed by backward induction. Since $Q_H^\star\equiv 0=\widehat Q_H$,
+the claim holds for $h=H$. Suppose it holds for $h+1$. Then for any $(s,a)$,
 \begin{align*}
-\lvert \widehat{Q}_h(s,a) - Q^\star_h(s,a)  \rvert &\leq \lvert \widehat{Q}_h(s,a) - \Tcal_h \widehat{Q}_{h+1}(s,a)  \rvert + \lvert \Tcal_h \widehat{Q}_{h+1}(s,a) - Q^\star_h(s,a) \rvert  \\
-& \leq \epsilon + \lvert \Tcal_h \widehat{Q}_{h+1}(s,a) -   \Tcal_h Q^\star_{h+1}(s,a)\rvert \leq \epsilon + (H - h - 1) \epsilon = (H - h) \epsilon,
-\end{align*} which concludes the proof for the first claim. 
-
-For the second claim, Starting from time step $H-1$,  for any $s$, we have:
-\begin{align*}
- V^{\widehat\pi}_{H-1}(s) -  V^\star_{H-1}(s)& =  Q^{\widehat\pi}_{H-1}(s,\widehat\pi_{H-1}(s)) - Q^\star_{H-1}(s,\pi^\star(s))   \\
-& =  Q^{\widehat\pi}_{H-1}(s,\widehat\pi_{H-1}(s)) - Q^\star_{H-1}(s, \widehat\pi_{H-1}(s)) + Q^\star_{H-1}(s, \widehat\pi_{H-1}(s))-  Q^\star_{H-1}(s,\pi^\star(s))  \\
-& =  Q^\star_{H-1}(s, \widehat\pi_{H-1}(s))-  Q^\star_{H-1}(s,\pi^\star(s))   \\
-& \geq Q^\star_{H-1}(s, \widehat\pi_{H-1}(s)) - \widehat{Q}_{H-1}(s, \widehat\pi_{H-1}(s))  + \widehat{Q}_{H-1}(s, \pi^\star(s))  - Q^\star_{H-1}(s,\pi^\star(s)) \\
-& \geq 2\epsilon,
-\end{align*} where the third equality uses the fact that $Q^{\widehat\pi}_{H-1}(s,a) = Q^\star_{H-1}(s,a) = r(s,a)$, the first inequality uses the definition of $\widehat{\pi}_{H-1}$ and $\widehat{Q}_{H-1}(s, \widehat\pi_{H-1}(s)) \geq \widehat{Q}_{H-1}(s, a),\forall a$.
-This concludes the base case. For time step $h+1$, our inductive hypothesis is defined as $V^{\widehat\pi}_{h+1}(s) -  V^\star_{h+1}(s) \geq  - 2 (H - h - 1) H \epsilon$. For time step $h$, we have:
-\begin{align*}
-V^{\widehat\pi}_{h}(s) -  V^\star_{h}(s)& =  Q^{\widehat\pi}_{h}(s,\widehat\pi_{h}(s)) - Q^\star_{h}(s,\pi^\star(s)) \\
-& = Q^{\widehat\pi}_{h}(s,\widehat\pi_{h}(s)) -  Q^\star_h(s, \widehat\pi_{h}(s)) + Q^\star_h(s, \widehat\pi_{h}(s)) - Q^\star_{h}(s,\pi^\star(s)) \\
-& = \mathbb{E}_{s'\sim P_h(s, \widehat\pi_h(s))}\left[ V^{\widehat\pi}_{h+1}(s') - V^\star_{h+1}(s') \right] + Q^\star_h(s, \widehat\pi_{h}(s)) - Q^\star_{h}(s,\pi^\star(s)) \\
-& \geq - 2 (H - h - 1) \epsilon  + Q^\star_h(s, \widehat\pi_{h}(s)) -  \widehat{Q}_h(s, \widehat\pi_{h}(s)) +  \widehat{Q}_h(s, \pi^\star_{h}(s)) -  Q^\star_{h}(s,\pi^\star(s)) \\
-& \geq - 2(H-h-1) H \epsilon  - 2(H-h)\epsilon \geq - 2(H-h) H \epsilon.
-%& \geq -2(H-h) \epsilon.
+|\widehat Q_h(s,a) - Q_h^\star(s,a)|
+&\le |\widehat Q_h(s,a) - (\Tcal_h\widehat Q_{h+1})(s,a)|
+     + |(\Tcal_h\widehat Q_{h+1})(s,a) - (\Tcal_h Q_{h+1}^\star)(s,a)| \\
+&\le \eta + \E_{s'}\big[\max_{a'}|\widehat Q_{h+1}(s',a')-Q_{h+1}^\star(s',a')|\big] \\
+&\le \eta + \|\widehat Q_{h+1}-Q_{h+1}^\star\|_\infty
+\le (H-h)\eta,
 \end{align*}
-This concludes that for any $s$, at time step $h =0$, we have $V^{\widehat\pi}_{0}(s) -  V^\star_{0}(s ) \geq -2H^2 \epsilon$.
+using that $\max$ is 1-Lipschitz in $\ell_\infty$.
+
+For (2), fix $h$ and $s$. Let $a^\star\in\arg\max_a Q_h^\star(s,a)$ and
+$\widehat a\in\arg\max_a \widehat Q_h(s,a)$. Then
+\[
+Q_h^\star(s,a^\star) - Q_h^\star(s,\widehat a)
+\le
+\bigl(Q_h^\star(s,a^\star)-\widehat Q_h(s,a^\star)\bigr)
++
+\bigl(\widehat Q_h(s,\widehat a)-Q_h^\star(s,\widehat a)\bigr)
+\le 2\|\widehat Q_h-Q_h^\star\|_\infty
+\le 2(H-h)\eta.
+\]
+Unrolling along the trajectory of $\widehat\pi$ gives
+\[
+V_0^\star(s) - V_0^{\widehat\pi}(s)
+\le \sum_{h=0}^{H-1} 2(H-h)\eta
+\le 2H^2\eta.
+\]
 \end{proof}
 
-To conclude the proof, what we left to show is that the $\widehat{Q}_h$ that is returned by LSVI satisfies the condition in the above lemma.  Note that $\widehat{Q}_h(s,a) = \hat\theta_h^{\top} \phi(s,a)$, and $\Tcal_{h} \widehat{Q}_{h+1}$ is indeed the Bayes optimal solution of the least squares in Eq.~\ref{eq:ls_bc}, and via the Bellman completion assumption, we have $\Tcal_h \widehat{Q}_{h+1}(s,a) = \Tcal_h(\hat\theta_{h+1})^{\top} \phi(s,a), \forall s,a$. With the constructed $\Dcal_h$ based on the D-optimal design, Linear regression immediately gives us a generalization bound on $\|\widehat{Q}_h - \Tcal_h \widehat{Q}_{h+1}\|_{\infty}$. The following theorem formalize the above statement. 
+\begin{proof}[Proof of Theorem~\ref{thm:lsvi_bc_generative}]
+We show that, with high probability, each stage regression in LSVI has small
+\emph{uniform} prediction error, which implies small Bellman residuals; then we
+invoke Lemma~\ref{lem:residual_to_policy}.
 
-\begin{lemma}\label{lemma:ols_lsvi}Fix $\delta \in (0,1)$ and $\epsilon \in (0,1)$, set $N = \left\lceil \frac{ 16H^2d^2  {\ln(H/\delta)}  }{\epsilon^2}\right\rceil$. With probability at least $1-  \delta$, for all $h$, we have:
-\begin{align*}
-\forall h: \quad \left\| \widehat{Q}_h - \Tcal_{h} \widehat{Q}_{h+1}  \right\|_{\infty} \leq \epsilon.
-\end{align*}
+\paragraph{Step 1: one stage as fixed-design regression.}
+Fix a stage $h\in[H]$ and condition on $\widehat Q_{h+1}$ (equivalently,
+$\widehat V_{h+1}$), which is measurable with respect to data from stages
+$h+1,\dots,H-1$.
+
+Each sample has covariate $x_i := \phi(s_i,a_i)$ and response
+$y_i := r_h(s_i,a_i) + \widehat V_{h+1}(s_i')$.
+(Optionally clip $\widehat V_{h+1}$ to $[0,H]$ to strengthen boundedness.)
+
+By Bellman completeness, there exists $\theta_h^\star\in\R^d$ such that for all
+$(s,a)$,
+\[
+(\theta_h^\star)^\top \phi(s,a)
+=
+r_h(s,a) + \E_{s'\sim P_h(\cdot\mid s,a)}\big[\widehat V_{h+1}(s')\big]
+=
+(\Tcal_h \widehat Q_{h+1})(s,a).
+\]
+Hence $y_i = (\theta_h^\star)^\top x_i + \xi_i$ where $\E[\xi_i\mid x_i]=0$ and
+$\{\xi_i\}$ are independent across samples. Moreover $|\xi_i|\lesssim H$, so
+$\xi_i$ is $O(H)$-sub-Gaussian.
+
+Let $\Lambda_h := \sum_{(s,a,r,s')\in D_h} \phi(s,a)\phi(s,a)^\top$ denote the
+(stage-$h$) design matrix.
+
+\paragraph{Step 2: leverage control from D-optimal sampling.}
+Let $\Sigma=\E_{(s,a)\sim\rho}[\phi(s,a)\phi(s,a)^\top]$. By construction,
+\[
+\Lambda_h
+=
+\sum_{(s,a)\in\mathrm{supp}(\rho)} \lceil N\rho(s,a)\rceil\, \phi(s,a)\phi(s,a)^\top
+\succeq
+\sum_{(s,a)\in\mathrm{supp}(\rho)} N\rho(s,a)\, \phi(s,a)\phi(s,a)^\top
+=
+N\Sigma,
+\]
+so $\Lambda_h^{-1}\preceq (N\Sigma)^{-1}$ and Lemma~\ref{lem:d_opt_design} implies
+\[
+\sup_{(s,a)} \phi(s,a)^\top \Lambda_h^{-1}\phi(s,a) \;\le\; \frac{d}{N}.
+\]
+
+\paragraph{Step 3: OLS generalizes uniformly.}
+Apply the fixed-design OLS bound from the Appendix (Theorem~\ref{thm:ols_fixed_design})
+with failure probability $\delta' := \delta/(2H)$ and noise scale $O(H)$ to obtain,
+with probability at least $1-\delta'$,
+\[
+\|\widehat\theta_h - \theta_h^\star\|_{\Lambda_h}
+\;\le\;
+c_1 H \sqrt{ d\log(H/\delta) } ,
+\]
+for an absolute constant $c_1$. Therefore, for any $(s,a)$,
+\[
+\big|(\widehat\theta_h-\theta_h^\star)^\top \phi(s,a)\big|
+\le
+\|\widehat\theta_h-\theta_h^\star\|_{\Lambda_h}
+\sqrt{\phi(s,a)^\top \Lambda_h^{-1}\phi(s,a)}
+\le
+c_1 H d \sqrt{\frac{\log(H/\delta)}{N}}.
+\]
+Equivalently,
+\[
+\big\|\widehat Q_h - \Tcal_h \widehat Q_{h+1}\big\|_\infty
+\le
+c_1 H d \sqrt{\frac{\log(H/\delta)}{N}}.
+\]
+
+\paragraph{Step 4: union bound and conclude.}
+Apply the bound for all $h\in[H]$ and take a union bound: with probability at
+least $1-\delta/2$,
+\[
+\max_{h\in[H]}\big\|\widehat Q_h - \Tcal_h \widehat Q_{h+1}\big\|_\infty
+\le
+c_1 H d \sqrt{\frac{\log(H/\delta)}{N}}.
+\]
+With our choice of $N$ (and $c$ large enough), the right-hand side is at most
+$\epsilon/(2H^2)$. Lemma~\ref{lem:residual_to_policy} then yields, for all $s$,
+$V_0^\star(s) - V_0^{\widehat\pi}(s)\le \epsilon$, and hence also
+$\E_{s\sim\mu}[V_0^\star(s)-V_0^{\widehat\pi}(s)]\le\epsilon$.
+
+Finally, for each $h$,
+\[
+|D_h|
+=
+\sum_{(s,a)\in\mathrm{supp}(\rho)} \lceil N\rho(s,a)\rceil
+\le
+N + |\mathrm{supp}(\rho)|
+\le
+N + \frac{d(d+1)}{2},
+\]
+and summing over $h$ gives the stated total sample bound.
+\end{proof}
+
+
+
+
+\newpage
+\section{Positive results under Bellman completeness}
+\label{sec:BC_positive}
+
+This part gives the affirmative path for linear features: under the right
+structural condition, dynamic programming really does reduce to a sequence of
+(supervised) regression problems, and this yields a sample complexity that is
+polynomial in the feature dimension. The goal is to make explicit what the
+assumption buys us, and to state the algorithms in a way that we can reuse in
+both the generative-model and offline settings.
+
+\subsection{Setup}
+\label{subsec:BC_setup}
+
+We work in the finite-horizon setting with stages $h\in[H] := \{0,1,\dots,H-1\}$.
+An MDP is specified by a state space $\Scal$, an action space $\Acal$, an initial
+distribution $\mu$ over $\Scal$, stage-dependent transition kernels
+$\{P_h(\cdot\mid s,a)\}_{h=0}^{H-1}$, and stage-dependent rewards
+$\{r_h(s,a)\}_{h=0}^{H-1}$. Throughout we assume rewards are bounded, say
+$r_h(s,a)\in[0,1]$.\footnote{Allowing stochastic rewards with bounded support is
+also routine; to keep notation light we write rewards as deterministic.}
+
+We are given a feature map $\phi:\Scal\times\Acal\to\R^d$, and we consider the
+linear function class
+\[
+\Fcal \;:=\; \bigl\{\, f_w:\Scal\times\Acal\to\R \ \big|\ f_w(s,a)=w^\top\phi(s,a),\ w\in\R^d \,\bigr\}.
+\]
+(As usual, one can rescale features so that $\sup_{s,a}\|\phi(s,a)\|_2\le 1$; we
+will be explicit about boundedness assumptions when they matter.)
+
+
+\paragraph{Data model (offline view).}
+To keep the algorithms reusable, we phrase everything in terms of per-stage
+datasets. For each $h\in[H]$, let
+\[
+D_h = \{(s_i,a_i,r_i,s_i')\}_{i=1}^N
+\]
+be a dataset of $N$ transitions at stage $h$, where each $s_i'\sim
+P_h(\cdot\mid s_i,a_i)$ is sampled independently conditional on $(s_i,a_i)$ and
+$r_i=r_h(s_i,a_i)$. In the generative-model setting we will \emph{construct}
+these datasets; in the offline setting the datasets are given and we will impose
+a suitable coverage condition.
+
+\paragraph{Bellman completeness short hand notation.}
+When we want to emphasize the induced map on parameters, we write
+$w=\Tcal_h(\theta)$ for a choice of $w$ satisfying
+$\Tcal_h f_\theta = f_w$, where $f_\theta(s,a)=\theta^\top\phi(s,a)$.
+
+With the Bellman completeness assumption in place, the rest of Section~\ref{sec:BC_positive} shows that
+we can drive the Bellman residuals small via ordinary least squares, which in
+turn yields a near-optimal greedy policy.
+
+\subsection{Algorithms}
+\label{subsec:BC_algorithms}
+
+We now state the two basic algorithms we will analyze. Importantly, both are
+\emph{data-driven}: they take as input stage-wise datasets $\{D_h\}_{h=0}^{H-1}$.
+This lets us reuse the same templates in the generative-model and offline
+settings (the only difference is how the datasets are obtained).
+
+\subsubsection{Least-Squares Value Iteration (LSVI)}
+
+LSVI runs a backward dynamic program, where each Bellman backup is implemented by
+a least-squares regression onto the feature class $\Fcal$.
+
+\begin{algorithm}[t]
+\begin{algorithmic}[1]
+\State \textbf{Input:} datasets $D_0,\dots,D_{H-1}$, feature map $\phi$
+\State Initialize $\widehat V_{H}(s) \gets 0$ for all $s\in\Scal$
+\For{$h = H-1, H-2, \dots, 0$}
+    \State $\displaystyle
+    \widehat\theta_{h}
+    \in \arg\min_{\theta\in\R^d}
+    \sum_{(s,a,r,s')\in D_h}
+    \Big(\theta^\top\phi(s,a) - r - \widehat V_{h+1}(s')\Big)^2$
+    \State Define $\widehat Q_h(s,a) \gets \widehat\theta_h^\top\phi(s,a)$ for all $(s,a)$
+    \State Define $\widehat V_h(s) \gets \max_{a\in\Acal}\widehat Q_h(s,a)$ for all $s$
+\EndFor
+\State \textbf{Return:} greedy policy $\widehat\pi=\{\widehat\pi_h\}_{h=0}^{H-1}$ where
+$\widehat\pi_h(s)\in\arg\max_{a\in\Acal}\widehat Q_h(s,a)$
+\end{algorithmic}
+\caption{Least-Squares Value Iteration (LSVI)}
+\label{alg:lsvi}
+\end{algorithm}
+
+\paragraph{Remark.}
+If the empirical covariance in a stage is singular, one can take a minimum-norm
+solution (or add a small ridge). In the settings we care about (D-optimal
+sampling from a generative model, or coverage assumptions offline), the design
+will be well-conditioned and this technicality does not play a major role.
+
+\subsubsection{Least-Squares Policy Evaluation (LSPE)}
+
+LSPE is the evaluation analogue of LSVI: the only change is that we replace the
+optimality backup $\max_{a'}$ by the backup induced by a target policy $\pi$.
+We allow a non-stationary policy $\pi=\{\pi_h\}_{h=0}^{H-1}$, where each
+$\pi_h(s)\in\Acal$ is known (we assume the policy is deterministic for simplicity).
+
+Given a parameter $\theta_h$, define the induced value estimate
+\[
+\widehat V_h^{\pi}(s)
+\;:=\;
+\widehat\theta_h^\top\phi(s, \pi_h(s)).
+\]
+
+\begin{algorithm}[t]
+\begin{algorithmic}[1]
+\State \textbf{Input:} policy $\pi=\{\pi_h\}_{h=0}^{H-1}$, datasets $D_0,\dots,D_{H-1}$, feature map $\phi$
+\State Initialize $\widehat V^{\pi}_{H}(s) \gets 0$ for all $s\in\Scal$
+\For{$h = H-1, H-2, \dots, 0$}
+    \State $\displaystyle
+    \widehat\theta_{h}
+    \in \arg\min_{\theta\in\R^d}
+    \sum_{(s,a,r,s')\in D_h}
+    \Big(\theta^\top\phi(s,a) - r - \widehat V^{\pi}_{h+1}(s')\Big)^2$
+    \State Define $\widehat V^{\pi}_h(s) \gets \widehat\theta_h^\top\phi(s, \pi_h(s))$ for all $s$
+\EndFor
+\State \textbf{Return:} parameters $\{\widehat\theta_h\}_{h=0}^{H-1}$ (equivalently, value estimates $\{\widehat V_h^{\pi}\}_{h=0}^{H}$)
+\end{algorithmic}
+\caption{Least-Squares Policy Evaluation (LSPE)}
+\label{alg:lspe}
+\end{algorithm}
+
+
+\subsection{Main Guarantee: LSVI with a Generative Model}
+\label{subsec:BC_generative_main}
+
+This section proves the main positive result under Bellman completeness in the
+generative-model setting. The proof has three moving parts:
+(i) a geometric sampling lemma (D-optimal design), (ii) a uniform generalization
+bound for ordinary least squares (from the Appendix), and (iii) a standard
+approximate dynamic programming lemma converting small Bellman residuals into
+near-optimality.
+
+\subsubsection{Detour: D-optimal design}
+\label{subsubsec:BC_dopt}
+
+Let $\Phi := \{\phi(s,a): (s,a)\in\Scal\times\Acal\}\subset\R^d$ denote the set of
+feature vectors. We assume $\Phi$ is bounded and full-dimensional (otherwise we
+may restrict to $\mathrm{span}(\Phi)$).
+
+\begin{lemma}[D-optimal design]\label{lem:d_opt_design}
+There exists a distribution $\rho$ supported on at most $d(d+1)/2$ points in
+$\Phi$ such that, letting
+\[
+\Sigma := \E_{x\sim\rho}[xx^\top],
+\]
+we have $\Sigma \succ 0$ and
+\[
+\sup_{x\in\Phi} \; x^\top \Sigma^{-1} x \;\le\; d .
+\]
 \end{lemma}
+
+The distribution $\rho$ can be defined as a maximizer of a log-determinant
+objective:
+\begin{align}
+\rho \in \argmax_{\nu \in \Delta(\Phi)} \ln\det\!\left(\E_{x\sim\nu}[xx^\top]\right).
+\label{eq:d_design}
+\end{align}
+It also admits a geometric interpretation: the ellipsoid
+$\mathcal{E}=\{v:\|v\|_{\Sigma^{-1}}^2\le d\}$ is the unique minimum-volume
+centered ellipsoid containing $\Phi$. We do not provide a proof here; see
+Section~\ref{chapterBC_bib} for references and further discussion.
+
+In what follows, we will use the D-optimal design on $\Phi$ to specify a sampling
+distribution over state--action pairs.
+
+\subsubsection{Main theorem: LSVI under Bellman completeness}
+\label{subsubsec:BC_main_thm}
+
+We assume the Bellman completeness condition from Section~\ref{subsec:BC_setup},
+and we work with a generative model that can be queried at any stage $h$ and any
+$(s,a)$ to obtain an independent sample $s'\sim P_h(\cdot\mid s,a)$ (along with
+the reward $r_h(s,a)$).
+
+\begin{theorem}[LSVI under Bellman completeness; generative model]
+\label{thm:lsvi_bc_generative}
+Assume Bellman completeness (Section~\ref{subsec:BC_setup}) and bounded rewards
+$r_h(s,a)\in[0,1]$. Let $\rho$ be a D-optimal design for $\Phi$ as in
+Lemma~\ref{lem:d_opt_design}. Fix $\epsilon\in(0,1)$ and $\delta\in(0,1)$, and set
+\[
+N \;:=\; \left\lceil \frac{c\,H^6 d^2 \log(H/\delta)}{\epsilon^2}\right\rceil,
+\]
+for a sufficiently large absolute constant $c$.
+
+Construct datasets $\{D_h\}_{h=0}^{H-1}$ as follows: for each $h$ and each support
+point $(s,a)\in\mathrm{supp}(\rho)$, query the generative model
+$n_{s,a}=\lceil N\rho(s,a)\rceil$ times to obtain i.i.d.\ next-state samples, and
+include the corresponding transition tuples in $D_h$.
+
+Then, with probability at least $1-\delta$, running LSVI
+(Algorithm~\ref{alg:lsvi}) on $\{D_h\}_{h=0}^{H-1}$ returns a greedy policy
+$\widehat\pi$ satisfying
+\[
+\E_{s\sim\mu}\big[V_0^\star(s) - V_0^{\widehat\pi}(s)\big] \;\le\; \epsilon.
+\]
+Moreover, the total number of samples is at most
+\[
+\sum_{h=0}^{H-1} |D_h|
+\;\le\;
+H\Bigl(N + \tfrac{d(d+1)}{2}\Bigr)
+\;=\;
+O\!\left(Hd^2 + \frac{H^7 d^2 \log(H/\delta)}{\epsilon^2}\right).
+\]
+\end{theorem}
+
+
+\subsection{Proof of Theorem~\ref{thm:lsvi_bc_generative}}
+\label{subsec:BC_main_proof}
+
+We begin with a standard lemma: small Bellman residuals imply near-optimality of
+the greedy policy.
+
+For any sequence of functions $\{\widehat Q_h\}_{h=0}^{H}$ with $\widehat Q_H\equiv 0$,
+define $\widehat V_h(s):=\max_{a\in\Acal}\widehat Q_h(s,a)$ and the greedy policy
+$\widehat\pi_h(s)\in\arg\max_a \widehat Q_h(s,a)$. Define the stage-$h$ Bellman
+residual
+\[
+\mathrm{Res}_h \;:=\; \big\|\widehat Q_h - \Tcal_h \widehat Q_{h+1}\big\|_\infty.
+\]
+
+\begin{lemma}[Small residual $\Rightarrow$ good policy]
+\label{lem:residual_to_policy}
+Assume $\widehat Q_H\equiv 0$ and that $\mathrm{Res}_h \le \eta$ for all $h\in[H]$.
+Then:
+\begin{enumerate}
+\item For all $h\in[H]$, $\|\widehat Q_h - Q_h^\star\|_\infty \le (H-h)\eta$.
+\item For the greedy policy $\widehat\pi$, for all $s\in\Scal$,
+\[
+V_0^\star(s) - V^{\widehat\pi}_0(s) \;\le\; 2H^2\eta.
+\]
+\end{enumerate}
+\end{lemma}
+
 \begin{proof}
-  The proof uses a standard result for ordinary least squares (see
-  Theorem~\ref{thm:ols_fixed_design} in the Appendix). Consider a time
-  step $h$. In time step $h$, we perform linear regression from $\phi(s,a)$ to $r(s,a) + \max_{a'} \hat\theta_{h+1}^{\top}\phi(s' ,a')$. Note that the Bayes optimal here is $$\EE_{s'\sim P_h(s,a)}\left[ r(s,a) + \max_{a'} \hat\theta_{h+1}^{\top}\phi(s' ,a')  \right] = \Tcal_h(\hat\theta_{h+1})^{\top} \phi(s,a).$$
-  
-  %Note that $\hat\theta_h$ is the OLS solution from
- % $\Dcal_h$ with $\Tcal_h(\hat\theta_{h+1})$ as the Bayes optimal
-  %solution. 
- Also we can show that the noise
-  $\epsilon_{s,a} := \left( r(s,a) + \max_{a'} \widehat{Q}_{h+1}(s',a') - \Tcal_h
-    \widehat{Q}_h(s,a) \right)$
-  is bounded by $2H$, and also note that the noises are independent,
-  and has mean zero:
-  $\EE_{s' \sim P_h(s,a) }\left[r(s,a) + \max_{a'}
-    \widehat{Q}_{h+1}(s',a') - \Tcal_h \widehat{Q}_h(s,a) \right] =
-  0$.
-  Using Theorem~\ref{thm:ols_fixed_design}, we have that with
-  probability at least $1-\delta$,
+For (1), we proceed by backward induction. Since $Q_H^\star\equiv 0=\widehat Q_H$,
+the claim holds for $h=H$. Suppose it holds for $h+1$. Then for any $(s,a)$,
 \begin{align*}
-\left\|  \hat\theta_h - \Tcal_h(\hat\theta_{h+1}) \right\|^2_{\Lambda_h} \leq 4H^2 \left( d + \sqrt{d \ln(1/\delta) } + 2\ln(1/\delta)\right).
+|\widehat Q_h(s,a) - Q_h^\star(s,a)|
+&\le |\widehat Q_h(s,a) - (\Tcal_h\widehat Q_{h+1})(s,a)|
+     + |(\Tcal_h\widehat Q_{h+1})(s,a) - (\Tcal_h Q_{h+1}^\star)(s,a)| \\
+&\le \eta + \E_{s'}\big[\max_{a'}|\widehat Q_{h+1}(s',a')-Q_{h+1}^\star(s',a')|\big] \\
+&\le \eta + \|\widehat Q_{h+1}-Q_{h+1}^\star\|_\infty
+\le (H-h)\eta,
 \end{align*}
-Now for any $s,a$, we must have:
-\begin{align*}
-\left\lvert (\hat\theta_h - \Tcal_{h}(\hat\theta_{h+1}))^{\top} \phi(s,a) \right\rvert^2 & \leq \left\|  \hat\theta_h - \Tcal_h(\hat\theta_{h+1}) \right\|^2_{\Lambda_h} \| \phi(s,a) \|^2_{\Lambda_h^{-1}} \leq \left\|  \hat\theta_h - \Tcal_h(\hat\theta_{h+1}) \right\|^2_{\Lambda_h} \frac{d}{N}  \\
-& \leq  4H^2 \frac{ d^2 + d^{1.5} \sqrt{\ln(1/\delta)} + 2d\ln(1/\delta) }{N} \leq \frac{16H^2 d^2 \ln(1/\delta)}{N},
-\end{align*} which implies that:
-\begin{align*}
-\left\| \widehat{Q}_h - \Tcal_{h} \widehat{Q}_{h+1} \right\|_{\infty} = \max_{s,a }\left\lvert (\hat\theta_h - \Tcal_{h}(\hat\theta_{h+1}))^{\top} \phi(s,a) \right\rvert \leq \frac{ 4H d \sqrt{\ln(1/\delta)} }{\sqrt{N}}.
-\end{align*}
-Set the right hand side to be $\epsilon$, we have $N = \frac{16H^2d^2 { \ln(1/\delta)}}{\epsilon^2}$.
+using that $\max$ is 1-Lipschitz in $\ell_\infty$.
 
-Finally, apply union bound over all $h = 0, \dots, H-1$, we conclude the proof. 
+For (2), fix $h$ and $s$. Let $a^\star\in\arg\max_a Q_h^\star(s,a)$ and
+$\widehat a\in\arg\max_a \widehat Q_h(s,a)$. Then
+\[
+Q_h^\star(s,a^\star) - Q_h^\star(s,\widehat a)
+\le
+\bigl(Q_h^\star(s,a^\star)-\widehat Q_h(s,a^\star)\bigr)
++
+\bigl(\widehat Q_h(s,\widehat a)-Q_h^\star(s,\widehat a)\bigr)
+\le 2\|\widehat Q_h-Q_h^\star\|_\infty
+\le 2(H-h)\eta.
+\]
+Unrolling the Bellman equations along the trajectory of $\widehat\pi$ yields
+\[
+V_0^\star(s) - V_0^{\widehat\pi}(s)
+\le \sum_{h=0}^{H-1} 2(H-h)\eta
+\le 2H^2\eta.
+\]
 \end{proof}
 
-\iffalse
-\begin{lemma}[Accuracy of $\widehat{Q}$] \label{lemma:Q_estimate} Fix $\delta \in (0,1/H)$ and $\epsilon\in (0,1)$. Set $n_{s,a} = \left\lceil \frac{ 32H^2 \rho(s,a) d  }{\epsilon^2} \ln(|\Scal||\Acal| / \delta)  \right\rceil$. With probability $1-H\delta$, for all $s,a\in\Scal\times\Acal$ and $h \in [H]$, we have:
+\begin{proof}[Proof of Theorem~\ref{thm:lsvi_bc_generative}]
+We show that, with high probability, each stage regression in LSVI has small
+\emph{uniform} prediction error, implying small Bellman residuals; then we invoke
+Lemma~\ref{lem:residual_to_policy}.
+
+\paragraph{Step 1: one stage as fixed-design linear regression.}
+Fix a stage $h\in[H]$ and condition on $\widehat Q_{h+1}$ (equivalently,
+$\widehat V_{h+1}$), which is measurable with respect to data from stages
+$h+1,\dots,H-1$.
+
+In the stage-$h$ regression, each sample has covariate
+\[
+x_i := \phi(s_i,a_i),
+\]
+and response
+\[
+y_i := r_h(s_i,a_i) + \widehat V_{h+1}(s_i').
+\]
+(If desired, one may clip $\widehat V_{h+1}$ to $[0,H]$ in the regression target;
+this only strengthens boundedness and does not change the argument.)
+
+By Bellman completeness, there exists $\theta_h^\star\in\R^d$ such that for all
+$(s,a)$,
+\[
+(\theta_h^\star)^\top \phi(s,a)
+=
+r_h(s,a) + \E_{s'\sim P_h(\cdot\mid s,a)}\big[\widehat V_{h+1}(s')\big]
+=
+(\Tcal_h \widehat Q_{h+1})(s,a).
+\]
+Hence $y_i = (\theta_h^\star)^\top x_i + \xi_i$ where
+$\E[\xi_i\mid x_i]=0$ and $\{\xi_i\}$ are independent across samples (because the
+$s_i'$ are sampled independently conditional on $(s_i,a_i)$). Moreover,
+$|\xi_i| \lesssim H$, so $\xi_i$ is $O(H)$-sub-Gaussian.
+
+Let
+\[
+\Lambda_h := \sum_{(s,a,r,s')\in D_h} \phi(s,a)\phi(s,a)^\top
+\]
+denote the (stage-$h$) design matrix.
+
+\paragraph{Step 2: leverage control from D-optimal sampling (one-line bound).}
+Let $\Sigma=\E_{x\sim\rho}[xx^\top]$. By construction of $D_h$,
+\[
+\Lambda_h
+=
+\sum_{x\in\mathrm{supp}(\rho)} \lceil N\rho(x)\rceil\, xx^\top
+\succeq
+\sum_{x\in\mathrm{supp}(\rho)} N\rho(x)\, xx^\top
+=
+N\Sigma.
+\]
+Therefore $\Lambda_h^{-1}\preceq (N\Sigma)^{-1}$ and by Lemma~\ref{lem:d_opt_design},
+\[
+\sup_{(s,a)} \phi(s,a)^\top \Lambda_h^{-1}\phi(s,a)
+\le
+\frac{1}{N}\sup_{x\in\Phi} x^\top\Sigma^{-1}x
+\le \frac{d}{N}.
+\]
+
+\paragraph{Step 3: OLS generalizes uniformly.}
+Apply the fixed-design OLS bound from the Appendix (Theorem~\ref{thm:ols_fixed_design})
+with failure probability $\delta' := \delta/(2H)$ and noise scale $O(H)$ to obtain,
+with probability at least $1-\delta'$,
+\[
+\|\widehat\theta_h - \theta_h^\star\|_{\Lambda_h}
+\;\le\;
+c_1 H \sqrt{ d\log(H/\delta) },
+\]
+for an absolute constant $c_1$. Hence for any $(s,a)$,
 \begin{align*}
-\left\lvert \widehat{Q}_h(s,a) - Q^\star_h(s,a) \right\rvert \leq  (H-h)\epsilon.
+\big|(\widehat\theta_h-\theta_h^\star)^\top \phi(s,a)\big|
+&\le
+\|\widehat\theta_h-\theta_h^\star\|_{\Lambda_h}\cdot
+\sqrt{\phi(s,a)^\top \Lambda_h^{-1}\phi(s,a)} \\
+&\le
+c_1 H \sqrt{ d\log(H/\delta)}\cdot \sqrt{\frac{d}{N}}
+=
+c_1 H d \sqrt{\frac{\log(H/\delta)}{N}}.
 \end{align*}
-\end{lemma}
-\begin{proof} 
-We first start from $h = H-1$. In the $H-1$ step, we are simply performing linear regression from $s,a$ to reward $r(s,a)$, with the dataset generated via $\rho$ in the way described in Theorem~\ref{thm:design_lr}. Since $ r(s,a)$ is linear with respect to $\phi(s,a)$, $r(s,a)$ is deterministic and $r(s,a) \in [0,1]$, and the data matrix $\Lambda$ in the ordinary least square is full rank, we must have:
-\begin{align*}
-\left\lvert \theta_{H-1}^{\top} \phi(s,a) - r(s,a)\right\rvert  = 0, \forall s,a.
-\end{align*} This also means that $\theta_{H-1}^{\top} \phi(s,a) \in [0,1]$.
+Equivalently,
+\[
+\big\|\widehat Q_h - \Tcal_h \widehat Q_{h+1}\big\|_\infty
+\;\le\;
+c_1 H d \sqrt{\frac{\log(H/\delta)}{N}}.
+\]
 
-Now we consider time step $H-2$. The regression target at $H-2$ is in the form of $r(s,a) + \max_{a'} \theta_{H-1}^{\top} \phi(s',a')$, and  $r(s,a) + \max_{a'} \theta_{H-1}^{\top} \phi(s',a') \in [0, 2]$. Also note that $\Tcal_{H-2}(\theta_{H-1})$ is the Bayes optimal solution of the regression problem at time step $H-2$.
- Thus with $n_{s,a} \geq  \left\lceil \frac{ 8 \rho(s,a) d }{\epsilon^2} \ln(|\Scal||\Acal| / \delta) \right\rceil$, via Theorem~\ref{thm:design_lr}, we must have that with probability at least $1-\delta$, for all $s,a$:
-\begin{align*}
-\left\lvert \theta_{H-2}^{\top} \phi(s,a) -  \Tcal_{H-2}( \theta_{H-1} )^{\top} \phi(s,a)  \right\rvert \leq \epsilon.
-\end{align*} 
-Using the definition $\Tcal_{H-2}$, we have $\Tcal_{H-2}(\theta_{H-1})^{\top} \phi(s,a) = r(s,a) + \mathbb{E}_{s'\sim P_{H-2}(s,a)} \max_{a' }\theta_{H-1}^{\top} \phi(s',a') = r(s,a) + \mathbb{E}_{s'\sim P_{H-2}(s,a)} \max_{a' } r(s',a') := Q^\star_{H-2}(s,a)$, which implies:
-\begin{align*}
-\left\lvert \theta_{H-2}^{\top} \phi(s,a) -  Q^\star_{H-2}(s,a)  \right\rvert \leq \epsilon.
-\end{align*} This concludes the base case. 
+\paragraph{Step 4: union bound over stages and conclude.}
+Apply the above bound for all $h\in[H]$ and take a union bound: with probability
+at least $1-\delta/2$,
+\[
+\max_{h\in[H]}\big\|\widehat Q_h - \Tcal_h \widehat Q_{h+1}\big\|_\infty
+\;\le\;
+c_1 H d \sqrt{\frac{\log(H/\delta)}{N}}.
+\]
+With our choice of $N$ (and $c$ large enough), the right-hand side is at most
+$\epsilon/(2H^2)$. Lemma~\ref{lem:residual_to_policy} then yields, for all $s$,
+\[
+V_0^\star(s) - V_0^{\widehat\pi}(s)
+\le 2H^2\cdot \frac{\epsilon}{2H^2}
+=\epsilon,
+\]
+and hence also $\E_{s\sim\mu}[V_0^\star(s)-V_0^{\widehat\pi}(s)]\le\epsilon$.
 
-
-%Denote $\widehat{Q}_h(s,a) :  = \theta_h^{\top} \phi(s,a)$, we have $\left\lvert \widehat{Q}_{H-1}(s,a) - Q^\star_{H-1}(s,a)   \right\rvert \leq \epsilon$. This concludes the base case. 
-
-Now our inductive hypothesis is that for time step $h+1$, we have $\left\lvert \widehat{Q}_{h+1}(s,a) - Q^\star_{h+1}(s,a)  \right\rvert \leq \epsilon_{h+1} : = (H-h-1) \epsilon$. The inductive hypothesis immediately implies that:
-\begin{align*}
-\left\lvert V_{h+1}(s) - V^\star_{h+1}(s)   \right\rvert \leq \max_{a} \left\lvert \widehat{Q}_{h+1}(s,a) - Q^\star_{h+1}(s,a)  \right\rvert \leq \epsilon_{h+1}, \forall s,
-\end{align*} where the inequality uses the fact that $ \left\lvert \max_{a} \widehat{Q}_{h+1}(s,a) - \max_{a} Q^\star_{h+1}(s,a)  \right\rvert \leq \max_{a} \left\lvert \widehat{Q}_{h+1}(s,a) - Q^\star_{h+1}(s,a)  \right\rvert$.
-
-Now we move to time step $h$. At time step $h$, the regression target is in the form of $r(s,a) + V_{h+1}(s')$ and we have $| V_{h+1}(s) | \leq V^\star_{h+1}(s) + \epsilon_{h+1} \leq  H + H \epsilon \leq 2H$ (since we set $\epsilon \in [0,1]$). %Denote $\bar\theta_h := \Tcal_h( \theta_{h+1})$, namely, for all $s,a$, we have: $\bar\theta_{h}^{\top} \phi(s,a) = r(s,a) + \mathbb{E}_{s'\sim P(s,a)} \max_{a'} \theta_{h+1}^{\top} \phi(s',a')$.  
-Similarly, note that $\Tcal_{h}(\theta_{h+1})$ is the Bayes optimal solution of the regression problem at time step $h$.
-With $n_{s,a} = \left\lceil \frac{32 H^2  \rho(s,a) d}{\epsilon^2} \cdot \ln(|\Scal||\Acal| / \delta)   \right\rceil$, via Theorem~\ref{thm:design_lr}, we have that with probability at least $1-\delta$,
-\begin{align*}
-\left\lvert  \theta_h^{\top} \phi(s,a) - \Tcal_{h}(\theta_{h+1})^{\top} \phi(s,a)   \right\rvert \leq \epsilon, \forall s,a.
-\end{align*} Thus, we have:
-\begin{align*}
-\left\lvert \widehat{Q}_h(s,a) - Q^\star_h(s,a)  \right\rvert  & \leq \left\lvert \widehat{Q}_h(s,a) - \Tcal_{h}(\theta_{h+1})^{\top}\phi(s,a)  \right\rvert + \left\lvert  \Tcal_{h}(\theta_{h+1})^{\top} \phi(s,a) - Q^\star_h(s,a)  \right\rvert \\
-& \leq \epsilon + \left\lvert  \Tcal_{h}(\theta_{h+1})^{\top} \phi(s,a) - Q^\star_h(s,a)  \right\rvert \\
-& \leq \epsilon +  \mathbb{E}_{s'\sim P_h(s,a)}  \max_{a'} \left\lvert \theta_{h+1}^{\top} \phi(s',a')  - Q^\star_h(s',a') \right\rvert \leq \epsilon + \epsilon_{h+1} = (H - h)\epsilon,
-\end{align*} where the second last inequality uses the inequality that $| \mathbb{E}_{x} f(x) | \leq \mathbb{E}_{x} |f(x)|$ for any random variable $x$ and function $f$, and the inequality $|\max_{x} f(x) - \max_{x} g(x)| \leq \max_x | f(x) - g(x) |$ for any two functions $f$ and $g$.
-
-This concludes the induction. Finally, to conclude the proof, note that we apply Theorem~\ref{thm:design_lr} for all $h \in [H]$. Via a union bound, we see that the probability of the guarantee in Theorem~\ref{thm:design_lr} failing to hold for some $h$ is at most $H\delta$. This concludes the proof. 
-%we see that with probability at least $1- H \delta$, we have Theorem~\ref{thm:design_lr} holds for all $h$.
-%We prove the lemma for a fixed $(s,a,h)$ triple. 
+Finally, the sample bound follows because for each $h$,
+\[
+|D_h|
+=
+\sum_{x\in\mathrm{supp}(\rho)} \lceil N\rho(x)\rceil
+\le
+N + |\mathrm{supp}(\rho)|
+\le
+N + \frac{d(d+1)}{2},
+\]
+and summing over $h$ gives the stated total.
 \end{proof}
 
-With the above lemma, now we can reason about the performance of the policies $\pi_h(s) := \arg\max_{a} \widehat{Q}_h(s,a)$.
 
-\iffalse
-\begin{lemma}[Performance of $\widehat\pi$] \label{lemma:policy_error}Denote $\widehat{\pi}:= \{ \widehat\pi_h\}_{h=0}^{H-1}$ where $\pi_h(s) := \arg\max_{a} \theta_{h}^{\top} \phi(s,a)$. Assume that $| \theta_h^{\top} \phi(s,a) - Q^\star_h(s,a)  | \leq (H-h)\epsilon$ for all $h,s,a$,  we have:
-\begin{align*}
-\mathbb{E}_{s\sim \mu} V^\star_0(s) - \mathbb{E}_{s\sim \mu} V^{\widehat\pi}_0(s) \leq  2H^2 \epsilon.
-\end{align*}
-\end{lemma}
-\begin{proof} Starting from time step $H-1$,  for any $s$, we have:
-\begin{align*}
- V^{\widehat\pi}_{H-1}(s) -  V^\star_{H-1}(s)& =  Q^{\widehat\pi}_{H-1}(s,\widehat\pi_{H-1}(s)) - Q^\star_{H-1}(s,\pi^\star(s))   \\
-& =  Q^{\widehat\pi}_{H-1}(s,\widehat\pi_{H-1}(s)) - Q^\star_{H-1}(s, \widehat\pi_{H-1}(s)) + Q^\star_{H-1}(s, \widehat\pi_{H-1}(s))-  Q^\star_{H-1}(s,\pi^\star(s))  \\
-& =  Q^\star_{H-1}(s, \widehat\pi_{H-1}(s))-  Q^\star_{H-1}(s,\pi^\star(s))   \\
-& \geq Q^\star_{H-1}(s, \widehat\pi_{H-1}(s)) - \widehat{Q}_{H-1}(s, \widehat\pi_{H-1}(s))  + \widehat{Q}_{H-1}(s, \pi^\star(s))  - Q^\star_{H-1}(s,\pi^\star(s)) \\
-& \geq 2\epsilon,
-\end{align*} where the third equality uses the fact that $Q^{\widehat\pi}_{H-1}(s,a) = Q^\star_{H-1}(s,a) = r(s,a)$, the first inequality uses the definition of $\widehat{\pi}_{H-1}$ and $\widehat{Q}_{H-1}(s, \widehat\pi_{H-1}(s)) \geq \widehat{Q}_{H-1}(s, a),\forall a$.
-This concludes the base case. For time step $h+1$, our inductive hypothesis is defined as $V^{\widehat\pi}_{h+1}(s) -  V^\star_{h+1}(s) \geq  - 2 (H - h - 1) H \epsilon$. For time step $h$, we have:
-\begin{align*}
-V^{\widehat\pi}_{h}(s) -  V^\star_{h}(s)& =  Q^{\widehat\pi}_{h}(s,\widehat\pi_{h}(s)) - Q^\star_{h}(s,\pi^\star(s)) \\
-& = Q^{\widehat\pi}_{h}(s,\widehat\pi_{h}(s)) -  Q^\star_h(s, \widehat\pi_{h}(s)) + Q^\star_h(s, \widehat\pi_{h}(s)) - Q^\star_{h}(s,\pi^\star(s)) \\
-& = \mathbb{E}_{s'\sim P_h(s, \widehat\pi_h(s))}\left[ V^{\widehat\pi}_{h+1}(s') - V^\star_{h+1}(s') \right] + Q^\star_h(s, \widehat\pi_{h}(s)) - Q^\star_{h}(s,\pi^\star(s)) \\
-& \geq - 2 (H - h - 1) \epsilon  + Q^\star_h(s, \widehat\pi_{h}(s)) -  \widehat{Q}_h(s, \widehat\pi_{h}(s)) +  \widehat{Q}_h(s, \pi^\star_{h}(s)) -  Q^\star_{h}(s,\pi^\star(s)) \\
-& \geq - 2(H-h-1) H \epsilon  - 2(H-h)\epsilon \geq - 2(H-h) H \epsilon.
-%& \geq -2(H-h) \epsilon.
-\end{align*}
-This concludes that for any $s$, at time step $h =0$, we have $V^{\widehat\pi}_{0}(s) -  V^\star_{0}(s ) \geq -2H^2 \epsilon$.
-\end{proof}
+\newpage
 
-Combining the above two lemmas we can conclude proof for the final sample complexity of Algorithm~\ref{alg:lsvi}.
-\fi
-\fi
-
-Now we are ready to conclude the proof for the main theorem. 
-
-\begin{proof}[Proof of Theorem~\ref{them:main_lsvi_bell_complete}]
-Using Lemma~\ref{lemma:ols_lsvi}, with $N = \left\lceil \frac{64 H^6 d^2 \ln(H / \delta)} {\epsilon^2} \right\rceil$, we have that $\| \widehat{Q}_h - \Tcal_h \widehat{Q}_{h+1} \|_{\infty} \leq \epsilon / (2H^2)$ for all $h$, with probability at least $1-\delta$. Now apply Lemma~\ref{lem:perturbation_Q}, we immediately have that $| V^{\hat\pi} - V^\star | \leq \epsilon$.
-
-Regarding sample complexity, we have:
-%Based on Lemma~\ref{lemma:Q_estimate}, we have that with probability at least $1-H\delta$, we have $\left\lvert \widehat{Q}_h(s,a) - Q^\star_h(s,a)  \right\rvert \leq (H-h)\epsilon$ for all $s,a,h$. Thus, via Lemma~\ref{lemma:policy_error}, we immediately have that $\mathbb{E}_{s\sim \mu} V^\star_0(s) - \mathbb{E}_{s\sim \mu} V^{\widehat\pi}_0(s) \leq  2H^2 \epsilon$.
-%To calculate the sample complexity, we note that the total number of samples is upper bounded as:
-\begin{align*}
-H  \sum_{s,a} \lceil\rho(s,a) N\rceil \leq H \sum_{s,a \in \text{support}(\rho)}\left( 1 + \rho(s,a) N    \right) 
-%\sum_{s,a\in\text{support}(\rho)} n_{s,a} & \leq H \sum_{s,a\in\text{support}(\rho)}\left( 1+ \frac{ 32H^2 \rho(s,a) d  }{\epsilon^2} \ln(|\Scal||\Acal| / \delta)  \right) \\
-& \leq H \left( d^2 +   \frac{ 64H^6 d^2 {\ln(H/\delta)}  }{\epsilon^2}    \right), %\leq H \left( d^2 +   \frac{ 32H^2 d  }{\epsilon^2} \ln(|\Scal||\Acal| / \delta)   \right), 
-\end{align*} where the second  inequality use the support size upper
-bound of the D-optimal design $\rho$ (see Lemma~\ref{them:design_rho}).
-This completes the proof.
-\end{proof}
-
-\section{How Strong is Bellman Completion as a Modeling?}
-
-To be added.
-
-%First, it implies linear $Q^\star$. 
-
-%Second, if we add a feature, we will break the completeness. (to be added..)
-
-\section{Offline Reinforcement Learning}
+\section{Offline Extensions with BC (or something like that)}
 
 One notable observation about LSVI is that the algorithm is
 non-adaptive, in the sense that it works using a fixed set of observed
@@ -700,14 +986,34 @@ rather than the second, is what is relevant here). We should note that
 the sample size bounds presented in this chapter have not been
 optimized with regards to their $H$ dependencies.
 
-\section{Bibliographic Remarks and Further Readings}
-\label{chapterBC_bib}
+\subsubsection{Least-Squares Policy Evaluation (LSPE)}
 
-The idea of Bellman completion under general function class was introduced in \cite{munos2005error} under the setting of batch RL. For the episodic online learning setting, \citet{zanette2020learning} provided a statistically efficient algorithm under the linear Bellman completion condition, and \cite{jin2021bellman}  proposes a statistically efficient algorithms under the Bellman completion condition with general function approximation.
+LSPE is the evaluation analogue of LSVI: the only change is that we replace the
+optimality backup $\max_{a'}$ by the backup induced by a target policy $\pi$.
+We allow a non-stationary policy $\pi=\{\pi_h\}_{h=0}^{H-1}$, where each
+$\pi_h(s)\in\Acal$ is known (we assume the policy is deterministic for simplicity).
 
-We refer readers to to \cite{lattimore2020bandit} for a proof of the
-D-optimal design;  the idea directly follows from John's theorem (e.g. see~\cite{ball1997elementary,todd2016minimum}). 
+Given a parameter $\theta_h$, define the induced value estimate
+\[
+\widehat V_h^{\pi}(s)
+\;:=\;
+\widehat\theta_h^\top\phi(s, \pi_h(s)).
+\]
 
-
-%\cite{} extends the the algorithm from \cite{zanette2020learning} to general function class. 
-
+\begin{algorithm}[t]
+\begin{algorithmic}[1]
+\State \textbf{Input:} policy $\pi=\{\pi_h\}_{h=0}^{H-1}$, datasets $D_0,\dots,D_{H-1}$, feature map $\phi$
+\State Initialize $\widehat V^{\pi}_{H}(s) \gets 0$ for all $s\in\Scal$
+\For{$h = H-1, H-2, \dots, 0$}
+    \State $\displaystyle
+    \widehat\theta_{h}
+    \in \arg\min_{\theta\in\R^d}
+    \sum_{(s,a,r,s')\in D_h}
+    \Big(\theta^\top\phi(s,a) - r - \widehat V^{\pi}_{h+1}(s')\Big)^2$
+    \State Define $\widehat V^{\pi}_h(s) \gets \widehat\theta_h^\top\phi(s, \pi_h(s))$ for all $s$
+\EndFor
+\State \textbf{Return:} parameters $\{\widehat\theta_h\}_{h=0}^{H-1}$ (equivalently, value estimates $\{\widehat V_h^{\pi}\}_{h=0}^{H}$)
+\end{algorithmic}
+\caption{Least-Squares Policy Evaluation (LSPE)}
+\label{alg:lspe}
+\end{algorithm}
