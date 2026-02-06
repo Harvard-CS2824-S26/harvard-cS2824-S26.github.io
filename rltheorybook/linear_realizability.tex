@@ -127,12 +127,6 @@ With our ladder in place, the remainder of the chapter answers our organizing qu
 by pairing a sharp positive result under (D) with lower bounds showing that (B) and (C)
 can fail dramatically.
 
-\newpage
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Positive results under Bellman completeness
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 \section{Positive results under Bellman completeness}
 \label{sec:BC_positive}
 
@@ -227,9 +221,6 @@ solution (or add a small ridge). In the settings we analyze (D-optimal sampling
 from a generative model, or explicit coverage assumptions offline), the design
 is well-conditioned and this technicality is inessential.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Main Guarantee: LSVI with a Generative Model
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \subsection{Main guarantee: LSVI with a generative model}
 \label{subsec:BC_generative_main}
@@ -470,550 +461,574 @@ and summing over $h$ gives the stated total sample bound.
 \end{proof}
 
 
-
-
 \newpage
-\section{Positive results under Bellman completeness}
-\label{sec:BC_positive}
 
-This part gives the affirmative path for linear features: under the right
-structural condition, dynamic programming really does reduce to a sequence of
-(supervised) regression problems, and this yields a sample complexity that is
-polynomial in the feature dimension. The goal is to make explicit what the
-assumption buys us, and to state the algorithms in a way that we can reuse in
-both the generative-model and offline settings.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Offline extensions under Bellman completeness
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{Setup}
-\label{subsec:BC_setup}
+\section{Offline extensions under Bellman completeness}
+\label{sec:BC_offline}
 
-We work in the finite-horizon setting with stages $h\in[H] := \{0,1,\dots,H-1\}$.
-An MDP is specified by a state space $\Scal$, an action space $\Acal$, an initial
-distribution $\mu$ over $\Scal$, stage-dependent transition kernels
-$\{P_h(\cdot\mid s,a)\}_{h=0}^{H-1}$, and stage-dependent rewards
-$\{r_h(s,a)\}_{h=0}^{H-1}$. Throughout we assume rewards are bounded, say
-$r_h(s,a)\in[0,1]$.\footnote{Allowing stochastic rewards with bounded support is
-also routine; to keep notation light we write rewards as deterministic.}
+A notable feature of LSVI (Algorithm~\ref{alg:lsvi}) is that it is non-adaptive:
+it operates on a fixed collection of observed transitions and rewards. Hence, it
+applies directly to the offline setting discussed in Chapter~\ref{chap:prelims}.
 
-We are given a feature map $\phi:\Scal\times\Acal\to\R^d$, and we consider the
-linear function class
+In this section we discuss two offline objectives:
+(i) learning a near-optimal policy, and
+(ii) policy evaluation (estimating the value of a given target policy $\pi$).
+The key additional requirement in the offline setting is \emph{coverage}: the
+datasets must be sufficiently informative relative to the feature class.
+
+\subsection{Offline data model and a coverage condition}
+\label{subsec:BC_offline_setup}
+
+For each stage $h\in[H]$, we are given a dataset
 \[
-\Fcal \;:=\; \bigl\{\, f_w:\Scal\times\Acal\to\R \ \big|\ f_w(s,a)=w^\top\phi(s,a),\ w\in\R^d \,\bigr\}.
+D_h=\{(s_i,a_i,r_i,s_i')\}_{i=1}^N,
 \]
-(As usual, one can rescale features so that $\sup_{s,a}\|\phi(s,a)\|_2\le 1$; we
-will be explicit about boundedness assumptions when they matter.)
+where $r_i=r_h(s_i,a_i)$ and each $s_i'\sim P_h(\cdot\mid s_i,a_i)$ is sampled
+independently conditional on $(s_i,a_i)$. (The results below also extend to
+settings where the entire quadruple is i.i.d.\ from a fixed data-generating
+distribution; we focus on the above model to keep notation light.)
 
+Let $\Phi:=\{\phi(s,a):(s,a)\in\Scal\times\Acal\}$, and recall the D-optimal
+covariance $\Sigma$ induced by the maximizer in \eqref{eq:d_design} (equivalently,
+Lemma~\ref{lem:d_opt_design}). We impose coverage by requiring that the empirical
+covariance at each stage dominates $\Sigma$ up to a factor $\kappa$.
 
-\paragraph{Data model (offline view).}
-To keep the algorithms reusable, we phrase everything in terms of per-stage
-datasets. For each $h\in[H]$, let
+\begin{assumption}[Coverage]\label{assumption:coverage}
+There exists $\kappa\ge 1$ such that for each stage $h\in[H]$,
 \[
-D_h = \{(s_i,a_i,r_i,s_i')\}_{i=1}^N
-\]
-be a dataset of $N$ transitions at stage $h$, where each $s_i'\sim
-P_h(\cdot\mid s_i,a_i)$ is sampled independently conditional on $(s_i,a_i)$ and
-$r_i=r_h(s_i,a_i)$. In the generative-model setting we will \emph{construct}
-these datasets; in the offline setting the datasets are given and we will impose
-a suitable coverage condition.
-
-\paragraph{Bellman completeness short hand notation.}
-When we want to emphasize the induced map on parameters, we write
-$w=\Tcal_h(\theta)$ for a choice of $w$ satisfying
-$\Tcal_h f_\theta = f_w$, where $f_\theta(s,a)=\theta^\top\phi(s,a)$.
-
-With the Bellman completeness assumption in place, the rest of Section~\ref{sec:BC_positive} shows that
-we can drive the Bellman residuals small via ordinary least squares, which in
-turn yields a near-optimal greedy policy.
-
-\subsection{Algorithms}
-\label{subsec:BC_algorithms}
-
-We now state the two basic algorithms we will analyze. Importantly, both are
-\emph{data-driven}: they take as input stage-wise datasets $\{D_h\}_{h=0}^{H-1}$.
-This lets us reuse the same templates in the generative-model and offline
-settings (the only difference is how the datasets are obtained).
-
-\subsubsection{Least-Squares Value Iteration (LSVI)}
-
-LSVI runs a backward dynamic program, where each Bellman backup is implemented by
-a least-squares regression onto the feature class $\Fcal$.
-
-\begin{algorithm}[t]
-\begin{algorithmic}[1]
-\State \textbf{Input:} datasets $D_0,\dots,D_{H-1}$, feature map $\phi$
-\State Initialize $\widehat V_{H}(s) \gets 0$ for all $s\in\Scal$
-\For{$h = H-1, H-2, \dots, 0$}
-    \State $\displaystyle
-    \widehat\theta_{h}
-    \in \arg\min_{\theta\in\R^d}
-    \sum_{(s,a,r,s')\in D_h}
-    \Big(\theta^\top\phi(s,a) - r - \widehat V_{h+1}(s')\Big)^2$
-    \State Define $\widehat Q_h(s,a) \gets \widehat\theta_h^\top\phi(s,a)$ for all $(s,a)$
-    \State Define $\widehat V_h(s) \gets \max_{a\in\Acal}\widehat Q_h(s,a)$ for all $s$
-\EndFor
-\State \textbf{Return:} greedy policy $\widehat\pi=\{\widehat\pi_h\}_{h=0}^{H-1}$ where
-$\widehat\pi_h(s)\in\arg\max_{a\in\Acal}\widehat Q_h(s,a)$
-\end{algorithmic}
-\caption{Least-Squares Value Iteration (LSVI)}
-\label{alg:lsvi}
-\end{algorithm}
-
-\paragraph{Remark.}
-If the empirical covariance in a stage is singular, one can take a minimum-norm
-solution (or add a small ridge). In the settings we care about (D-optimal
-sampling from a generative model, or coverage assumptions offline), the design
-will be well-conditioned and this technicality does not play a major role.
-
-\subsubsection{Least-Squares Policy Evaluation (LSPE)}
-
-LSPE is the evaluation analogue of LSVI: the only change is that we replace the
-optimality backup $\max_{a'}$ by the backup induced by a target policy $\pi$.
-We allow a non-stationary policy $\pi=\{\pi_h\}_{h=0}^{H-1}$, where each
-$\pi_h(s)\in\Acal$ is known (we assume the policy is deterministic for simplicity).
-
-Given a parameter $\theta_h$, define the induced value estimate
-\[
-\widehat V_h^{\pi}(s)
+\widehat\Sigma_h
 \;:=\;
-\widehat\theta_h^\top\phi(s, \pi_h(s)).
+\frac{1}{N}\sum_{(s,a,r,s')\in D_h}\phi(s,a)\phi(s,a)^\top
+\;\succeq\;
+\frac{1}{\kappa}\,\Sigma,
 \]
+where $\Sigma=\E_{(s,a)\sim\rho}[\phi(s,a)\phi(s,a)^\top]$ for a D-optimal design
+$\rho$ (see \eqref{eq:d_design}).
+\end{assumption}
 
-\begin{algorithm}[t]
-\begin{algorithmic}[1]
-\State \textbf{Input:} policy $\pi=\{\pi_h\}_{h=0}^{H-1}$, datasets $D_0,\dots,D_{H-1}$, feature map $\phi$
-\State Initialize $\widehat V^{\pi}_{H}(s) \gets 0$ for all $s\in\Scal$
-\For{$h = H-1, H-2, \dots, 0$}
-    \State $\displaystyle
-    \widehat\theta_{h}
-    \in \arg\min_{\theta\in\R^d}
-    \sum_{(s,a,r,s')\in D_h}
-    \Big(\theta^\top\phi(s,a) - r - \widehat V^{\pi}_{h+1}(s')\Big)^2$
-    \State Define $\widehat V^{\pi}_h(s) \gets \widehat\theta_h^\top\phi(s, \pi_h(s))$ for all $s$
-\EndFor
-\State \textbf{Return:} parameters $\{\widehat\theta_h\}_{h=0}^{H-1}$ (equivalently, value estimates $\{\widehat V_h^{\pi}\}_{h=0}^{H}$)
-\end{algorithmic}
-\caption{Least-Squares Policy Evaluation (LSPE)}
-\label{alg:lspe}
-\end{algorithm}
-
-
-\subsection{Main Guarantee: LSVI with a Generative Model}
-\label{subsec:BC_generative_main}
-
-This section proves the main positive result under Bellman completeness in the
-generative-model setting. The proof has three moving parts:
-(i) a geometric sampling lemma (D-optimal design), (ii) a uniform generalization
-bound for ordinary least squares (from the Appendix), and (iii) a standard
-approximate dynamic programming lemma converting small Bellman residuals into
-near-optimality.
-
-\subsubsection{Detour: D-optimal design}
-\label{subsubsec:BC_dopt}
-
-Let $\Phi := \{\phi(s,a): (s,a)\in\Scal\times\Acal\}\subset\R^d$ denote the set of
-feature vectors. We assume $\Phi$ is bounded and full-dimensional (otherwise we
-may restrict to $\mathrm{span}(\Phi)$).
-
-\begin{lemma}[D-optimal design]\label{lem:d_opt_design}
-There exists a distribution $\rho$ supported on at most $d(d+1)/2$ points in
-$\Phi$ such that, letting
+Assumption~\ref{assumption:coverage} is a concise way to ensure that the offline
+design has uniformly bounded leverage scores relative to the geometry of $\Phi$.
+Indeed, since $\widehat\Sigma_h\succeq \Sigma/\kappa$,
 \[
-\Sigma := \E_{x\sim\rho}[xx^\top],
+\sup_{(s,a)}\phi(s,a)^\top \widehat\Sigma_h^{-1}\phi(s,a)
+\;\le\;
+\kappa\cdot \sup_{(s,a)}\phi(s,a)^\top \Sigma^{-1}\phi(s,a)
+\;\le\;
+\kappa d,
 \]
-we have $\Sigma \succ 0$ and
+using Lemma~\ref{lem:d_opt_design}.
+
+\subsection{Offline policy optimization via LSVI}
+\label{subsec:BC_offline_lsvi}
+
+We first consider learning a near-optimal policy from offline data. Under Bellman
+completeness (Section~\ref{subsec:BC_assumption}) and coverage, the proof of the
+generative-model guarantee carries over with only minor changes.
+
+\begin{theorem}[Offline LSVI under Bellman completeness]\label{thm:lsvi_bc_offline}
+Assume Bellman completeness (Section~\ref{subsec:BC_assumption}), bounded rewards
+$r_h(s,a)\in[0,1]$, and the coverage condition
+(Assumption~\ref{assumption:coverage}) with parameter $\kappa$.
+Fix $\epsilon\in(0,1)$ and $\delta\in(0,1)$, and suppose each stage dataset has size
 \[
-\sup_{x\in\Phi} \; x^\top \Sigma^{-1} x \;\le\; d .
-\]
-\end{lemma}
-
-The distribution $\rho$ can be defined as a maximizer of a log-determinant
-objective:
-\begin{align}
-\rho \in \argmax_{\nu \in \Delta(\Phi)} \ln\det\!\left(\E_{x\sim\nu}[xx^\top]\right).
-\label{eq:d_design}
-\end{align}
-It also admits a geometric interpretation: the ellipsoid
-$\mathcal{E}=\{v:\|v\|_{\Sigma^{-1}}^2\le d\}$ is the unique minimum-volume
-centered ellipsoid containing $\Phi$. We do not provide a proof here; see
-Section~\ref{chapterBC_bib} for references and further discussion.
-
-In what follows, we will use the D-optimal design on $\Phi$ to specify a sampling
-distribution over state--action pairs.
-
-\subsubsection{Main theorem: LSVI under Bellman completeness}
-\label{subsubsec:BC_main_thm}
-
-We assume the Bellman completeness condition from Section~\ref{subsec:BC_setup},
-and we work with a generative model that can be queried at any stage $h$ and any
-$(s,a)$ to obtain an independent sample $s'\sim P_h(\cdot\mid s,a)$ (along with
-the reward $r_h(s,a)$).
-
-\begin{theorem}[LSVI under Bellman completeness; generative model]
-\label{thm:lsvi_bc_generative}
-Assume Bellman completeness (Section~\ref{subsec:BC_setup}) and bounded rewards
-$r_h(s,a)\in[0,1]$. Let $\rho$ be a D-optimal design for $\Phi$ as in
-Lemma~\ref{lem:d_opt_design}. Fix $\epsilon\in(0,1)$ and $\delta\in(0,1)$, and set
-\[
-N \;:=\; \left\lceil \frac{c\,H^6 d^2 \log(H/\delta)}{\epsilon^2}\right\rceil,
+N \;\ge\; \frac{c\,\kappa\,H^6 d^2 \log(H/\delta)}{\epsilon^2},
 \]
 for a sufficiently large absolute constant $c$.
-
-Construct datasets $\{D_h\}_{h=0}^{H-1}$ as follows: for each $h$ and each support
-point $(s,a)\in\mathrm{supp}(\rho)$, query the generative model
-$n_{s,a}=\lceil N\rho(s,a)\rceil$ times to obtain i.i.d.\ next-state samples, and
-include the corresponding transition tuples in $D_h$.
-
-Then, with probability at least $1-\delta$, running LSVI
-(Algorithm~\ref{alg:lsvi}) on $\{D_h\}_{h=0}^{H-1}$ returns a greedy policy
-$\widehat\pi$ satisfying
+Then with probability at least $1-\delta$, running LSVI (Algorithm~\ref{alg:lsvi})
+on $\{D_h\}_{h=0}^{H-1}$ returns a greedy policy $\widehat\pi$ satisfying
 \[
 \E_{s\sim\mu}\big[V_0^\star(s) - V_0^{\widehat\pi}(s)\big] \;\le\; \epsilon.
 \]
-Moreover, the total number of samples is at most
-\[
-\sum_{h=0}^{H-1} |D_h|
-\;\le\;
-H\Bigl(N + \tfrac{d(d+1)}{2}\Bigr)
-\;=\;
-O\!\left(Hd^2 + \frac{H^7 d^2 \log(H/\delta)}{\epsilon^2}\right).
-\]
 \end{theorem}
 
-
-\subsection{Proof of Theorem~\ref{thm:lsvi_bc_generative}}
-\label{subsec:BC_main_proof}
-
-We begin with a standard lemma: small Bellman residuals imply near-optimality of
-the greedy policy.
-
-For any sequence of functions $\{\widehat Q_h\}_{h=0}^{H}$ with $\widehat Q_H\equiv 0$,
-define $\widehat V_h(s):=\max_{a\in\Acal}\widehat Q_h(s,a)$ and the greedy policy
-$\widehat\pi_h(s)\in\arg\max_a \widehat Q_h(s,a)$. Define the stage-$h$ Bellman
-residual
-\[
-\mathrm{Res}_h \;:=\; \big\|\widehat Q_h - \Tcal_h \widehat Q_{h+1}\big\|_\infty.
-\]
-
-\begin{lemma}[Small residual $\Rightarrow$ good policy]
-\label{lem:residual_to_policy}
-Assume $\widehat Q_H\equiv 0$ and that $\mathrm{Res}_h \le \eta$ for all $h\in[H]$.
-Then:
-\begin{enumerate}
-\item For all $h\in[H]$, $\|\widehat Q_h - Q_h^\star\|_\infty \le (H-h)\eta$.
-\item For the greedy policy $\widehat\pi$, for all $s\in\Scal$,
-\[
-V_0^\star(s) - V^{\widehat\pi}_0(s) \;\le\; 2H^2\eta.
-\]
-\end{enumerate}
-\end{lemma}
-
-\begin{proof}
-For (1), we proceed by backward induction. Since $Q_H^\star\equiv 0=\widehat Q_H$,
-the claim holds for $h=H$. Suppose it holds for $h+1$. Then for any $(s,a)$,
-\begin{align*}
-|\widehat Q_h(s,a) - Q_h^\star(s,a)|
-&\le |\widehat Q_h(s,a) - (\Tcal_h\widehat Q_{h+1})(s,a)|
-     + |(\Tcal_h\widehat Q_{h+1})(s,a) - (\Tcal_h Q_{h+1}^\star)(s,a)| \\
-&\le \eta + \E_{s'}\big[\max_{a'}|\widehat Q_{h+1}(s',a')-Q_{h+1}^\star(s',a')|\big] \\
-&\le \eta + \|\widehat Q_{h+1}-Q_{h+1}^\star\|_\infty
-\le (H-h)\eta,
-\end{align*}
-using that $\max$ is 1-Lipschitz in $\ell_\infty$.
-
-For (2), fix $h$ and $s$. Let $a^\star\in\arg\max_a Q_h^\star(s,a)$ and
-$\widehat a\in\arg\max_a \widehat Q_h(s,a)$. Then
-\[
-Q_h^\star(s,a^\star) - Q_h^\star(s,\widehat a)
-\le
-\bigl(Q_h^\star(s,a^\star)-\widehat Q_h(s,a^\star)\bigr)
-+
-\bigl(\widehat Q_h(s,\widehat a)-Q_h^\star(s,\widehat a)\bigr)
-\le 2\|\widehat Q_h-Q_h^\star\|_\infty
-\le 2(H-h)\eta.
-\]
-Unrolling the Bellman equations along the trajectory of $\widehat\pi$ yields
-\[
-V_0^\star(s) - V_0^{\widehat\pi}(s)
-\le \sum_{h=0}^{H-1} 2(H-h)\eta
-\le 2H^2\eta.
-\]
+\begin{proof}[Proof sketch]
+The argument is identical to the proof of Theorem~\ref{thm:lsvi_bc_generative},
+except that leverage control now comes from coverage rather than D-optimal sampling.
+Concretely, at stage $h$, the design matrix satisfies
+$\Lambda_h=\sum_{(s,a,r,s')\in D_h}\phi(s,a)\phi(s,a)^\top = N\widehat\Sigma_h$,
+so Assumption~\ref{assumption:coverage} implies
+$\sup_{(s,a)}\phi(s,a)^\top\Lambda_h^{-1}\phi(s,a)\le (\kappa d)/N$.
+Applying the same fixed-design OLS generalization bound (Appendix,
+Theorem~\ref{thm:ols_fixed_design}) and the same residual-to-policy lemma
+(Lemma~\ref{lem:residual_to_policy}), and union bounding over stages, yields the stated
+sample complexity.
 \end{proof}
 
-\begin{proof}[Proof of Theorem~\ref{thm:lsvi_bc_generative}]
-We show that, with high probability, each stage regression in LSVI has small
-\emph{uniform} prediction error, implying small Bellman residuals; then we invoke
-Lemma~\ref{lem:residual_to_policy}.
+\subsection{Offline policy evaluation via LSPE}
+\label{subsec:BC_offline_lspe}
 
-\paragraph{Step 1: one stage as fixed-design linear regression.}
-Fix a stage $h\in[H]$ and condition on $\widehat Q_{h+1}$ (equivalently,
-$\widehat V_{h+1}$), which is measurable with respect to data from stages
-$h+1,\dots,H-1$.
+We now consider policy evaluation: estimating the value of a \emph{given} policy
+$\pi=\{\pi_h\}_{h=0}^{H-1}$. For simplicity we assume $\pi$ is deterministic; the
+extension to stochastic policies is routine by replacing $\pi_h(s)$ with an action
+drawn from $\pi_h(\cdot\mid s)$ (or by working with $\E_{a\sim\pi_h(\cdot\mid s)}\phi(s,a)$).
 
-In the stage-$h$ regression, each sample has covariate
-\[
-x_i := \phi(s_i,a_i),
-\]
-and response
-\[
-y_i := r_h(s_i,a_i) + \widehat V_{h+1}(s_i').
-\]
-(If desired, one may clip $\widehat V_{h+1}$ to $[0,H]$ in the regression target;
-this only strengthens boundedness and does not change the argument.)
+\paragraph{LSPE algorithm.}
+LSPE mirrors LSVI but replaces the optimality backup by the $\pi$-backup.
 
-By Bellman completeness, there exists $\theta_h^\star\in\R^d$ such that for all
-$(s,a)$,
-\[
-(\theta_h^\star)^\top \phi(s,a)
-=
-r_h(s,a) + \E_{s'\sim P_h(\cdot\mid s,a)}\big[\widehat V_{h+1}(s')\big]
-=
-(\Tcal_h \widehat Q_{h+1})(s,a).
-\]
-Hence $y_i = (\theta_h^\star)^\top x_i + \xi_i$ where
-$\E[\xi_i\mid x_i]=0$ and $\{\xi_i\}$ are independent across samples (because the
-$s_i'$ are sampled independently conditional on $(s_i,a_i)$). Moreover,
-$|\xi_i| \lesssim H$, so $\xi_i$ is $O(H)$-sub-Gaussian.
-
-Let
-\[
-\Lambda_h := \sum_{(s,a,r,s')\in D_h} \phi(s,a)\phi(s,a)^\top
-\]
-denote the (stage-$h$) design matrix.
-
-\paragraph{Step 2: leverage control from D-optimal sampling (one-line bound).}
-Let $\Sigma=\E_{x\sim\rho}[xx^\top]$. By construction of $D_h$,
-\[
-\Lambda_h
-=
-\sum_{x\in\mathrm{supp}(\rho)} \lceil N\rho(x)\rceil\, xx^\top
-\succeq
-\sum_{x\in\mathrm{supp}(\rho)} N\rho(x)\, xx^\top
-=
-N\Sigma.
-\]
-Therefore $\Lambda_h^{-1}\preceq (N\Sigma)^{-1}$ and by Lemma~\ref{lem:d_opt_design},
-\[
-\sup_{(s,a)} \phi(s,a)^\top \Lambda_h^{-1}\phi(s,a)
-\le
-\frac{1}{N}\sup_{x\in\Phi} x^\top\Sigma^{-1}x
-\le \frac{d}{N}.
-\]
-
-\paragraph{Step 3: OLS generalizes uniformly.}
-Apply the fixed-design OLS bound from the Appendix (Theorem~\ref{thm:ols_fixed_design})
-with failure probability $\delta' := \delta/(2H)$ and noise scale $O(H)$ to obtain,
-with probability at least $1-\delta'$,
-\[
-\|\widehat\theta_h - \theta_h^\star\|_{\Lambda_h}
-\;\le\;
-c_1 H \sqrt{ d\log(H/\delta) },
-\]
-for an absolute constant $c_1$. Hence for any $(s,a)$,
-\begin{align*}
-\big|(\widehat\theta_h-\theta_h^\star)^\top \phi(s,a)\big|
-&\le
-\|\widehat\theta_h-\theta_h^\star\|_{\Lambda_h}\cdot
-\sqrt{\phi(s,a)^\top \Lambda_h^{-1}\phi(s,a)} \\
-&\le
-c_1 H \sqrt{ d\log(H/\delta)}\cdot \sqrt{\frac{d}{N}}
-=
-c_1 H d \sqrt{\frac{\log(H/\delta)}{N}}.
-\end{align*}
-Equivalently,
-\[
-\big\|\widehat Q_h - \Tcal_h \widehat Q_{h+1}\big\|_\infty
-\;\le\;
-c_1 H d \sqrt{\frac{\log(H/\delta)}{N}}.
-\]
-
-\paragraph{Step 4: union bound over stages and conclude.}
-Apply the above bound for all $h\in[H]$ and take a union bound: with probability
-at least $1-\delta/2$,
-\[
-\max_{h\in[H]}\big\|\widehat Q_h - \Tcal_h \widehat Q_{h+1}\big\|_\infty
-\;\le\;
-c_1 H d \sqrt{\frac{\log(H/\delta)}{N}}.
-\]
-With our choice of $N$ (and $c$ large enough), the right-hand side is at most
-$\epsilon/(2H^2)$. Lemma~\ref{lem:residual_to_policy} then yields, for all $s$,
-\[
-V_0^\star(s) - V_0^{\widehat\pi}(s)
-\le 2H^2\cdot \frac{\epsilon}{2H^2}
-=\epsilon,
-\]
-and hence also $\E_{s\sim\mu}[V_0^\star(s)-V_0^{\widehat\pi}(s)]\le\epsilon$.
-
-Finally, the sample bound follows because for each $h$,
-\[
-|D_h|
-=
-\sum_{x\in\mathrm{supp}(\rho)} \lceil N\rho(x)\rceil
-\le
-N + |\mathrm{supp}(\rho)|
-\le
-N + \frac{d(d+1)}{2},
-\]
-and summing over $h$ gives the stated total.
-\end{proof}
-
-
-\newpage
-
-\section{Offline Extensions with BC (or something like that)}
-
-One notable observation about LSVI is that the algorithm is
-non-adaptive, in the sense that it works using a fixed set of observed
-transitions and rewards. Hence, it is applicable to the offline
-setting discussed in Chapter~\ref{chap:prelims}.
-
-We now discuss two offline objectives: that of learning a near optimal
-policy and that of policy evaluation (i.e. evaluating the quality of a
-given policy).
-
-We consider the setting where have a $H$ datasets of the form 
-$D_h = \{(s_i,a_i,s_i',r(s_i,a_i))\}_{i=1}^N$, where we assume for each $i$
-and $h$, that we have independent samples $s'_i \sim P_h(\cdot|s_i,a_i)$. In other words, $D_h$ is
-a dataset of observed transitions corresponding to stage $h$, where
-each next state has been sampled independently. Note that here we have
-not made explicit distributional assumption about how the
-$(s_i,a_i)$'s have been generated. The results we present can also be
-extended to where we have a fixed data generation distribution over
-these quadruples.
-
-It is straight forward to extend the LSVI guarantees to these setting
-provided our dataset has coverage in the following sense:
-
-\begin{assumption}\label{assumption:coverage}
-(Coverage)
-Suppose that for each $h\in [H]$, we have that:
-\[
-\frac{1}{N} \sum_{(s_i,a_i) \in D_h} \phi(s_i,a_i)
-\phi(s_i,a_i)^{\top} \succeq \frac{1}{\kappa}\Sigma
-\]
-where $\Sigma$ is the D-optimal design covariance (see Equation~\ref{eq:d_design}).
-\end{assumption}
-
-\subsection{Offline Learning}
-
-A minor modification of the proof in
-Theorem~\ref{them:main_lsvi_bell_complete} leads to the following guarantee:
-
-\begin{theorem} [Sample Complexity of LSVI] 
-Suppose that Assumption~\ref{assumption:coverage} holds and that our
-features satisfy the linear Bellman completion property. 
-Fix $\delta \in (0, 1)$
-  and $\epsilon \in (0,1)$.  Set parameter  $N := \left\lceil \frac{ c
-      \kappa H^6 d^2 {\ln(1/\delta)}}{\epsilon^2} \right\rceil$, where
-  $c$ is an appropriately chosen absolute constant. With probability
-  at least $1-\delta$, Algorithm~\ref{alg:lsvi} outputs  $\widehat\pi$
-  such that: 
-\begin{align*}
-\mathbb{E}_{s\sim \mu} [V^\star_0(s)] - \mathbb{E}_{s\sim \mu} [V^{\widehat\pi}_0(s)] \leq  \epsilon.
-\end{align*}
-\end{theorem}
-
-\subsection{Offline Policy Evaluation}
-
-Here we are interested in question of evaluating some given policy
-$\pi$ using the offline data.  For this, we will make a completeness
-assumption with respect to $\pi$ as follows:
-
-\begin{algorithm}[t]
-\begin{algorithmic}[1]
-%\State Compute the D-optimal design $\rho$ (Eq.~\ref{eq:d_design})
-\State \textbf{Input}: $\pi$, $\Dcal_0,\dots, \Dcal_{H-1}$ %Set $V_{H}(s) = 0$ for all $s\in\Scal$
-\State Set $V_{H}(s) = 0$ for all $s\in \Scal$
-\For{$h = H-1 \to 0$}
-    %\State  $\forall (s,a) \in \text{support}(\rho)$, i.i.d sample $\lceil N\rho(s,a) \rceil$ many next states $\Dcal_{s,a} : = \{{s'}^i\}_{i=1}^{\lceil \rho(s,a)N \rceil}$ with ${s'}^i \sim P_h(\cdot | s,a)$
-    \State Solve least squares 
-    \begin{align}
-    \widehat{\theta}_{h} = \arg\min_{\theta }  \sum_{s,a,r, s'\in \Dcal_{h}} \left( \theta^{\top} \phi(s,a)  - r - V_{h+1}({s'}) \right)^2 %\label{eq:ls_bc}
-    \end{align}  %\label{line:lsvi_regression}
-    \State Set $V_{h}(s) = \widehat{\theta}_h^{\top} \phi(s,\pi(s)), \forall s$
-\EndFor
-\State \textbf{Return:} $\{\widehat{\theta}_h\}_{h=0}^{H-1}$.
-\end{algorithmic}
-\caption{Least Squares Policy Evaluation}
-\label{alg:lspe}
-\end{algorithm}
-
-\begin{definition}[Linear Completeness for $\pi$] 
-We say the
-features $\phi$ satisfy the \emph{policy completeness property for $\pi$}
-if for all $\theta \in \mathbb{R}^d$ and
-  $(s,a,h) \in \Scal\times\Acal\times[H]$, there exists
-  $ w\in\mathbb{R}^d$ such that:
-%linear function $f(s,a) :=
-%\theta^{\top} \phi(s,a)$ for some $\theta \in \mathbb{R}^d$, we have: 
-\begin{align*}
-%\forall h\in [H]:  \exists w\in\mathbb{R}^d, \text{s.t., }  
-w^{\top} \phi(s,a) = r(s,a) + \mathbb{E}_{s'\sim P_h(s,a)} \theta^{\top} \phi(s',\pi(s')).
-\end{align*} 
-%As $w$ depends on $\theta$, we use the notation $\Tcal_h: \mathbb{R}^d\mapsto \mathbb{R}^d$ to
-%represent such a $w$, i.e., $w := \Tcal_h( \theta )$ in the above equation.  
-\end{definition} 
-
-For this case, Algorithm~\ref{alg:lspe}, Least Squares Policy
-Evaluation (LSPE), is a modified version of
-LSVI for the purposes of estimation; note the algorithm no longer
-estimates $V_{h}(s)$ using the greedy policy.
-Again, a nearly identical argument to the proof in
-Theorem~\ref{them:main_lsvi_bell_complete} leads to the following
-guarantee. Here, we set:
-\[
-\widehat{V} (\mu) = \sum_{s_i \in D_0} \theta_0 \cdot \phi(s_i, \pi(s_i))
-\]
-where $\theta_0$ is the parameter returned by LSVI.
-
-\begin{theorem} [Sample Complexity of LSPE] 
-Suppose that Assumption~\ref{assumption:coverage} holds and that our
-features satisfy the linear policy completion property (with respect
-to $\pi$). 
-Fix $\delta \in (0, 1)$
-  and $\epsilon \in (0,1)$.  Set parameter  $N := \left\lceil \frac{ c
-      \kappa H^4 d^2 {\ln(1/\delta)}}{\epsilon^2} \right\rceil$, where
-  $c$ is an appropriately chosen absolute constant. With probability
-  at least $1-\delta$, Algorithm~\ref{alg:lspe} outputs  $\widehat{\theta}_0$
-  such that for all $s$,
-\[
-|V^\pi_0(s) - \widehat{\theta}^\top_0 \phi(s,\pi(s)) | \leq  \epsilon.
-\]
-\end{theorem}
-
-Note that the above theorem has a sample complexity improvement by a
-factor of $H$. This is due to that the analysis is improvable, as we only care about
-value accuracy (the first claim in Lemma~\ref{lem:perturbation_Q},
-rather than the second, is what is relevant here). We should note that
-the sample size bounds presented in this chapter have not been
-optimized with regards to their $H$ dependencies.
-
-\subsubsection{Least-Squares Policy Evaluation (LSPE)}
-
-LSPE is the evaluation analogue of LSVI: the only change is that we replace the
-optimality backup $\max_{a'}$ by the backup induced by a target policy $\pi$.
-We allow a non-stationary policy $\pi=\{\pi_h\}_{h=0}^{H-1}$, where each
-$\pi_h(s)\in\Acal$ is known (we assume the policy is deterministic for simplicity).
-
-Given a parameter $\theta_h$, define the induced value estimate
-\[
-\widehat V_h^{\pi}(s)
-\;:=\;
-\widehat\theta_h^\top\phi(s, \pi_h(s)).
-\]
+Given parameters $\theta_h$, define the induced value estimate
+$\widehat V_h^\pi(s):=\theta_h^\top\phi(s,\pi_h(s))$.
 
 \begin{algorithm}[t]
 \begin{algorithmic}[1]
 \State \textbf{Input:} policy $\pi=\{\pi_h\}_{h=0}^{H-1}$, datasets $D_0,\dots,D_{H-1}$, feature map $\phi$
-\State Initialize $\widehat V^{\pi}_{H}(s) \gets 0$ for all $s\in\Scal$
+\State Initialize $\widehat V^\pi_{H}(s) \gets 0$ for all $s\in\Scal$
 \For{$h = H-1, H-2, \dots, 0$}
     \State $\displaystyle
     \widehat\theta_{h}
     \in \arg\min_{\theta\in\R^d}
     \sum_{(s,a,r,s')\in D_h}
-    \Big(\theta^\top\phi(s,a) - r - \widehat V^{\pi}_{h+1}(s')\Big)^2$
-    \State Define $\widehat V^{\pi}_h(s) \gets \widehat\theta_h^\top\phi(s, \pi_h(s))$ for all $s$
+    \Big(\theta^\top\phi(s,a) - r - \widehat V^\pi_{h+1}(s')\Big)^2$
+    \State Define $\widehat V^\pi_h(s) \gets \widehat\theta_h^\top\phi(s, \pi_h(s))$ for all $s$
 \EndFor
-\State \textbf{Return:} parameters $\{\widehat\theta_h\}_{h=0}^{H-1}$ (equivalently, value estimates $\{\widehat V_h^{\pi}\}_{h=0}^{H}$)
+\State \textbf{Return:} $\{\widehat\theta_h\}_{h=0}^{H-1}$ (equivalently, $\{\widehat V_h^\pi\}_{h=0}^{H}$)
 \end{algorithmic}
 \caption{Least-Squares Policy Evaluation (LSPE)}
 \label{alg:lspe}
 \end{algorithm}
+
+\paragraph{A $\pi$-completeness assumption.}
+For policy evaluation, we only need closure under the \emph{policy} Bellman operator.
+
+Let $(\Tcal_h^\pi f)(s,a):= r_h(s,a) + \E_{s'\sim P_h(\cdot\mid s,a)} f(s',\pi_{h+1}(s'))$.
+
+\begin{definition}[Linear completeness for $\pi$]\label{def:pi_completeness}
+We say $\phi$ satisfies \emph{policy completeness for $\pi$} if for each $h\in[H]$
+and each $\theta\in\R^d$, there exists $w\in\R^d$ such that
+\[
+(s,a)\mapsto r_h(s,a) + \E_{s'\sim P_h(\cdot\mid s,a)} \theta^\top\phi\!\bigl(s',\pi_{h+1}(s')\bigr)
+\]
+is exactly $w^\top\phi(s,a)$ for all $(s,a)$; equivalently,
+\[
+f\in\Fcal \implies \Tcal_h^\pi f \in \Fcal\qquad\text{for each }h\in[H].
+\]
+\end{definition}
+
+\paragraph{Residual-to-estimation lemma (policy evaluation).}
+For evaluation, small Bellman residuals control the value error directly (no greedy
+policy mismatch), yielding a milder horizon dependence.
+
+\begin{lemma}[Small $\pi$-residual $\Rightarrow$ accurate evaluation]\label{lem:residual_to_value_pi}
+Let $\{\widehat V_h^\pi\}_{h=0}^H$ be any functions with $\widehat V_H^\pi\equiv 0$.
+Define the stage-$h$ $\pi$-residual
+\[
+\mathrm{Res}_h^\pi \;:=\; \sup_{(s,a)}\Big| \widehat Q_h(s,a) - (\Tcal_h^\pi \widehat V_{h+1}^\pi)(s,a)\Big|,
+\qquad
+\widehat Q_h(s,a):=\widehat\theta_h^\top\phi(s,a).
+\]
+If $\mathrm{Res}_h^\pi \le \eta$ for all $h\in[H]$, then for all $s\in\Scal$,
+\[
+\big|V_0^\pi(s) - \widehat V_0^\pi(s)\big| \;\le\; H\eta.
+\]
+\end{lemma}
+
+\begin{proof}
+The proof is the same backward-induction argument as in
+Lemma~\ref{lem:residual_to_policy}(1), but with $\max$ replaced by following $\pi$,
+so there is no additional greedy suboptimality term.
+\end{proof}
+
+\begin{theorem}[Offline LSPE under policy completeness]\label{thm:lspe_bc_offline}
+Assume bounded rewards $r_h(s,a)\in[0,1]$, coverage (Assumption~\ref{assumption:coverage})
+with parameter $\kappa$, and policy completeness for $\pi$ (Definition~\ref{def:pi_completeness}).
+Fix $\epsilon\in(0,1)$ and $\delta\in(0,1)$, and suppose each stage dataset has size
+\[
+N \;\ge\; \frac{c\,\kappa\,H^4 d^2 \log(H/\delta)}{\epsilon^2},
+\]
+for a sufficiently large absolute constant $c$.
+Then with probability at least $1-\delta$, the LSPE estimate satisfies
+\[
+\sup_{s\in\Scal}\big|V_0^\pi(s) - \widehat V_0^\pi(s)\big| \;\le\; \epsilon.
+\]
+Consequently, $\big|\E_{s\sim\mu}[V_0^\pi(s)] - \E_{s\sim\mu}[\widehat V_0^\pi(s)]\big|\le \epsilon$.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+Fix a stage $h$ and condition on $\widehat V_{h+1}^\pi$. By policy completeness,
+the regression target has the form
+$r_h(s,a)+\E[\widehat V_{h+1}^\pi(s')\mid s,a]=(\theta_h^\star)^\top\phi(s,a)$
+for some $\theta_h^\star$. Thus each stage is a fixed-design linear regression with
+$O(H)$-sub-Gaussian noise. Coverage gives the uniform leverage bound
+$\sup_{(s,a)}\phi(s,a)^\top \Lambda_h^{-1}\phi(s,a)\le (\kappa d)/N$
+with $\Lambda_h=N\widehat\Sigma_h$.
+Applying the fixed-design OLS bound (Appendix, Theorem~\ref{thm:ols_fixed_design})
+and union bounding over $h$ yields a uniform residual bound of order
+\[
+\max_h \mathrm{Res}_h^\pi \;\lesssim\; H d \sqrt{\frac{\kappa\log(H/\delta)}{N}}.
+\]
+Choosing $N$ as in the theorem makes this at most $\epsilon/H$, and
+Lemma~\ref{lem:residual_to_value_pi} gives $\sup_s|V_0^\pi(s)-\widehat V_0^\pi(s)|\le \epsilon$.
+\end{proof}
+
+\paragraph{Remark on horizon dependence.}
+The improvement from $H^6$ (offline LSVI) to $H^4$ (offline LSPE) reflects that for
+evaluation we only need value accuracy under a \emph{fixed} policy, so we use
+Lemma~\ref{lem:residual_to_value_pi} (which incurs an $H$ factor) rather than the
+greedy-policy performance bound in Lemma~\ref{lem:residual_to_policy} (which incurs
+an additional $H$ factor). As elsewhere in this chapter, we have not optimized the
+dependence on $H$.
+
+
+
+\newpage
+
+\section{Negative Results with Weaker Linear Notions}
+\label{sec:linear_Qvalues}
+
+
+\subsection{Offline Policy Evaluation with All-policies Linear
+  realizability (C).}
+
+In Chapter~\ref{chap:Bellman_complete}, we saw that LSVI/LSPE can be
+used for offline policy evaluation under a \emph{linear Bellman
+completeness} assumption.  Here we ask what can be guaranteed under the
+strictly weaker assumption of \emph{linear realizability} alone.  The
+answer is negative: even under a very strong coverage condition,
+realizability does not prevent an exponential dependence on the
+horizon.  In fact, in a minimax sense, \emph{every} estimator is
+sample-inefficient.
+
+\paragraph{Offline data model.}
+We work in a finite-horizon MDP with horizon $H$.  The learner does not
+interact with the MDP, and instead receives $H$ datasets
+$\{D_h\}_{h=0}^{H-1}$.  For each $h\in\{0,\dots,H-1\}$, there is an
+associated data distribution $\mu_h\in\Delta(\Scal_h\times\Acal)$, and
+$D_h$ consists of $n$ i.i.d.\ samples of the form
+\[
+(s,a,r,s')\in \Scal_h\times\Acal\times\mathbb{R}\times \Scal_{h+1},
+\qquad (s,a)\sim \mu_h,\ \ r\sim r_h(s,a),\ \ s'\sim P_h(\cdot\mid s,a).
+\]
+(For simplicity we take the same sample size $n$ at each level; the
+statements can be written in terms of $\{n_h\}$ as well.)
+
+\paragraph{Offline policy evaluation.}
+Given a policy $\pi:\Scal\to\Delta(\Acal)$ and a feature map
+$\phi:\Scal\times\Acal\to\R^d$, the goal is to output an estimate of
+$V^\pi_0(s_0)$ (or more generally $V^\pi_0$) using the offline datasets,
+with as few samples as possible.
+
+\paragraph{Realizability assumption.}
+We assume that $Q^\pi$ is linear in the features \emph{for every}
+policy.
+\begin{assumption}[Realizable Linear Function Approximation]
+\label{assmp:realizability}
+For every policy $\pi:\Scal\to\Delta(\Acal)$, there exist parameter
+vectors $\theta_0^\pi,\dots,\theta_{H-1}^\pi\in\R^d$ such that for all
+$h\in\{0,\dots,H-1\}$ and all $(s,a)\in\Scal_h\times\Acal$,
+\[
+Q_h^\pi(s,a)=\langle \theta_h^\pi,\phi(s,a)\rangle.
+\]
+\end{assumption}
+This assumption is substantially stronger than realizability for a
+\emph{single} target policy (e.g.\ the policy we wish to evaluate): it
+postulates a linear representation for $Q_h^\pi$ simultaneously over
+\emph{all} policies $\pi$.
+
+\paragraph{Coverage assumption.}
+Realizability is meaningless without coverage of the feature directions
+present in $\phi$.  We therefore impose a very strong coverage
+assumption---in fact, essentially the best-conditioned feature
+covariance one could hope for under $\|\phi\|_2\le 1$.
+\begin{assumption}[Coverage]
+\label{assmp:coverage}
+Assume $\|\phi(s,a)\|_2\le 1$ for all $(s,a)\in\Scal\times\Acal$.  For
+each $h\in\{0,\dots,H-1\}$, the data distribution $\mu_h$ satisfies
+\[
+\EE_{(s,a)\sim\mu_h}\big[\phi(s,a)\phi(s,a)^\top\big]=\frac{1}{d}\,I.
+\]
+\end{assumption}
+The minimum eigenvalue of the above matrix is $1/d$, which is the
+largest possible value (up to constants) under the constraint
+$\|\phi(s,a)\|_2\le 1$; equivalently, $\mu_h$ is a maximally ``spread
+out'' (indeed $D$-optimal) design over the feature directions.
+
+For $H=1$, Assumptions~\ref{assmp:realizability} and~\ref{assmp:coverage}
+reduce to the standard linear regression setting: ordinary least squares
+recovers $\theta_0^\pi$ (and hence $V_0^\pi$) with error on the order of
+$\sqrt{d/n}$.  The next theorem shows that this intuition fails
+dramatically once the horizon is large.
+
+\begin{theorem}
+\label{thm:hard_det_1}
+Suppose Assumption~\ref{assmp:coverage} holds.  Fix any algorithm that,
+given as input $(\pi,\phi)$ and the offline datasets
+$\{D_h\}_{h=0}^{H-1}$, outputs an estimate of $V_0^\pi(s_0)$.  There
+exists a deterministic finite-horizon MDP satisfying
+Assumption~\ref{assmp:realizability} such that for \emph{every} policy
+$\pi:\Scal\to\Delta(\Acal)$, the algorithm requires
+$\Omega\!\big((d/2)^H\big)$ samples to obtain a constant additive
+approximation to $V_0^\pi(s_0)$ with probability at least $0.9$.
+\end{theorem}
+
+\paragraph{A reduction to offline control.}
+Although stated for policy evaluation, the hardness also applies to
+offline control under Assumption~\ref{assmp:realizability}.  Indeed, add
+a new initial state in which action $a_1$ yields reward $0.5$ and
+terminates, while action $a_2$ transitions into the hard instance above.
+Any algorithm that returns a policy with suboptimality at most $0.5$
+must, in particular, estimate the value of the (unknown) optimal policy
+in the hard instance to within $0.5$, and therefore inherits the same
+lower bound.
+
+
+\subsubsection{A Hard Instance for Offline Policy Evaluation}
+
+We describe the hard instance used in Theorem~\ref{thm:hard_det_1}.
+Let $m\ge 1$ be an integer and set the feature dimension to be
+\[
+d := 2m.
+\]
+The action space is $\Acal=\{a_1,a_2\}$. The construction depends on a scalar
+parameter $r_\infty\in[0,m^{-H/2}]$.
+
+\paragraph{State space and transitions.}
+For each layer $h\in\{0,1,\dots,H-1\}$, define
+\[
+\Scal_h := \{x_h^1,\dots,x_h^m\}\ \cup\ \{g_h\},
+\]
+where $g_h$ is the special ``amplifier'' state. The initial state is $s_0=g_0$.
+For each $h\in\{0,1,\dots,H-2\}$ the transitions are deterministic and given by:
+\begin{align*}
+P(g_{h+1}\mid s,a_1) &= 1 \qquad\qquad\ \ \text{for all } s\in\Scal_h,\\
+P(x_{h+1}^i\mid x_h^i,a_2) &= 1 \qquad\ \ \text{for all } i\in[m],\\
+P(g_{h+1}\mid g_h,a_2) &= 1.
+\end{align*}
+(Equivalently: action $a_1$ always transitions to $g_{h+1}$, while $a_2$ preserves the index $i$ on the
+$x$-states and keeps $g$ on the $g$-state.)
+
+\paragraph{Reward distributions.}
+For layers $h=0,1,\dots,H-2$ the rewards are deterministic:
+\begin{align*}
+r_h(x_h^i,a) &= 0 \qquad\text{for all } i\in[m],\ a\in\{a_1,a_2\},\\
+r_h(g_h,a) &= r_\infty\big(\sqrt{m}-1\big)\, m^{(H-h-1)/2}
+\qquad\text{for all } a\in\{a_1,a_2\}.
+\end{align*}
+At the last layer $h=H-1$:
+\begin{align*}
+r_{H-1}(x_{H-1}^i,a) &=
+\begin{cases}
+1 & \text{with prob. } (1+r_\infty)/2,\\
+-1 & \text{with prob. } (1-r_\infty)/2,
+\end{cases}
+\qquad\text{for all } i\in[m],\ a\in\{a_1,a_2\},\\
+r_{H-1}(g_{H-1},a) &= r_\infty\sqrt{m}
+\qquad\text{for all } a\in\{a_1,a_2\}.
+\end{align*}
+Thus $\E[r_{H-1}(x_{H-1}^i,a)]=r_\infty$ and $r_{H-1}(g_{H-1},a)$ is deterministic.
+
+\paragraph{Feature mapping.}
+Let $e_1,\dots,e_{2m}$ be an orthonormal basis of $\R^{2m}$.
+Define $\phi:\Scal\times\Acal\to\R^{2m}$ by, for each $h$:
+\begin{align*}
+\phi(x_h^i,a_1) &= e_i, \qquad
+\phi(x_h^i,a_2) = e_{m+i} \qquad\text{for all } i\in[m],\\
+\phi(g_h,a_1) &= \phi(g_h,a_2) = \frac{1}{\sqrt{m}}\sum_{i=1}^m e_i.
+\end{align*}
+Note $\|\phi(s,a)\|_2\le 1$ for all $(s,a)$.
+
+\paragraph{Offline data distributions.}
+For each layer $h\in[H]$, let $\mu_h$ be the uniform distribution over
+\[
+\{(x_h^i,a_1),(x_h^i,a_2): i\in[m]\}.
+\]
+In particular, $(g_h,a)$ is not in the support of $\mu_h$ for any $a$.
+A direct calculation gives
+\[
+\E_{(s,a)\sim\mu_h}[\phi(s,a)\phi(s,a)^\top]
+= \frac{1}{2m}\sum_{j=1}^{2m} e_j e_j^\top
+= \frac{1}{d}I,
+\]
+so Assumption~\ref{assmp:coverage} holds.
+
+\paragraph{Verifying Assumption~\ref{assmp:realizability}.}
+\begin{lemma}\label{lem:q_linear_offline_hard}
+For every policy $\pi:\Scal\to\Delta(\Acal)$, for each $h\in[H]$, there exists
+$\theta_h^\pi\in\R^{2m}$ such that for all $(s,a)\in\Scal_h\times\Acal$,
+\[
+Q_h^\pi(s,a) = \langle \theta_h^\pi, \phi(s,a)\rangle.
+\]
+\end{lemma}
+
+\begin{proof}
+First note that from any amplifier state $g_h$, the next state is always $g_{h+1}$
+(regardless of the action), and rewards at $g_h$ do not depend on the action. Hence
+$V_h^\pi(g_h)=Q_h^\pi(g_h,a_1)=Q_h^\pi(g_h,a_2)$ for all $h$ and $\pi$.
+
+We compute $V_h^\pi(g_h)$ by backward induction.
+At $h=H-1$,
+\[
+V_{H-1}^\pi(g_{H-1}) = r_{H-1}(g_{H-1},\cdot)= r_\infty\sqrt{m}.
+\]
+For $h\le H-2$,
+\begin{align*}
+V_h^\pi(g_h)
+&= r_h(g_h,\cdot) + V_{h+1}^\pi(g_{h+1})\\
+&= r_\infty(\sqrt{m}-1)m^{(H-h-1)/2} + r_\infty m^{(H-(h+1))/2}
+= r_\infty m^{(H-h)/2}.
+\end{align*}
+In particular, for $h\le H-2$ and any $i\in[m]$,
+\[
+Q_h^\pi(x_h^i,a_1)
+= r_h(x_h^i,a_1) + V_{h+1}^\pi(g_{h+1})
+= r_\infty m^{(H-h-1)/2}.
+\]
+Also, for any $i\in[m]$ and $h\le H-2$,
+\[
+Q_h^\pi(x_h^i,a_2)
+= r_h(x_h^i,a_2) + V_{h+1}^\pi(x_{h+1}^i)
+= V_{h+1}^\pi(x_{h+1}^i),
+\]
+which may depend on $\pi$ but is a scalar we can represent.
+
+Now define, for $h\le H-2$,
+\[
+\theta_h^\pi
+:= \sum_{i=1}^m \Big(r_\infty m^{(H-h-1)/2}\Big)e_i
+\;+\; \sum_{i=1}^m Q_h^\pi(x_h^i,a_2)\, e_{m+i}.
+\]
+Then for $i\in[m]$,
+\[
+\langle \theta_h^\pi,\phi(x_h^i,a_1)\rangle = r_\infty m^{(H-h-1)/2} = Q_h^\pi(x_h^i,a_1),
+\qquad
+\langle \theta_h^\pi,\phi(x_h^i,a_2)\rangle = Q_h^\pi(x_h^i,a_2).
+\]
+Moreover,
+\[
+\langle \theta_h^\pi,\phi(g_h,\cdot)\rangle
+= \Big(r_\infty m^{(H-h-1)/2}\Big)\cdot \frac{1}{\sqrt{m}}\sum_{i=1}^m \langle e_i,e_i\rangle
+= r_\infty m^{(H-h)/2}
+= Q_h^\pi(g_h,\cdot).
+\]
+At the last layer $h=H-1$, $\E[r_{H-1}(x_{H-1}^i,a)]=r_\infty$ for both actions, so
+$Q_{H-1}^\pi(x_{H-1}^i,a_1)=Q_{H-1}^\pi(x_{H-1}^i,a_2)=r_\infty$ and
+$Q_{H-1}^\pi(g_{H-1},\cdot)=r_\infty\sqrt{m}$.
+Setting
+\[
+\theta_{H-1}^\pi := \sum_{j=1}^{2m} r_\infty e_j
+\]
+makes $Q_{H-1}^\pi(s,a)=\langle \theta_{H-1}^\pi,\phi(s,a)\rangle$ for all $(s,a)$.
+\end{proof}
+
+\subsection{LSVI with All-policies Linear
+  realizability (C).}
+
+\paragraph{LSPE has exponential variance.}
+Least-Squares Policy Evaluation (Algorithm~\ref{alg:lspe}) is an
+unbiased estimator under full-rank feature covariance (which holds with
+high probability under Assumption~\ref{assmp:coverage}).  As an immediate
+corollary of Theorem~\ref{thm:hard_det_1}, the variance of any such
+unbiased estimator---including LSPE---must grow exponentially with the
+horizon $H$.  More broadly, the theorem implies that no estimator can
+avoid an exponential dependence on $H$ in this offline setting under
+realizability alone.
+
+\subsection{Info Theoretic Lower bounds with Linearly Realizable $Q^\star$}
+\label{sec:linearQstar}
+
+Specifically, we will assume
+access to a feature map $\phi:\mathcal{S}\times\Acal\to\R^d$,
+and we will assume that a linear function of $\phi$ can accurately
+represent the $Q^\star$-function. Specifically,
+\begin{assumption}[Linear $Q^\star$ Realizability]
+\label{assumption:realizability}
+For all $h\in [H]$, assume there exists $\theta^*_h\in\R^d$ such that
+for all $(s, a)\in \mathcal{S} \times \Acal$,
+\[
+Q^*_h(s,a)= \theta^*_h \cdot \phi(s,a).
+\] 
+\end{assumption}
+The hope is that this assumption may permit a sample complexity that
+is polynomial in $d$ and $H$, with no explicit $|\Scal|$ or $|\Acal|$ dependence.
+
+
+\begin{theorem}\label{thm:lower_gen}
+(Linear $Q^\star$; Generative Model Case) 
+Consider any algorithm $\mathcal{A}$ which has access to a generative
+model and which takes as input the feature mapping $\phi : \mathcal{S}
+\times \mathcal{A} \to \mathbb{R}^d$. 
+There exists an MDP with a feature mapping $\phi$ satisfying
+Assumption~\ref{assumption:realizability} and where the size of the
+action space is
+$|\Acal| = c_1 \lceil \min\{d^{1/4},H^{1/2} \}\rceil$
+such that if $\mathcal{A}$ (when given $\phi$ as input) finds
+a policy $\pi$ such that
+%$\min\{\Omega(|\mathcal{A}|), 2^{\Omega(d)}, 2^{\Omega(H)}\}$ samples to find a policy $\pi$ with
+\begin{equation*}
+   \E_{s_1\sim\mu}V^{\pi}(s_1)\ge \E_{s_1\sim\mu}V^*(s_1)-0.05
+\end{equation*}
+with probability $0.1$, then $\mathcal{A}$ 
+requires $\min\{2^{c_2 d}, 2^{c_2 H}\}$ samples ($c_1$ and $c_2$ are absolute constants).
+\end{theorem}
+
+Note that theorem above uses an MDP whose size of the action space is
+only of moderate size (actually sublinear in both $d$ and $H$). Of
+course, in order to prove such a result, we must rely on a state
+space which is exponential in $d$ or $H$ (else, we could apply a tabular
+algorithm to obtain a polynomial result). The implications of the
+above show that the linear $Q^\star$ assumption, alone, is not
+sufficient for sample efficient RL, even with access to a generative model.
+
+
+
+SK: the proof for this one will be in the appendix (but will use
+$\exp(d)$ actions).
+
+
+\section{Bibliographic Remarks and Further Readings}
+\label{chapterBC_bib}
+
+The idea of Bellman completion under general function class was introduced in \cite{munos2005error} under the setting of batch RL. For the episodic online learning setting, \citet{zanette2020learning} provided a statistically efficient algorithm under the linear Bellman completion condition, and \cite{jin2021bellman}  proposes a statistically efficient algorithms under the Bellman completion condition with general function approximation.
+
+We refer readers to to \cite{lattimore2020bandit} for a proof of the
+D-optimal design;  the idea directly follows from John's theorem (e.g. see~\cite{ball1997elementary,todd2016minimum}). 
+
+The reduction from reinforcement learning to supervised learning was
+first introduced in~\cite{NIPS1999_1664}, which used a different
+algorithm (the ``trajectory tree'' algorithm), as opposed to the
+importance sampling approach presented here. \cite{NIPS1999_1664} made
+the connection to the VC dimension of the policy class. The fundamental
+sample complexity tradeoff --- between polynomial dependence on the
+size of the state space and exponential dependence on the horizon --- 
+was discussed in depth in~\cite{kakade2003sample}.
+
+\iffalse
+Utilizing linear methods for dynamic programming goes back to, at
+least, \cite{Shan50,bellman1959functional}.  Formally considering the
+linear $Q^\star$ assumption goes back to at
+least~\cite{wen2017efficient}.  Resolving the learnability under this
+assumption was an important open question discussed in
+\cite{du2019good}, which is now resolved.  Here,
+Theorem~\ref{thm:lower_gen}, due to~\cite{WeiszAS21}, resolved this
+question. Furthermore, Theorem~\ref{thm:lower_episodic}, due
+to~\cite{Wang_linear_lower}, resolves this question in the online
+setting with the additional assumption of having a constant sub-optimality
+gap. Theorem~\ref{thm:lower_pi}, which assumed a linearly realizable
+optimal policy, is due to~\cite{du2019good}. Theorem~\ref{thm:hard_det_1}, on
+offline policy evaluation, is due to~\cite{wang2020statistical,zanette2021exponential}.
+\fi
+
+Utilizing linear methods for dynamic programming goes back to, at
+least, \cite{Shan50,bellman1959functional}.  Formally considering the
+linear $Q^\star$ assumption goes back to at
+least~\cite{wen2017efficient}.  Resolving the learnability under this
+assumption was an important open question discussed in
+\cite{du2019good}, which is now resolved.  In the offline (policy
+evaluation) setting, the lower bound in Theorem~\ref{thm:hard_det_1}
+is due to~\cite{wang2020statistical,zanette2021exponential}.  With a
+generative model, the breakthrough result of~\cite{WeiszAS21}
+established the impossibility result with the linear $Q^\star$
+assumption.  Furthermore, Theorem~\ref{thm:lower_episodic}, due
+to~\cite{Wang_linear_lower}, resolves this question in the online
+setting with the additional assumption of having a constant
+sub-optimality gap.  Also,~\cite{weisz2021tensorplan} extends the
+ideas from ~\cite{WeiszAS21}, so that the lower bound is applicable
+with action spaces of polynomial size (in $d$ and $H$); this is the
+result we use for Theorem~\ref{thm:lower_gen}.
+
+Theorem~\ref{thm:lower_pi}, which assumed a linearly realizable
+optimal policy, is due to~\cite{du2019good}. 
+
+
