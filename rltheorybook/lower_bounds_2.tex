@@ -1,0 +1,531 @@
+\section{Information Theoretic Lower Bounds}
+%\chapter{Generalization in RL \\ \& Reductions to Supervised Learning}
+\label{chap:generalization_stat_limits}
+
+In reinforcement learning, we seek to have learnability results which
+are applicable to cases where number of states is large (or, possibly,
+countably or uncountably infinite). This is a question of
+generalization, which, more broadly, is one of the central
+challenges in machine learning. 
+
+%More generally, these are questions of
+%generalization, which is one of the central
+%challenges in machine learning.
+
+The previous two chapters largely focussed on \emph{sufficient}
+conditions under which we can obtain sample complexity results which
+do not explicitly depend on the size of the state (or action) space.  This chapter 
+focusses on what are \emph{necessary} conditions for
+generalization. Here, we can frame our questions by examining 
+the extent to which generalization in RL is similar to (or different
+from) that in supervised learning. Two most basic settings in
+supervised learning are: (i) agnostic learning (i.e. finding the best
+classifier or hypothesis in some class) and (ii) learning with linear
+models (i.e. learning the best linear regressor or the best linear
+classifier).  This chapter will focus on \emph{lower bounds} with
+regards to the analogues of these two questions for reinforcement learning:
+\begin{itemize}
+\item (Agnostic learning) Given some hypothesis class (of policies,
+  value functions, or models), what is the sample complexity of
+  finding (nearly) the best hypothesis in this class?
+\item (Linearly realizable values or policies) Suppose we are given
+  some $d$-dimensional feature mapping where we are guaranteed that
+  either the optimal value function is linear in these given features
+  or that the optimal policy has a linear parameterization.  Are we
+  able to obtain sample complexity guarantees that are polynomial in
+  $d$, with little to no explicit dependence on the size of the state
+  or action spaces? We will consider this question in both the offline
+  setting (for the purposes of policy evaluation, as in
+  Chapter~\ref{chap:Bellman_complete}) and for in online setting where
+  our goal is to learn a near optimal optimal policy.
+\end{itemize}
+Observe that supervised learning can be viewed as horizon one, $H=1$, RL
+problem (where the learner only receives feedback for the ``label'',
+i.e. the action, chosen). We can view the second question above as the
+analogue of linear regression or classification with halfspaces. In
+supervised learning, both of these settings have postive answers, and
+they are fundamental in our understanding of generalization.  Perhaps
+surprisingly, we will see negative answers to these questions in the
+RL setting.  The
+significance of this provides insights as to why our study of
+generalization in reinforcement learning is substantially more subtle than in
+supervised learning. Importantly, the insights we develop here will also help us to
+motivate the more refined assumptions and settings that we consider in
+subsequent chapters (see Section~\ref{sec:how_to_study_RL} for discussion).
+
+
+This chapter will work with finite horizon MDPs, where we consider
+both the episodic setting and the generative model setting. 
+With regards to the first question on agnostic learning, this chapter
+follows the ideas first introduced
+in~\cite{NIPS1999_1664}.  With regards to the second
+question on linear realizability, this chapter follows the results
+in~\cite{du2019good,wang2020statistical,WeiszAS21,Wang_linear_lower}. 
+
+
+
+\section{Linear Realizability Lower Bounds}
+\label{sec:linear_Qvalues}
+
+In supervised learning, two of the most widely studied settings are
+those of linear regression and binary classification with
+halfspaces. In both settings, we are able to obtain sample complexity
+results that are polynomial in the feature dimension. We now consider the
+analogue of these assumptions for RL, starting with the analogue of
+linear regression.
+
+When the state space is large or infinite, we may hope that linearly
+realizability assumptions may permit a more sample
+efficient approach. We will start with linear realizability on $Q^\pi$
+and consider the offline policy evaluation problem. Then we will
+consider the problem of learning with only a linearly realizability assumption
+on $Q^\star$ (along with access to either a generative model or
+sampling access in the episodic setting).
+
+\subsection{Offline Policy Evaluation with Linearly Realizable Values}
+
+In Chapter~\ref{chap:Bellman_complete}, we observed that the LSVI and LSPE
+algorithm could be used with an offline dataset for the purposes of
+policy evaluation. Here, we made the linear Bellman completeness
+assumption on our features.  Let us now show that with only a linear
+realizability assumption, then not only is LSPE sample inefficient but
+we will also see that, information theoretically, \emph{every} algorithm is
+sample inefficient, in a minmax sense.
+
+This section is concerned with the offline RL setting.  In this
+setting, the agent does not have direct access to the MDP and instead
+is given access to data distributions $\{\mu_h\}_{h = 0}^{H-1}$ where for
+each $h \in [H]$, $\mu_h \in \Delta(\Scal_h \times \Acal)$.  The
+inputs of the agent are $H$ datasets $\{D_h\}_{h = 0}^{H-1}$, and for each
+$h \in [H]$, $D_h$ consists i.i.d. samples of the form
+$(s, a, r, s') \in \Scal_h \times \Acal \times \mathbb{R} \times
+\Scal_{h + 1}$
+tuples, where $(s, a)\sim\mu_h$, $r \sim r(s, a)$, $s' \sim P(s, a)$.
+
+We now focus on the \emph{offline policy evaluation} problem: given a policy
+$\pi : \Scal \to \Delta\left(\Acal\right)$ and a feature
+mapping $\phi : \Scal \times \Acal \to \mathbb{R}^d$, the goal
+is to output an accurate estimate of the value of $\pi$ (i.e.,
+$V^{\pi}$) approximately, using the collected datasets
+$\{D_h\}_{h = 0}^{H-1}$, with as few samples as possible.
+
+We will make the following linear realizability assumption with
+regards to a feature mapping
+$\phi : \Scal \times \Acal \to \mathbb{R}^d$, which we can think
+of as  either being
+hand-crafted or coming from a pre-trained neural network that transforms a
+state-action pair to a $d$-dimensional embedding, and the
+$Q$-functions can be predicted by linear functions of the features.
+In particular, this section will assume the following \emph{linear realizability}
+assumption with regards to \emph{every} policy $\pi$.
+\begin{assumption}[Realizable Linear Function Approximation] \label{assmp:realizability}
+For every policy $\pi :
+\Scal \to \Delta(\Acal)$, there exists $\theta_0^{\pi}, \ldots
+\theta_{H - 1}^{\pi} \in \mathbb{R}^d$ such that for all $(s, a) \in \Scal
+\times \Acal
+$ and $h \in [H]$,
+\[
+Q^{\pi}_h(s, a) = \left(\theta_h^{\pi}\right)^{\top}\phi(s, a).
+\]
+\end{assumption}
+Note that this assumption is substantially stronger than 
+assuming realizability with regards to a single target policy $\pi$
+(say the policy that we
+wish to evaluate); this assumption imposes realizability for
+all policies. 
+
+We will also assume a \emph{coverage} assumption, analogous to
+Assumption~\ref{assumption:coverage}.  It should be evident that without
+feature coverage in our dataset, realizability alone is clearly not
+sufficient for sample-efficient estimation.  Note that , we will make the
+strongest possible assumption, with regards to the conditioning of the
+feature covariance matrix; in particular, this assumption is equivalent to
+$\mu$ being a $D$-optimal design.
+
+\begin{assumption}[Coverage]\label{assmp:coverage}
+For all $(s, a) \in \Scal \times \Acal$, assume our feature map
+is bounded such that $\|\phi(s, a)\|_2 \le 1$. Furthermore,
+suppose for each $h \in [H]$, the data distributions $\mu_h$ satisfies
+the following:
+\[\E_{(s, a) \sim \mu_h}[\phi(s, a)\phi(s, a)^{\top}]=
+\frac{1}{d} I.
+\]
+Note that the minimum eigenvalue of the above matrix is $1/d$, which is the largest possible minimum
+eigenvalue over all data distributions $\widetilde\mu_h$, since
+$\sigma_{\min}(\E_{(s, a) \sim \widetilde{\mu}_h}[\phi(s, a)\phi(s,
+a)^{\top}] )$ is less than or equal to $1/d$ (due to that $\|\phi(s, a)\|_2\leq 1$ for all 
+$(s,a) \in \Scal \times \Acal$). Also, it is not difficult to see that
+this distribution satisfies the
+$D$-optimal design property.
+\end{assumption}
+
+Clearly, for the case where $H=1$, 
+the realizability assumption (Assumption~\ref{assmp:realizability}),
+%boundedness assumption (Assumption~\ref{assmp:boundedness}) 
+and
+coverage assumption (Assumption~\ref{assmp:coverage}) 
+imply 
+that the ordinary least squares estimator will accurately estimate
+$\theta_0^{\pi}$.
+%\footnote{For $H=1$, the ordinary least squares estimator will satisfy
+%that $\|\theta_1-\widehat \theta_{\textrm{OLS}}\|_2^2 \leq
+%O(d/n)$ with high probability. See e.g.~\citep{hsu2012random}.} 
+The following shows these
+assumptions are not sufficient for offline policy evaluation for long horizon problems.
+
+\begin{theorem}\label{thm:hard_det_1}
+%Suppose Assumption~\ref{assmp:boundedness} and Assumption~\ref{assmp:coverage} hold.
+Suppose Assumption~\ref{assmp:coverage} holds.
+Fix an algorithm that takes as input both a policy and a feature mapping.
+There exists a (deterministic) MDP satisfying Assumption~\ref{assmp:realizability}, such that for \emph{any} policy $\pi : \Scal \to \Delta(\Acal)$, 
+the algorithm requires $\Omega((d / 2)^H)$ samples to output
+the value of $\pi$ up to constant additive approximation error
+with probability at least $0.9$. 
+\end{theorem}
+
+Although we focus on offline policy evaluation, this
+hardness result also holds for finding near-optimal policies under
+Assumption~\ref{assmp:realizability} in the offline RL setting with
+linear function approximation.  Below we give a simple reduction.  At
+the initial state, if the agent chooses action $a_1$, then the agent
+receives a fixed reward value (say $0.5$) and terminates.  If the
+agent chooses action $a_2$, then the agent transits to the hard
+instance.  Therefore, in order to find a policy with suboptimality at
+most $0.5$, the agent must evaluate the value of the optimal policy in
+the hard instance up to an error of $0.5$, and hence the hardness
+result holds.
+
+\paragraph{Least-Squares Policy Evaluation (LSPE) has exponential variance.}
+For offline policy evaluation with linear function approximation, 
+it is not difficult to see that LSPE, Algorithm~\ref{alg:lspe}, will provide an unbiased
+  estimate (provided the feature covariance matrices are full rank,
+  which will occur with high probability).  Interestingly, as a direct corollary,
+  the above theorem implies that LSPE has
+  exponential variance in $H$. 
+   More generally, this theorem implies that
+  there is no estimator that can avoid such
+  exponential dependence in the offline setting. 
+
+\subsubsection*{A Hard Instance for Offline Policy Evaluation}
+%dProof of Theorem~\ref{thm:hard_det_1}}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\linewidth]{Figures/hard1_new}
+\caption{An illustration of the hard instance.
+Recall that $\hat{d} = d/2$.
+States on the top are those in the first level ($h = 0$), while states at the bottom are those in the last level $(h = H - 1)$. 
+Solid line (with arrow) corresponds to transitions associated with action $a_1$, while dotted line (with arrow) corresponds to transitions associated with action $a_2$.
+For each level $h \in [H]$, reward values and $Q$-values associated with $s_h^1, s_h^2, \ldots, s_h^{\hat{d}}$ are marked on the left, while  reward values and $Q$-values associated with $s_h^{\hat{d} + 1}$ are mark on the right. 
+Rewards and transitions are all deterministic, except for the reward distributions associated with $s_{H - 1}^1, s_{H - 1}^2, \ldots, s_{H - 1}^{\hat{d}}$.
+We mark the expectation of the reward value when it is stochastic. 
+For each level $h \in [H]$, for the data distribution $\mu_h$, the state is chosen uniformly at random from those states in the dashed rectangle, i.e., $\{s_h^1, s_h^2, \ldots, s_h^{\hat{d}}\}$, while the action is chosen uniformly at random from $\{a_1, a_2\}$.
+Suppose the initial state is $s_1^{\hat{d} + 1}$.
+When $r_\infty = 0$, the value of the policy is $0$.
+When $r_\infty = {\hat{d}}^{-H/2}$, the value of the policy is $r_\infty \cdot {\hat{d}}^{H / 2} = 1$.
+}
+\label{fig:hard1}
+\end{figure}
+
+We now provide the hard instance construction and the proof of Theorem~\ref{thm:hard_det_1}.
+We use $d$ to denote the feature dimension, and we assume $d$ is even for simplicity.
+We use $\hat{d}$ to denote $d / 2$ for convenience.
+We also provide an illustration of the construction in Figure~\ref{fig:hard1}.
+ 
+\paragraph{State Space, Action Space and Transition Operator.}
+The action space $\Acal = \{a_1, a_2\}$.
+For each $h \in [H]$, $\Scal_h$ contains $\hat{d} + 1$ states $s_h^1, s_h^2, \ldots, s_h^{\hat{d}}$ and $s_h^{\hat{d} + 1}$. 
+For each $h \in \{0, 1, \ldots, H - 2\}$, for each $c \in \{1, 2, \ldots, \hat{d} + 1\}$, we have 
+\[
+P(s|s_h^c, a) = 
+\begin{cases}
+1 & s=s_{h + 1}^{\hat{d} + 1}, \  a = a_1\\
+1 & s=s_{h + 1}^c , \ a = a_2\\
+0 & \textrm{else}
+\end{cases}.
+\]
+
+\paragraph{Reward Distributions.}
+Let $0 \le r_\infty \le \hat{d}^{-H/2}$ be a parameter to be determined. 
+For each $(h, c) \in \{0, 1, \ldots, H - 2\} \times [\hat{d}]$ and $a \in \Acal$, we set $r(s_h^c, a) = 0$ and $r(s_h^{\hat{d} + 1}, a) = r_\infty \cdot (\hat{d}^{1/2} - 1) \cdot {\hat{d}}^{(H - h - 1) / 2}$.
+For the last level, for each $c \in [\hat{d}]$ and $a \in \Acal$, we set 
+\[
+r(s_{H - 1}^c, a) = 
+\begin{cases}
+1 & \text{with probability $(1+r_\infty)/2$}\\
+-1 & \text{with probability $(1 - r_\infty)/2$}
+\end{cases}
+\]
+so that $\E[r(s_{H - 1}^c, a)] = r_\infty$.
+Moreover, for all actions $a \in \Acal$, $r(s_{H - 1}^{\hat{d} + 1}, a) = r_\infty \cdot \hat{d}^{1/2}$.
+
+\paragraph{Feature Mapping.}
+Let $e_1, e_2, \ldots, e_d$ be a set of orthonormal vectors in $\mathbb{R}^d$.
+Here, one possible choice is to set $e_1, e_2, \ldots, e_d$ to be the standard basis vectors. 
+For each $(h, c) \in [H] \times [\hat{d}]$, we set 
+$\phi(s_h^c, a_1) = e_c, \phi(s_h^c, a_2) = e_{c + \hat{d}}$,
+and \[\phi(s_h^{\hat{d} + 1}, a) =\frac{1}{\hat{d}^{1/2}}\sum_{c \in \hat{d}}e_c \] for all $a \in \Acal$.
+ 
+%\paragraph{Verifying Assumption~\ref{assmp:realizability} and Assumption~\ref{assmp:boundedness}.}
+%Now we verify that Assumption~\ref{assmp:realizability} and Assumption~\ref{assmp:boundedness} hold for our construction. 
+
+\paragraph{Verifying Assumption~\ref{assmp:realizability}.}
+Now we verify that Assumption~\ref{assmp:realizability} holds for this construction. 
+\begin{lemma}\label{lem:q_linear_1}
+For every policy $\pi : \Scal \to \Delta(\Acal)$, for each $h \in [H]$, for all $(s, a) \in \Scal_h \times \Acal$, we have $Q^{\pi}_h(s, a) = \left( \theta_h^{\pi}\right)^{\top}\phi(s, a)$ for some $\theta_h^{\pi} \in \mathbb{R}^d$.
+\end{lemma}
+\begin{proof}
+We first verify $Q^{\pi}$ is linear for the first $H - 1$ levels. 
+For each $(h, c) \in  \{0, 1, \ldots, H - 2\} \times [\hat{d}]$, we have
+\begin{align*}
+Q^{\pi}_h(s_h^c, a_1)  = &r(s_h^c, a_1) + r(s_{h + 1}^{\hat{d} + 1}, a_1) + r(s_{h + 2}^{\hat{d} + 1}, a_1) + \ldots + r(s_{H - 1}^{\hat{d} + 1}, a_1) = r_\infty \cdot {\hat{d}}^{(H - h - 1) / 2}.
+\end{align*}
+
+Moreover, for all $a \in \Acal$, 
+\begin{align*}
+Q^{\pi}_h(s_h^{\hat{d} + 1}, a) = & r(s_h^{\hat{d} + 1}, a) + r(s_{h + 1}^{\hat{d} + 1}, a_1) + r(s_{h + 2}^{\hat{d} + 1}, a_1) + \ldots + r(s_{H - 1}^{\hat{d} + 1}, a_1) =  r_\infty \cdot {\hat{d}}^{(H - h) / 2 }.
+\end{align*}
+
+Therefore, if we define 
+\[\theta_h^{\pi} = \sum_{c = 1}^{\hat{d}} r_\infty \cdot {\hat{d}}^{(H - h - 1) / 2} \cdot e_c + \sum_{c = 1}^{\hat{d}}  Q^{\pi}_{h}(s_{h}^c, a_2) \cdot e_{c + \hat{d}},\] 
+then $Q_h^{\pi}(s, a) = \left( \theta_h^{\pi}\right)^{\top}\phi(s, a)$ for all $(s, a) \in \Scal_h \times \Acal$. 
+%Clearly, we have $\|\theta_h^{\pi}\|_2 \le H\sqrt{d}$ for all $h \in [H - 1]$.
+
+Now we verify that the $Q$-function is linear for the last level. 
+Clearly, for all $c \in [\hat{d}]$ and $a \in \Acal$, $Q_{H - 1}^{\pi}(s_{H - 1}^c, a) = r_\infty$ and $Q_{H - 1}^{\pi}(s_{H - 1}^{\hat{d} + 1}, a) = r_\infty \cdot \sqrt{\hat{d}}$.
+Thus by defining $\theta_{H - 1}^{\pi} = \sum_{c = 1}^d r_\infty \cdot e_c$,  we have $Q_{H - 1}^{\pi}(s, a) = \left(\theta_{H - 1}^{\pi}\right)^{\top} \phi(s, a)$ for all $(s, a) \in \Scal_{H - 1} \times \Acal$. 
+
+\end{proof}
+
+\paragraph{The Data Distributions.}
+For each level $h \in [H]$, the data distribution $\mu_h$ is a uniform
+distribution over the set
+$\{(s_h^1, a_1), (s_h^1, a_2), (s_h^2, a_1), (s_h^2, a_2), \ldots,
+(s_h^{\hat{d}}, a_1), (s_h^{\hat{d}}, a_2)\}$.
+Notice that $(s_h^{\hat{d} + 1}, a)$ is {\em not} in the support of
+$\mu_h$ for all $a \in \Acal$.  It can be seen that,
+\[
+\E_{(s, a) \sim \mu_h}\left[\phi(s, a)\phi(s, a)^{\top}\right] =
+\frac{1}{d} \sum_{c = 1}^d e_c e_c^{\top} = \frac{1}{d}I.
+\]
+
+\subsubsection*{The Information-Theoretic Argument}
+%\paragraph{The Information Theoretic Argument.}
+
+We show that it is information-theoretically hard for any algorithm to distinguish the case $r_\infty = 0$ and $r_\infty = {\hat{d}}^{-H/2}$.
+We fix the initial state to be $s_0^{\hat{d} + 1}$, and consider any policy $\pi : \Scal \to \Delta(\Acal)$.
+When $r_\infty = 0$, all reward values will be zero, and thus the value of $\pi$ would be zero.
+On the other hand, when $r_\infty = {\hat{d}}^{-H / 2}$, the value of $\pi$ would be $r_\infty \cdot {\hat{d}}^{H / 2 } = 1$.
+Thus, if the algorithm approximates the value of the policy up to an error of $1/2$, then it must distinguish the case that $r_\infty = 0$ and $r_\infty = {\hat{d}}^{-H/2}$.
+
+We first notice that for the case $r_\infty = 0$ and $r_\infty =
+{\hat{d}}^{-H/2}$, the data distributions $\{\mu_h\}_{h= 0}^{H-1}$, the
+feature mapping $\phi : \Scal
+ \times \Acal \to \mathbb{R}^d$, the policy $\pi$ to be evaluated and the transition operator $P$ are the same.
+Thus, in order to distinguish the case $r_\infty = 0$ and $r_\infty = {\hat{d}}^{-H/2}$, the only way is to query the reward distribution by using sampling taken from the data distributions. 
+
+For all state-action pairs $(s, a)$ in the support of the data distributions of the first $H - 1$ levels, the reward distributions will be identical.
+This is because for all $s \in \Scal_h \setminus \{s_h^{\hat{d} + 1}\}$ and $a \in \Acal$, we have $r(s, a) = 0$.
+For the case $r_\infty = 0$ and $r_\infty = {\hat{d}}^{-H/2}$, for all state-action pairs $(s, a)$ in the support of the data distribution of the last level, 
+\[
+r(s, a) = 
+\begin{cases}
+1 & \text{with probability $(1 + r_\infty)/2$} \\
+-1 & \text{with probability $(1 - r_\infty) / 2$} 
+\end{cases}.
+\]
+Therefore, to distinguish the case that $r_\infty = 0$ and $r_\infty = {\hat{d}}^{-H/2}$, the agent needs to distinguish two reward distributions  
+\[
+r^{(1)} = \begin{cases}
+1 & \text{with probability $1/2$}\\
+-1 & \text{with probability $1/2$}
+\end{cases}
+\]
+and 
+\[
+r^{(2)} = \begin{cases}
+1 & \text{with probability $(1 + {\hat{d}}^{-H/2}) / 2$}\\
+-1 & \text{with probability $(1 - {\hat{d}}^{-H/2}) / 2$}
+\end{cases}.
+\]
+It is standard argument that in order to distinguish $r^{(1)}$ and $r^{(2)}$ with
+probability at least $0.9$, any algorithm requires
+$\Omega({\hat{d}}^H)$ samples.   
+%See e.g. Lemma 5.1 in~\citep{anthony2009neural}. See
+%also~\citep{chernoff1972sequential, mannor2004sample}. 
+
+The key in this construction is the state $s_h^{\hat{d} + 1}$ in each
+level, whose feature vector is defined to be
+$\sum_{c \in \hat{d}}e_c / \hat{d}^{1/2}$.  In each level,
+$s_h^{\hat{d} + 1}$ amplifies the $Q$-values by a $\hat{d}^{1/2}$
+factor, due to the linearity of the $Q$-function.  After all the $H$
+levels, the value will be amplified by a $\hat{d}^{H / 2}$ factor.
+Since $s_h^{\hat{d} + 1}$ is not in the support of the data
+distribution, the only way for the agent to estimate the value of the
+policy is to estimate the expected reward value in the last level.
+This construction forces the estimation error of the last level to be
+amplified exponentially and thus implies an exponential lower bound.
+
+\iffalse
+We would like to remark that the design of the feature mapping in this construction could be flexible.
+It suffices if $e_1, e_2, \ldots, e_d$ are only nearly orthogonal.
+Moreover, the feature of $s_h^{\hat{d} + 1}$ can be changed to
+$\sum_{c=1}^{\hat{d}} w_c e_c$ for a general set of coefficients $w_1,
+w_2, \ldots, w_{\hat{d}}$ so long as $\sum_{c = 1}^{\hat{d}}w_c$ is
+sufficiently large. 
+\fi
+
+
+\subsection{Linearly Realizable $Q^\star$}
+\label{sec:linearQstar}
+
+Specifically, we will assume
+access to a feature map $\phi:\mathcal{S}\times\Acal\to\R^d$,
+and we will assume that a linear function of $\phi$ can accurately
+represent the $Q^\star$-function. Specifically,
+\begin{assumption}[Linear $Q^\star$ Realizability]
+\label{assumption:realizability}
+For all $h\in [H]$, assume there exists $\theta^*_h\in\R^d$ such that
+for all $(s, a)\in \mathcal{S} \times \Acal$,
+\[
+Q^*_h(s,a)= \theta^*_h \cdot \phi(s,a).
+\] 
+\end{assumption}
+The hope is that this assumption may permit a sample complexity that
+is polynomial in $d$ and $H$, with no explicit $|\Scal|$ or $|\Acal|$ dependence.
+
+\iffalse
+This assumption is widely used in existing reinforcement learning and
+contextual bandit
+literature~\citep{du2019provably,foster2020beyond}. However, even for
+linear function approximation, realizability alone is not sufficient
+for sample-efficient reinforcement learning
+~\citep{weisz2020exponential}. In this work, we also impose the
+regularity condition that $\Vert \theta^*_h\Vert_2=O(1)$ and
+$\Vert\phi(s,a)\Vert_2=O(1)$, which can always be achieved via
+rescaling.
+\fi
+
+Another assumption that we will use is that the minimum suboptimality
+gap is lower bounded. 
+\begin{assumption}[Constant Sub-optimality Gap]
+\label{assumption:gap}
+For any state $s\in \mathcal{S}$, $a\in\Acal$, the suboptimality
+gap is defined as $\Delta_h(s,a):=V_h^*(s)-Q_h^*(s,a)$. We assume that
+\[
+\min_{h\in
+  [H],s\in\mathcal{S},a\in\Acal}\left\{\Delta_h(s,a):\Delta_h(s,a)>0\right\}\ge
+\Delta_{\min}.
+\] 
+\end{assumption}
+The hope is that with a ``large gap'', the identification of the
+optimal policy itself (as opposed to just estimating its value
+accurately) may be statistically easier, thus making the problem easier.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\textwidth]{Figures/lowermdp_new.pdf}
+    \caption{\textbf{The Leaking Complete Graph Construction.} Illustration of a hard MDP. There are $m+1$ states in the MDP, where $f$ is an absorbing terminal state. Starting from any non-terminal state $\overline{a}$, regardless of the action, there is at least $\alpha=1/6$ probability that the next state will be $f$.}
+    \label{fig:mdp}
+\end{figure}
+
+%\subsection{Linear $Q^\star$ is Statistically Hard}
+
+We now present two hardness results.
+We start with the case where we have access to a generative model.
+  %Our goal is to prove the following theorem.
+
+\begin{theorem}\label{thm:lower_gen}
+(Linear $Q^\star$; Generative Model Case) 
+Consider any algorithm $\mathcal{A}$ which has access to a generative
+model and which takes as input the feature mapping $\phi : \mathcal{S}
+\times \mathcal{A} \to \mathbb{R}^d$. 
+There exists an MDP with a feature mapping $\phi$ satisfying
+Assumption~\ref{assumption:realizability} and where the size of the
+action space is
+$|\Acal| = c_1 \lceil \min\{d^{1/4},H^{1/2} \}\rceil$
+such that if $\mathcal{A}$ (when given $\phi$ as input) finds
+a policy $\pi$ such that
+%$\min\{\Omega(|\mathcal{A}|), 2^{\Omega(d)}, 2^{\Omega(H)}\}$ samples to find a policy $\pi$ with
+\begin{equation*}
+   \E_{s_1\sim\mu}V^{\pi}(s_1)\ge \E_{s_1\sim\mu}V^*(s_1)-0.05
+\end{equation*}
+with probability $0.1$, then $\mathcal{A}$ 
+requires $\min\{2^{c_2 d}, 2^{c_2 H}\}$ samples ($c_1$ and $c_2$ are absolute constants).
+\end{theorem}
+
+Note that theorem above uses an MDP whose size of the action space is
+only of moderate size (actually sublinear in both $d$ and $H$). Of
+course, in order to prove such a result, we must rely on a state
+space which is exponential in $d$ or $H$ (else, we could apply a tabular
+algorithm to obtain a polynomial result). The implications of the
+above show that the linear $Q^\star$ assumption, alone, is not
+sufficient for sample efficient RL, even with access to a generative model.
+
+
+
+SK: the proof for this one will be in the appendix
+
+
+
+\newpage
+
+\section{Bibliographic Remarks and Further Readings}
+\label{chapterBC_bib}
+
+The idea of Bellman completion under general function class was introduced in \cite{munos2005error} under the setting of batch RL. For the episodic online learning setting, \citet{zanette2020learning} provided a statistically efficient algorithm under the linear Bellman completion condition, and \cite{jin2021bellman}  proposes a statistically efficient algorithms under the Bellman completion condition with general function approximation.
+
+We refer readers to to \cite{lattimore2020bandit} for a proof of the
+D-optimal design;  the idea directly follows from John's theorem (e.g. see~\cite{ball1997elementary,todd2016minimum}). 
+
+
+%\cite{} extends the the algorithm from \cite{zanette2020learning} to general function class. 
+
+\section{Bibliographic Remarks and Further Readings}\label{ch3:bib}
+
+The reduction from reinforcement learning to supervised learning was
+first introduced in~\cite{NIPS1999_1664}, which used a different
+algorithm (the ``trajectory tree'' algorithm), as opposed to the
+importance sampling approach presented here. \cite{NIPS1999_1664} made
+the connection to the VC dimension of the policy class. The fundamental
+sample complexity tradeoff --- between polynomial dependence on the
+size of the state space and exponential dependence on the horizon --- 
+was discussed in depth in~\cite{kakade2003sample}.
+
+\iffalse
+Utilizing linear methods for dynamic programming goes back to, at
+least, \cite{Shan50,bellman1959functional}.  Formally considering the
+linear $Q^\star$ assumption goes back to at
+least~\cite{wen2017efficient}.  Resolving the learnability under this
+assumption was an important open question discussed in
+\cite{du2019good}, which is now resolved.  Here,
+Theorem~\ref{thm:lower_gen}, due to~\cite{WeiszAS21}, resolved this
+question. Furthermore, Theorem~\ref{thm:lower_episodic}, due
+to~\cite{Wang_linear_lower}, resolves this question in the online
+setting with the additional assumption of having a constant sub-optimality
+gap. Theorem~\ref{thm:lower_pi}, which assumed a linearly realizable
+optimal policy, is due to~\cite{du2019good}. Theorem~\ref{thm:hard_det_1}, on
+offline policy evaluation, is due to~\cite{wang2020statistical,zanette2021exponential}.
+\fi
+
+Utilizing linear methods for dynamic programming goes back to, at
+least, \cite{Shan50,bellman1959functional}.  Formally considering the
+linear $Q^\star$ assumption goes back to at
+least~\cite{wen2017efficient}.  Resolving the learnability under this
+assumption was an important open question discussed in
+\cite{du2019good}, which is now resolved.  In the offline (policy
+evaluation) setting, the lower bound in Theorem~\ref{thm:hard_det_1}
+is due to~\cite{wang2020statistical,zanette2021exponential}.  With a
+generative model, the breakthrough result of~\cite{WeiszAS21}
+established the impossibility result with the linear $Q^\star$
+assumption.  Furthermore, Theorem~\ref{thm:lower_episodic}, due
+to~\cite{Wang_linear_lower}, resolves this question in the online
+setting with the additional assumption of having a constant
+sub-optimality gap.  Also,~\cite{weisz2021tensorplan} extends the
+ideas from ~\cite{WeiszAS21}, so that the lower bound is applicable
+with action spaces of polynomial size (in $d$ and $H$); this is the
+result we use for Theorem~\ref{thm:lower_gen}.
+
+Theorem~\ref{thm:lower_pi}, which assumed a linearly realizable
+optimal policy, is due to~\cite{du2019good}. 
+
