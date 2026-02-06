@@ -1,25 +1,20 @@
-\documentclass[11pt]{article}
-
-\usepackage{amsmath,amssymb}
-\usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning,fit,calc}
-
-\begin{document}
-
-\begin{figure}[t]
-\centering
+% Requires in preamble:
+% \usetikzlibrary{arrows.meta,fit,positioning}
 
 \begin{tikzpicture}[
   >=Latex,
   font=\small,
   state/.style={circle,draw,minimum size=9mm,inner sep=1pt},
-  obsbox/.style={draw,dashed,rounded corners,inner sep=2mm},
+  obsbox/.style={draw,dashed,rounded corners,inner sep=2.8mm},
+  % If you want arrowheads, change to:
+  % aone/.style={thick,->},
+  % atwo/.style={thick,dashed,->}
   aone/.style={thick},
   atwo/.style={thick,dashed}
 ]
 
 % -------------------------
-% Geometry (no digits in macro names)
+% Geometry
 % -------------------------
 \def\xOne{0}
 \def\xTwo{2.1}
@@ -37,14 +32,19 @@
 % -------------------------
 % Top text: features + legend
 % -------------------------
-\node[align=left] at (3.7,2.0) {$\phi(s_h^c,a_1)=e_c$\\
+\node[align=left] at (3.6,2.45) {$\phi(s_h^c,a_1)=e_c$\\
 $\phi(s_h^c,a_2)=e_{m+c}$\\
 $\phi(g_h,a)=\frac{1}{\sqrt m}\sum_{c=1}^m e_c$};
 
-% Legend box
-\node[draw,minimum width=2.6cm,minimum height=1.4cm,anchor=north east] (leg) at (\xAgg+2.8,2.4) {};
-\draw[aone] ([xshift=-2.2cm,yshift=-0.35cm]leg.north east) -- ++(1.2,0) node[midway,above] {$a_1$};
-\draw[atwo] ([xshift=-2.2cm,yshift=-0.95cm]leg.north east) -- ++(1.2,0) node[midway,above] {$a_2$};
+% Legend box (slightly higher)
+\node[draw,minimum width=2.7cm,minimum height=1.4cm,anchor=north east] (leg)
+  at (\xAgg+2.9,2.85) {};
+
+\draw[aone] ([xshift=-2.3cm,yshift=-0.45cm]leg.north east) -- ++(1.2,0)
+  node[midway,above] {$a_1$};
+
+\draw[atwo] ([xshift=-2.3cm,yshift=-1.05cm]leg.north east) -- ++(1.2,0)
+  node[midway,above] {$a_2$};
 
 % -------------------------
 % Nodes
@@ -93,20 +93,26 @@ $\phi(g_h,a)=\frac{1}{\sqrt m}\sum_{c=1}^m e_c$};
 % -------------------------
 % Data support boxes: only observed states
 % -------------------------
+\tikzset{obsbox/.style={draw,densely dotted,rounded corners,inner sep=2.8mm}}
+
 \node[obsbox,fit=(s0-1)(s0-m)] (box0) {};
 \node[obsbox,fit=(s1-1)(s1-m)] (box1) {};
 \node[obsbox,fit=(sh-1)(sh-m)] (boxh) {};
 \node[obsbox,fit=(sHm-1)(sHm-m)] (boxHm) {};
 \node[obsbox,fit=(sH-1)(sH-m)] (boxH) {};
 
-\node[anchor=north west] at ([xshift=1mm,yshift=-1mm]box0.north west) {$\mu_0$};
-\node[anchor=north west] at ([xshift=1mm,yshift=-1mm]box1.north west) {$\mu_1$};
-\node[anchor=north west] at ([xshift=1mm,yshift=-1mm]boxh.north west) {$\mu_h$};
-\node[anchor=north west] at ([xshift=1mm,yshift=-1mm]boxHm.north west) {$\mu_{H-2}$};
-\node[anchor=north west] at ([xshift=1mm,yshift=-1mm]boxH.north west) {$\mu_{H-1}$};
+
+% Labels: slightly DOWN and RIGHT (inside the box; avoids hitting the top border)
+\def\lblx{12mm}
+\def\lbly{-1.4mm}
+\node[anchor=north west] at ([xshift=\lblx,yshift=\lbly]box0.north west) {$D_0$};
+\node[anchor=north west] at ([xshift=\lblx,yshift=\lbly]box1.north west) {$D_1$};
+\node[anchor=north west] at ([xshift=\lblx,yshift=\lbly]boxh.north west) {$D_h$};
+\node[anchor=north west] at ([xshift=\lblx,yshift=\lbly]boxHm.north west) {$D_{H-2}$};
+\node[anchor=north west] at ([xshift=\lblx,yshift=\lbly]boxH.north west) {$D_{H-1}$};
 
 % -------------------------
-% Transitions: a2 dashed (stay observed), a1 solid (jump to aggregator)
+% Transitions
 % -------------------------
 
 % a2 edges (vertical, observed chain)
@@ -117,7 +123,7 @@ $\phi(g_h,a)=\frac{1}{\sqrt m}\sum_{c=1}^m e_c$};
   \draw[atwo] (\u) -- (\v);
 }
 
-% a1 edges (diagonal to aggregator at next layer)
+% a1 edges (to aggregator at next layer)
 \foreach \u/\v in {s0-1/g1,s0-2/g1,s0-3/g1,s0-m/g1,
                   s1-1/gh,s1-2/gh,s1-3/gh,s1-m/gh,
                   sh-1/gHm,sh-2/gHm,sh-3/gHm,sh-m/gHm,
@@ -125,24 +131,14 @@ $\phi(g_h,a)=\frac{1}{\sqrt m}\sum_{c=1}^m e_c$};
   \draw[aone] (\u) -- (\v);
 }
 
-% aggregator chain
-\draw[aone] (g0) -- (g1);
-\draw[aone] (g1) -- (gh);
-\draw[aone] (gh) -- (gHm);
-\draw[aone] (gHm) -- (gH);
+% aggregator chain: show BOTH actions with slight separation
+\foreach \u/\v in {g0/g1,g1/gh,gh/gHm,gHm/gH} {
+  \draw[aone] (\u) to[bend left=10] (\v);
+  \draw[atwo] (\u) to[bend right=10] (\v);
+}
 
 % dots
-\node at (\xAgg,{-5.3}) {$\vdots$};
-\node at (\xOne,{-5.3}) {$\vdots$};
+\node at (\xAgg,{(\yRowMid+\yRowHm)/2}) {$\vdots$};
+\node at (\xOne,{(\yRowMid+\yRowHm)/2}) {$\vdots$};
 
 \end{tikzpicture}
-
-\caption{\textbf{Offline policy-evaluation hard instance (schematic).}
-Each layer $h$ has $m$ ``observed'' states $\{s_h^c\}_{c=1}^m$ (boxed: support of $\mu_h$)
-and one ``aggregator'' state $g_h$ (not in the support of $\mu_h$).
-Action $a_2$ (dashed) keeps the trajectory in the observed chain $s_h^c\to s_{h+1}^c$,
-while $a_1$ (solid) jumps to the aggregator chain $s_h^c\to g_{h+1}$.}
-\label{fig:offline_pe_hard_instance_clean}
-\end{figure}
-
-\end{document}

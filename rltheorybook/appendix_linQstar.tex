@@ -1,12 +1,29 @@
 \chapter{Linearly Realizable $Q^\star$ Lower Bound}
-%\label{sec:linearQstar_gapless_lb}
+\label{app:linearQstar_lb}
 
 This section records a trajectory-tree hard instance in which $Q^\star$
 is linear in a given feature map, yet identifying a near-optimal policy
 requires exponentially many samples in $\min\{d,H\}$ (once the action
-set is taken to be exponentially large in $d$).  We focus here on
-making the construction and the realizability verification clean; the
-information-theoretic argument (e.g.\ Fano/Le Cam) is deferred.
+set is taken to be exponentially large in $d$). 
+
+\begin{theorem}[Linear $Q^\star$ realizability can be exponentially hard (generative model)]
+\label{thm:lower_gen_gapless_simple}
+Consider any algorithm $\mathcal{A}$ that has access to a generative model and
+is given as input a feature map $\phi:\Scal\times\Acal\times[H]\to\R^d$.
+There exists a finite-horizon MDP $M$ with horizon $H$, together with a feature map $\phi$,
+such that Assumption~\ref{assumption:realizability} holds (i.e.\ for each $h\in[H]$,
+$Q_h^\star(\cdot,\cdot)$ is linear in $\phi(\cdot,\cdot,h)$), and such that the following is true:
+
+If $\mathcal{A}$ outputs a policy $\pi$ satisfying
+\[
+V_0^{\pi}(s_0) \;\ge\; V_0^\star(s_0)-0.05
+\]
+with probability at least $0.1$, then $\mathcal{A}$ must make $\exp(\Omega(d))$
+calls to the generative model.
+\end{theorem}
+
+SK: say we prove a weaker version than that in the chapter due to that
+even this version is pretty involved. say we have exp(d) actions.
 
 \subsection*{Construction}
 
@@ -265,11 +282,7 @@ which is exactly the Bellman equation.
 Finally, since $\widetilde Q$ satisfies Bellman optimality, it equals $Q^\star$.
 \end{proof}
 
-\newpage
-%===========================================================
-% Clean theorem statement + tight proof sketch
-%===========================================================
-
+SK: move theorem to be the start
 \begin{theorem}[Linear $Q^\star$ realizability can be exponentially hard (generative model)]
 \label{thm:lower_gen_gapless_simple}
 Consider any algorithm $\mathcal{A}$ that has access to a generative model and
@@ -285,6 +298,7 @@ V_0^{\pi}(s_0) \;\ge\; V_0^\star(s_0)-0.05
 with probability at least $0.1$, then $\mathcal{A}$ must make $\exp(\Omega(d))$
 calls to the generative model.
 \end{theorem}
+
 
 \begin{proof}[Proof sketch]
 We instantiate $M$ as one member of the trajectory-tree family $\{M_{a^\star}\}$ from

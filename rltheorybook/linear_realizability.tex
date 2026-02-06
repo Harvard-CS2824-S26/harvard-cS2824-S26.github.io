@@ -38,6 +38,38 @@ We then present a sharp positive result under a completeness condition
 information-theoretic lower bounds showing that weaker notions of realizability
 do not suffice.
 
+\paragraph{Why this is subtle (and why realizability feels tempting).}
+Since most of our discussion so far has focused on the discounted setting, it is
+worth briefly recalling the finite-horizon dynamic programming picture.
+For any function $f:\Scal\times\Acal\to\R$, the stage-$h$ \emph{optimal} Bellman
+operator is
+\[
+(\Tcal_h f)(s,a)
+\;:=\;
+r_h(s,a) + \E_{s'\sim P_h(\cdot\mid s,a)}\Big[\,\max_{a'\in\Acal} f(s',a')\,\Big].
+\]
+The optimal $Q$-functions satisfy $Q^\star_H \equiv 0$ and the backward recursion
+$Q^\star_h = \Tcal_h Q^\star_{h+1}$ for $h=H-1,\dots,0$.
+
+This recursion suggests a very natural hope.
+If we can produce accurate estimates $\widehat Q_{h+1}\approx Q^\star_{h+1}$, then
+we might plug $\widehat Q_{h+1}$ into the backup to form targets
+$\Tcal_h \widehat Q_{h+1}$, fit $\widehat Q_h$ by regression, and expect errors to
+propagate in a controlled way across stages. From this perspective it is tempting
+to believe that a simple \emph{realizability} assumption---for example,
+$Q_h^\star\in\Fcal$ for all $h$---should already be enough to obtain
+$\poly(d)$ sample complexity.
+
+The difficulty is that dynamic programming is not a single regression problem but
+a \emph{composition} of backups: the algorithm repeatedly forms new regression
+targets using its \emph{own} current estimates. Thus, what matters is not only
+whether $Q^\star$ lies in the hypothesis class, but whether the sequence of targets
+generated along the way remains learnable from the available data.
+The assumption ladder introduced next is a way of making precise which structural
+conditions guarantee this benign behavior---and which apparently natural linear
+conditions do not.
+
+
 \section{Setup and an Assumption Ladder}
 \label{sec:assumption_ladder}
 
@@ -461,12 +493,6 @@ and summing over $h$ gives the stated total sample bound.
 \end{proof}
 
 
-\newpage
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Offline extensions under Bellman completeness
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 \section{Offline extensions under Bellman completeness}
 \label{sec:BC_offline}
 
@@ -673,178 +699,283 @@ dependence on $H$.
 
 
 
-\newpage
-
 \section{Negative Results with Weaker Linear Notions}
 \label{sec:linear_Qvalues}
 
+The positive results in Section~\ref{sec:BC_positive} rely on a closure condition
+(Bellman completeness) that keeps the algorithm's regression targets inside the
+hypothesis class.  This section explains why weaker ``linear'' conditions can be
+misleading.
 
-\subsection{Offline Policy Evaluation with All-policies Linear
-  realizability (C).}
+We present two complementary impossibility results.
+First, we show that even the seemingly strong assumption that $Q^\star$ is linear
+in a known feature map does \emph{not} guarantee $\poly(d,H)$ sample complexity,
+even with a generative model.
+Second, we give an offline lower bound under an even stronger realizability
+assumption (linearity of $Q^\pi$ for \emph{all} policies) and a maximally
+well-conditioned feature covariance.  The offline construction is particularly
+revealing: it exhibits a concrete mechanism by which errors (or variance) can
+compound exponentially with the horizon despite excellent ``coverage'' in the
+usual linear-regression sense.
 
-In Chapter~\ref{chap:Bellman_complete}, we saw that LSVI/LSPE can be
-used for offline policy evaluation under a \emph{linear Bellman
-completeness} assumption.  Here we ask what can be guaranteed under the
-strictly weaker assumption of \emph{linear realizability} alone.  The
-answer is negative: even under a very strong coverage condition,
-realizability does not prevent an exponential dependence on the
-horizon.  In fact, in a minimax sense, \emph{every} estimator is
-sample-inefficient.
+\subsection{Information-theoretic lower bounds with linearly realizable $Q^\star$}
+\label{subsec:linearQstar}
 
-\paragraph{Offline data model.}
-We work in a finite-horizon MDP with horizon $H$.  The learner does not
-interact with the MDP, and instead receives $H$ datasets
-$\{D_h\}_{h=0}^{H-1}$.  For each $h\in\{0,\dots,H-1\}$, there is an
-associated data distribution $\mu_h\in\Delta(\Scal_h\times\Acal)$, and
-$D_h$ consists of $n$ i.i.d.\ samples of the form
+We start with the most basic realizability assumption: the optimal $Q$-function
+itself lies in the linear span of the features.
+
+\begin{assumption}[Linear $Q^\star$ realizability]
+\label{assumption:realizability_Qstar}
+For all $h\in[H]$, there exists $\theta_h^\star\in\R^d$ such that for all
+$(s,a)\in\Scal\times\Acal$,
 \[
-(s,a,r,s')\in \Scal_h\times\Acal\times\mathbb{R}\times \Scal_{h+1},
-\qquad (s,a)\sim \mu_h,\ \ r\sim r_h(s,a),\ \ s'\sim P_h(\cdot\mid s,a).
-\]
-(For simplicity we take the same sample size $n$ at each level; the
-statements can be written in terms of $\{n_h\}$ as well.)
-
-\paragraph{Offline policy evaluation.}
-Given a policy $\pi:\Scal\to\Delta(\Acal)$ and a feature map
-$\phi:\Scal\times\Acal\to\R^d$, the goal is to output an estimate of
-$V^\pi_0(s_0)$ (or more generally $V^\pi_0$) using the offline datasets,
-with as few samples as possible.
-
-\paragraph{Realizability assumption.}
-We assume that $Q^\pi$ is linear in the features \emph{for every}
-policy.
-\begin{assumption}[Realizable Linear Function Approximation]
-\label{assmp:realizability}
-For every policy $\pi:\Scal\to\Delta(\Acal)$, there exist parameter
-vectors $\theta_0^\pi,\dots,\theta_{H-1}^\pi\in\R^d$ such that for all
-$h\in\{0,\dots,H-1\}$ and all $(s,a)\in\Scal_h\times\Acal$,
-\[
-Q_h^\pi(s,a)=\langle \theta_h^\pi,\phi(s,a)\rangle.
+Q_h^\star(s,a)= (\theta_h^\star)^\top \phi(s,a).
 \]
 \end{assumption}
-This assumption is substantially stronger than realizability for a
-\emph{single} target policy (e.g.\ the policy we wish to evaluate): it
-postulates a linear representation for $Q_h^\pi$ simultaneously over
-\emph{all} policies $\pi$.
 
-\paragraph{Coverage assumption.}
-Realizability is meaningless without coverage of the feature directions
-present in $\phi$.  We therefore impose a very strong coverage
-assumption---in fact, essentially the best-conditioned feature
-covariance one could hope for under $\|\phi\|_2\le 1$.
-\begin{assumption}[Coverage]
-\label{assmp:coverage}
-Assume $\|\phi(s,a)\|_2\le 1$ for all $(s,a)\in\Scal\times\Acal$.  For
-each $h\in\{0,\dots,H-1\}$, the data distribution $\mu_h$ satisfies
+One might hope that Assumption~\ref{assumption:realizability_Qstar} is already
+sufficient for sample-efficient RL when the feature map is known to the learner.
+The next theorem rules this out in a strong sense.
+
+\begin{theorem}[Linear $Q^\star$ is not enough, even with a generative model]
+\label{thm:lower_gen_linearQstar}
+Consider any algorithm $\mathcal{A}$ with access to a generative model, which
+takes as input the feature map $\phi:\Scal\times\Acal\to\R^d$.  There exists a
+finite-horizon MDP and a feature map $\phi$ satisfying
+Assumption~\ref{assumption:realizability_Qstar} such that the action space size is
 \[
-\EE_{(s,a)\sim\mu_h}\big[\phi(s,a)\phi(s,a)^\top\big]=\frac{1}{d}\,I.
+|\Acal|
+\;=\;
+c_1\left\lceil \min\{d^{1/4},\,H^{1/2}\}\right\rceil,
 \]
-\end{assumption}
-The minimum eigenvalue of the above matrix is $1/d$, which is the
-largest possible value (up to constants) under the constraint
-$\|\phi(s,a)\|_2\le 1$; equivalently, $\mu_h$ is a maximally ``spread
-out'' (indeed $D$-optimal) design over the feature directions.
-
-For $H=1$, Assumptions~\ref{assmp:realizability} and~\ref{assmp:coverage}
-reduce to the standard linear regression setting: ordinary least squares
-recovers $\theta_0^\pi$ (and hence $V_0^\pi$) with error on the order of
-$\sqrt{d/n}$.  The next theorem shows that this intuition fails
-dramatically once the horizon is large.
-
-\begin{theorem}
-\label{thm:hard_det_1}
-Suppose Assumption~\ref{assmp:coverage} holds.  Fix any algorithm that,
-given as input $(\pi,\phi)$ and the offline datasets
-$\{D_h\}_{h=0}^{H-1}$, outputs an estimate of $V_0^\pi(s_0)$.  There
-exists a deterministic finite-horizon MDP satisfying
-Assumption~\ref{assmp:realizability} such that for \emph{every} policy
-$\pi:\Scal\to\Delta(\Acal)$, the algorithm requires
-$\Omega\!\big((d/2)^H\big)$ samples to obtain a constant additive
-approximation to $V_0^\pi(s_0)$ with probability at least $0.9$.
+and if $\mathcal{A}$ outputs a policy $\pi$ satisfying
+\[
+\E_{s_0\sim\mu}\big[V^\pi_0(s_0)\big]
+\;\ge\;
+\E_{s_0\sim\mu}\big[V^\star_0(s_0)\big] - 0.05
+\]
+with probability at least $0.1$, then $\mathcal{A}$ requires at least
+$\min\{2^{c_2 d},\,2^{c_2 H}\}$ generative-model samples, where $c_1,c_2>0$ are
+absolute constants.
 \end{theorem}
 
-\paragraph{A reduction to offline control.}
-Although stated for policy evaluation, the hardness also applies to
-offline control under Assumption~\ref{assmp:realizability}.  Indeed, add
-a new initial state in which action $a_1$ yields reward $0.5$ and
-terminates, while action $a_2$ transitions into the hard instance above.
-Any algorithm that returns a policy with suboptimality at most $0.5$
-must, in particular, estimate the value of the (unknown) optimal policy
-in the hard instance to within $0.5$, and therefore inherits the same
-lower bound.
+Theorem~\ref{thm:lower_gen_linearQstar} shows that linear $Q^\star$ realizability
+alone does not prevent exponential sample complexity.  Necessarily, such lower
+bounds rely on state spaces that are exponential in $d$ or $H$ (otherwise one
+could revert to a tabular algorithm with polynomial dependence on $|\Scal||\Acal|$).
+We provide in Appendix~\ref{app:linearQstar_lb} a proof of a weaker version based
+on a simpler construction with $|\Acal|=\exp(d)$.
 
+\subsection{Offline impossibility under all-policies linear realizability}
+\label{subsec:offline_all_policies_realizability}
 
-\subsubsection{A Hard Instance for Offline Policy Evaluation}
+We now turn to the offline setting.  In Section~\ref{sec:BC_positive} we saw that
+a closure condition (Bellman completeness) yields polynomial guarantees for LSVI
+and LSPE given suitable data.  Here we ask: what can be guaranteed under the
+\emph{strictly weaker} condition of realizability, even if we strengthen it to
+hold for \emph{all} policies and even if we assume essentially optimal coverage?
 
-We describe the hard instance used in Theorem~\ref{thm:hard_det_1}.
-Let $m\ge 1$ be an integer and set the feature dimension to be
+\paragraph{Offline data model.}
+We work in a finite-horizon MDP with horizon $H$.  The learner does not interact
+with the MDP; instead, for each stage $h\in\{0,\dots,H-1\}$ it receives a dataset
+$D_h$ of $n$ i.i.d.\ transition samples
 \[
-d := 2m.
+(s,a,r,s')\in \Scal_h\times\Acal\times\R\times \Scal_{h+1},
+\qquad (s,a)\sim \mu_h,\ \ r\sim r_h(s,a),\ \ s'\sim P_h(\cdot\mid s,a),
 \]
-The action space is $\Acal=\{a_1,a_2\}$. The construction depends on a scalar
-parameter $r_\infty\in[0,m^{-H/2}]$.
+for some (unknown) data distribution $\mu_h$ over $\Scal_h\times\Acal$.  (The
+results can also be stated with stage-dependent sample sizes $\{n_h\}$; we use $n$
+for simplicity.)
+
+\paragraph{Offline policy evaluation goal.}
+Given a target policy $\pi$ (assumed known) and the feature map $\phi$, the goal
+is to estimate $V^\pi_0(s_0)$ (or $\E_{s_0\sim\mu}[V^\pi_0(s_0)]$) from the offline
+datasets with as few samples as possible.
+
+\paragraph{Realizability (for all policies).}
+We assume that $Q^\pi$ is linear in the features \emph{for every} policy.
+\begin{assumption}[All-policies linear realizability]
+\label{assmp:realizability_all_policies}
+For every policy $\pi:\Scal\to\Delta(\Acal)$, there exist parameter vectors
+$\theta_0^\pi,\dots,\theta_{H-1}^\pi\in\R^d$ such that for all
+$h\in\{0,\dots,H-1\}$ and all $(s,a)\in\Scal_h\times\Acal$,
+\[
+Q_h^\pi(s,a)= (\theta_h^\pi)^\top \phi(s,a).
+\]
+\end{assumption}
+This is substantially stronger than realizability for a single target policy: it
+postulates a linear representation simultaneously over \emph{all} policies.
+
+\paragraph{Coverage (maximally well-conditioned design).}
+To isolate the effect of compounding across stages, we impose a very strong
+coverage condition: the feature covariance under the data distribution is as
+well-conditioned as possible under $\|\phi\|_2\le 1$.
+\begin{assumption}[Coverage]
+\label{assmp:coverage_isotropic}
+Assume $\|\phi(s,a)\|_2\le 1$ for all $(s,a)$.  For each stage
+$h\in\{0,\dots,H-1\}$, the data distribution $\mu_h$ satisfies
+\[
+\E_{(s,a)\sim\mu_h}\big[\phi(s,a)\phi(s,a)^\top\big]=\frac{1}{d}\,I.
+\]
+\end{assumption}
+
+For $H=1$, Assumptions~\ref{assmp:realizability_all_policies} and
+\ref{assmp:coverage_isotropic} reduce to classical linear regression.  The next
+theorem shows that this intuition fails dramatically once $H$ is large.
+
+\begin{theorem}[Offline policy evaluation can be exponentially hard]
+\label{thm:hard_offline_pe}
+Suppose Assumption~\ref{assmp:coverage_isotropic} holds.  Fix any algorithm that,
+given $(\pi,\phi)$ and the offline datasets $\{D_h\}_{h=0}^{H-1}$, outputs an
+estimate of $V^\pi_0(s_0)$.  There exists a finite-horizon MDP satisfying
+Assumption~\ref{assmp:realizability_all_policies} such that for \emph{every}
+policy $\pi:\Scal\to\Delta(\Acal)$, the algorithm requires
+\[
+\Omega\!\big((d/2)^H\big)
+\]
+samples to obtain a constant additive approximation to $V^\pi_0(s_0)$ with
+probability at least $0.9$.
+\end{theorem}
+
+\paragraph{Implication for offline control.}
+Although stated for policy evaluation, the hardness also applies to offline
+control under Assumption~\ref{assmp:realizability_all_policies}.  Indeed, add a
+new initial state $s_{\mathrm{new}}$ in which action $a_1$ yields reward $0.5$ and
+terminates, while action $a_2$ transitions into the hard instance from
+Theorem~\ref{thm:hard_offline_pe}.  Any algorithm that returns a policy with
+suboptimality at most $0.5$ must distinguish whether entering the hard instance is
+better than taking $a_1$, and therefore inherits the same exponential lower bound.
+
+\paragraph{LSPE (and LSVI) can have exponential variance.}
+Theorem~\ref{thm:hard_offline_pe} is a minimax lower bound: it implies that no
+offline estimator can avoid an exponential dependence on $H$ under realizability
+alone.  In particular, any unbiased estimator (when it exists) must have variance
+growing exponentially with $H$, so Least-Squares Policy Evaluation inherits this
+pathology despite the strong coverage in Assumption~\ref{assmp:coverage_isotropic}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Hard instance
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsubsection{A hard instance for offline policy evaluation}
+\label{subsubsec:hard_instance_offline_pe}
+
+We now describe the hard family used in Theorem~\ref{thm:hard_offline_pe}.  The
+key idea is that although the offline data have essentially perfect coverage over
+the \emph{observed} feature directions, the value of the policy depends on
+\emph{unobserved} ``aggregator'' states.  Linearity then forces the value at these
+aggregator states to be an amplified combination of quantities that can only be
+estimated from the last layer, causing an exponential dependence on the horizon.
+
+Let $m\ge 1$ be an integer and set
+\[
+d := 2m,
+\qquad
+\Acal := \{a_1,a_2\}.
+\]
+The family is indexed by a scalar parameter $r_\infty\in[0,m^{-H/2}]$; in the
+lower bound we only need two values, $r_\infty\in\{0,\,m^{-H/2}\}$.
 
 \paragraph{State space and transitions.}
 For each layer $h\in\{0,1,\dots,H-1\}$, define
 \[
-\Scal_h := \{x_h^1,\dots,x_h^m\}\ \cup\ \{g_h\},
+\Scal_h := \{s_h^1,\dots,s_h^m\}\ \cup\ \{g_h\},
 \]
-where $g_h$ is the special ``amplifier'' state. The initial state is $s_0=g_0$.
-For each $h\in\{0,1,\dots,H-2\}$ the transitions are deterministic and given by:
+where $g_h$ is an ``aggregator'' state.  The initial state is $s_0=g_0$.
+For $h\in\{0,1,\dots,H-2\}$, transitions are deterministic:
 \begin{align*}
-P(g_{h+1}\mid s,a_1) &= 1 \qquad\qquad\ \ \text{for all } s\in\Scal_h,\\
-P(x_{h+1}^i\mid x_h^i,a_2) &= 1 \qquad\ \ \text{for all } i\in[m],\\
+P(g_{h+1}\mid s,a_1) &= 1
+\qquad\qquad\ \ \text{for all } s\in\Scal_h,\\
+P(s_{h+1}^i\mid s_h^i,a_2) &= 1
+\qquad\ \ \text{for all } i\in[m],\\
 P(g_{h+1}\mid g_h,a_2) &= 1.
 \end{align*}
-(Equivalently: action $a_1$ always transitions to $g_{h+1}$, while $a_2$ preserves the index $i$ on the
-$x$-states and keeps $g$ on the $g$-state.)
+Equivalently: action $a_1$ always jumps to the aggregator chain, while $a_2$
+preserves the index $i$ on the $\{s_h^i\}$ states (and keeps the $g$-chain on $g$).
 
-\paragraph{Reward distributions.}
-For layers $h=0,1,\dots,H-2$ the rewards are deterministic:
+
+\begin{figure}[t]
+\centering
+\input{Figures/tikzpicture_lb}
+\caption{\textbf{Offline policy-evaluation hard instance (schematic).}
+Each layer $h$ has $m$ ``observed'' states $\{s_h^i\}_{i=1}^m$ (boxed: states covered by the offline dataset $D_h$)
+and one ``aggregator'' state $g_h$ (never covered by the offline data).
+Action $a_2$ (dashed) keeps the trajectory in the observed chain $s_h^i\to s_{h+1}^i$,
+while action $a_1$ (solid) jumps to the aggregator chain $s_h^i\to g_{h+1}$.
+From aggregator states, both actions transition to the next aggregator state (shown by the two parallel edges).
+}
+\label{fig:offline_pe_hard_instance_clean}
+\end{figure}
+
+\paragraph{Rewards.}
+Define the shorthand
+\[
+\alpha_h \;:=\; r_\infty\, m^{(H-h)/2},
+\qquad h\in\{0,1,\dots,H-1\}.
+\]
+(Note $\alpha_0\le 1$ since $r_\infty\le m^{-H/2}$.)  For layers $h=0,1,\dots,H-2$,
+rewards are deterministic:
 \begin{align*}
-r_h(x_h^i,a) &= 0 \qquad\text{for all } i\in[m],\ a\in\{a_1,a_2\},\\
-r_h(g_h,a) &= r_\infty\big(\sqrt{m}-1\big)\, m^{(H-h-1)/2}
+r_h(s_h^i,a) &= 0
+\qquad\text{for all } i\in[m],\ a\in\{a_1,a_2\},\\
+r_h(g_h,a) &= \alpha_h - \alpha_{h+1}
 \qquad\text{for all } a\in\{a_1,a_2\}.
 \end{align*}
-At the last layer $h=H-1$:
+At the last layer $h=H-1$, rewards depend only on $r_\infty$:
 \begin{align*}
-r_{H-1}(x_{H-1}^i,a) &=
+r_{H-1}(s_{H-1}^i,a) &=
 \begin{cases}
 1 & \text{with prob. } (1+r_\infty)/2,\\
 -1 & \text{with prob. } (1-r_\infty)/2,
 \end{cases}
 \qquad\text{for all } i\in[m],\ a\in\{a_1,a_2\},\\
-r_{H-1}(g_{H-1},a) &= r_\infty\sqrt{m}
+r_{H-1}(g_{H-1},a) &= \alpha_{H-1}=r_\infty\sqrt{m}
 \qquad\text{for all } a\in\{a_1,a_2\}.
 \end{align*}
-Thus $\E[r_{H-1}(x_{H-1}^i,a)]=r_\infty$ and $r_{H-1}(g_{H-1},a)$ is deterministic.
+Thus $\E[r_{H-1}(s_{H-1}^i,a)]=r_\infty$ while $r_{H-1}(g_{H-1},a)$ is deterministic.
 
-\paragraph{Feature mapping.}
-Let $e_1,\dots,e_{2m}$ be an orthonormal basis of $\R^{2m}$.
-Define $\phi:\Scal\times\Acal\to\R^{2m}$ by, for each $h$:
+\paragraph{Feature map.}
+Let $e_1,\dots,e_{2m}$ be an orthonormal basis of $\R^{2m}$.  Define
+$\phi:\Scal\times\Acal\to\R^{2m}$ by, for each layer $h$,
 \begin{align*}
-\phi(x_h^i,a_1) &= e_i, \qquad
-\phi(x_h^i,a_2) = e_{m+i} \qquad\text{for all } i\in[m],\\
+\phi(s_h^i,a_1) &= e_i, \qquad
+\phi(s_h^i,a_2) = e_{m+i} \qquad\text{for all } i\in[m],\\
 \phi(g_h,a_1) &= \phi(g_h,a_2) = \frac{1}{\sqrt{m}}\sum_{i=1}^m e_i.
 \end{align*}
-Note $\|\phi(s,a)\|_2\le 1$ for all $(s,a)$.
+In particular, $\|\phi(s,a)\|_2\le 1$ for all $(s,a)$.
 
-\paragraph{Offline data distributions.}
-For each layer $h\in[H]$, let $\mu_h$ be the uniform distribution over
+\paragraph{Offline data distributions (isotropic, but miss the aggregators).}
+For each layer $h\in\{0,1,\dots,H-1\}$, let $\mu_h$ be the uniform distribution over
 \[
-\{(x_h^i,a_1),(x_h^i,a_2): i\in[m]\}.
+\{(s_h^i,a_1),(s_h^i,a_2): i\in[m]\}.
 \]
-In particular, $(g_h,a)$ is not in the support of $\mu_h$ for any $a$.
+In particular, $(g_h,a)$ is \emph{not} in the support of $\mu_h$ for any $h$ or $a$.
 A direct calculation gives
 \[
-\E_{(s,a)\sim\mu_h}[\phi(s,a)\phi(s,a)^\top]
+\E_{(s,a)\sim\mu_h}\big[\phi(s,a)\phi(s,a)^\top\big]
 = \frac{1}{2m}\sum_{j=1}^{2m} e_j e_j^\top
 = \frac{1}{d}I,
 \]
-so Assumption~\ref{assmp:coverage} holds.
+so Assumption~\ref{assmp:coverage_isotropic} holds.
 
-\paragraph{Verifying Assumption~\ref{assmp:realizability}.}
-\begin{lemma}\label{lem:q_linear_offline_hard}
+\paragraph{Where the exponential dependence comes from (informal).}
+The policy value at the initial state is
+\[
+V_0^\pi(g_0) \;=\; \alpha_0 \;=\; r_\infty m^{H/2},
+\]
+which equals $0$ when $r_\infty=0$ and equals $1$ when $r_\infty=m^{-H/2}$.
+However, the offline data \emph{never} visit $g_h$, so the only information about
+$r_\infty$ comes from the last layer rewards at the observed states $s_{H-1}^i$,
+whose mean differs by only $m^{-H/2}$.  Estimating that tiny mean to constant
+confidence requires $\Omega(m^H)$ samples, yielding the claimed lower bound.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Realizability verification
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\paragraph{Verifying Assumption~\ref{assmp:realizability_all_policies}.}
+\begin{lemma}
+\label{lem:q_linear_offline_hard}
 For every policy $\pi:\Scal\to\Delta(\Acal)$, for each $h\in[H]$, there exists
 $\theta_h^\pi\in\R^{2m}$ such that for all $(s,a)\in\Scal_h\times\Acal$,
 \[
@@ -853,128 +984,129 @@ Q_h^\pi(s,a) = \langle \theta_h^\pi, \phi(s,a)\rangle.
 \end{lemma}
 
 \begin{proof}
-First note that from any amplifier state $g_h$, the next state is always $g_{h+1}$
+First note that from any aggregator state $g_h$, the next state is always $g_{h+1}$
 (regardless of the action), and rewards at $g_h$ do not depend on the action. Hence
 $V_h^\pi(g_h)=Q_h^\pi(g_h,a_1)=Q_h^\pi(g_h,a_2)$ for all $h$ and $\pi$.
 
-We compute $V_h^\pi(g_h)$ by backward induction.
-At $h=H-1$,
+We compute $V_h^\pi(g_h)$ by backward induction.  At $h=H-1$,
 \[
-V_{H-1}^\pi(g_{H-1}) = r_{H-1}(g_{H-1},\cdot)= r_\infty\sqrt{m}.
+V_{H-1}^\pi(g_{H-1}) = r_{H-1}(g_{H-1},\cdot)=\alpha_{H-1}.
 \]
 For $h\le H-2$,
-\begin{align*}
+\[
 V_h^\pi(g_h)
-&= r_h(g_h,\cdot) + V_{h+1}^\pi(g_{h+1})\\
-&= r_\infty(\sqrt{m}-1)m^{(H-h-1)/2} + r_\infty m^{(H-(h+1))/2}
-= r_\infty m^{(H-h)/2}.
-\end{align*}
+= r_h(g_h,\cdot) + V_{h+1}^\pi(g_{h+1})
+= (\alpha_h-\alpha_{h+1}) + \alpha_{h+1}
+= \alpha_h.
+\]
 In particular, for $h\le H-2$ and any $i\in[m]$,
 \[
-Q_h^\pi(x_h^i,a_1)
-= r_h(x_h^i,a_1) + V_{h+1}^\pi(g_{h+1})
-= r_\infty m^{(H-h-1)/2}.
+Q_h^\pi(s_h^i,a_1)
+= r_h(s_h^i,a_1) + V_{h+1}^\pi(g_{h+1})
+= \alpha_{h+1}.
 \]
 Also, for any $i\in[m]$ and $h\le H-2$,
 \[
-Q_h^\pi(x_h^i,a_2)
-= r_h(x_h^i,a_2) + V_{h+1}^\pi(x_{h+1}^i)
-= V_{h+1}^\pi(x_{h+1}^i),
+Q_h^\pi(s_h^i,a_2)
+= r_h(s_h^i,a_2) + V_{h+1}^\pi(s_{h+1}^i)
+= V_{h+1}^\pi(s_{h+1}^i),
 \]
-which may depend on $\pi$ but is a scalar we can represent.
+which may depend on $\pi$ but is a scalar that we can represent directly.
 
 Now define, for $h\le H-2$,
 \[
 \theta_h^\pi
-:= \sum_{i=1}^m \Big(r_\infty m^{(H-h-1)/2}\Big)e_i
-\;+\; \sum_{i=1}^m Q_h^\pi(x_h^i,a_2)\, e_{m+i}.
+:= \sum_{i=1}^m \alpha_{h+1}\,e_i
+\;+\; \sum_{i=1}^m Q_h^\pi(s_h^i,a_2)\, e_{m+i}.
 \]
 Then for $i\in[m]$,
 \[
-\langle \theta_h^\pi,\phi(x_h^i,a_1)\rangle = r_\infty m^{(H-h-1)/2} = Q_h^\pi(x_h^i,a_1),
+\langle \theta_h^\pi,\phi(s_h^i,a_1)\rangle = \alpha_{h+1} = Q_h^\pi(s_h^i,a_1),
 \qquad
-\langle \theta_h^\pi,\phi(x_h^i,a_2)\rangle = Q_h^\pi(x_h^i,a_2).
+\langle \theta_h^\pi,\phi(s_h^i,a_2)\rangle = Q_h^\pi(s_h^i,a_2).
 \]
 Moreover,
 \[
 \langle \theta_h^\pi,\phi(g_h,\cdot)\rangle
-= \Big(r_\infty m^{(H-h-1)/2}\Big)\cdot \frac{1}{\sqrt{m}}\sum_{i=1}^m \langle e_i,e_i\rangle
-= r_\infty m^{(H-h)/2}
+= \left\langle \sum_{i=1}^m \alpha_{h+1}e_i,\ \frac{1}{\sqrt{m}}\sum_{i=1}^m e_i \right\rangle
+= \alpha_{h+1}\sqrt{m}
+= r_\infty m^{(H-h-1)/2}\sqrt{m}
+= \alpha_h
 = Q_h^\pi(g_h,\cdot).
 \]
-At the last layer $h=H-1$, $\E[r_{H-1}(x_{H-1}^i,a)]=r_\infty$ for both actions, so
-$Q_{H-1}^\pi(x_{H-1}^i,a_1)=Q_{H-1}^\pi(x_{H-1}^i,a_2)=r_\infty$ and
-$Q_{H-1}^\pi(g_{H-1},\cdot)=r_\infty\sqrt{m}$.
+At the last layer $h=H-1$, we have $Q_{H-1}^\pi(s,a)=\E[r_{H-1}(s,a)]$.  For the
+observed states $\{s_{H-1}^i\}_{i=1}^m$, $\E[r_{H-1}(s_{H-1}^i,a)]=r_\infty$ for
+both actions; for $g_{H-1}$, $Q_{H-1}^\pi(g_{H-1},\cdot)=\alpha_{H-1}=r_\infty\sqrt{m}$.
 Setting
 \[
 \theta_{H-1}^\pi := \sum_{j=1}^{2m} r_\infty e_j
 \]
-makes $Q_{H-1}^\pi(s,a)=\langle \theta_{H-1}^\pi,\phi(s,a)\rangle$ for all $(s,a)$.
+gives $Q_{H-1}^\pi(s,a)=\langle \theta_{H-1}^\pi,\phi(s,a)\rangle$ for all $(s,a)$,
+since $\langle \theta_{H-1}^\pi,e_i\rangle=r_\infty$ and
+$\left\langle \theta_{H-1}^\pi,\frac{1}{\sqrt{m}}\sum_{i=1}^m e_i\right\rangle
+= r_\infty\sqrt{m}$.
 \end{proof}
 
-\subsection{LSVI with All-policies Linear
-  realizability (C).}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Proof sketch / information-theoretic argument
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\paragraph{LSPE has exponential variance.}
-Least-Squares Policy Evaluation (Algorithm~\ref{alg:lspe}) is an
-unbiased estimator under full-rank feature covariance (which holds with
-high probability under Assumption~\ref{assmp:coverage}).  As an immediate
-corollary of Theorem~\ref{thm:hard_det_1}, the variance of any such
-unbiased estimator---including LSPE---must grow exponentially with the
-horizon $H$.  More broadly, the theorem implies that no estimator can
-avoid an exponential dependence on $H$ in this offline setting under
-realizability alone.
-
-\subsection{Info Theoretic Lower bounds with Linearly Realizable $Q^\star$}
-\label{sec:linearQstar}
-
-Specifically, we will assume
-access to a feature map $\phi:\mathcal{S}\times\Acal\to\R^d$,
-and we will assume that a linear function of $\phi$ can accurately
-represent the $Q^\star$-function. Specifically,
-\begin{assumption}[Linear $Q^\star$ Realizability]
-\label{assumption:realizability}
-For all $h\in [H]$, assume there exists $\theta^*_h\in\R^d$ such that
-for all $(s, a)\in \mathcal{S} \times \Acal$,
+\subsubsection*{Proof sketch of Theorem~\ref{thm:hard_offline_pe} (information-theoretic argument)}
+We reduce policy evaluation to a two-point hypothesis test.
+Fix any policy $\pi$.  In this construction, the value at the initial state does
+not depend on $\pi$:
 \[
-Q^*_h(s,a)= \theta^*_h \cdot \phi(s,a).
-\] 
-\end{assumption}
-The hope is that this assumption may permit a sample complexity that
-is polynomial in $d$ and $H$, with no explicit $|\Scal|$ or $|\Acal|$ dependence.
+V_0^\pi(g_0)=\alpha_0=r_\infty m^{H/2}.
+\]
+Consider two instances, identical in transitions, features, and data distributions,
+but with different parameters:
+\[
+r_\infty^{(0)} := 0,
+\qquad
+r_\infty^{(1)} := m^{-H/2}.
+\]
+Then $V_0^\pi(g_0)=0$ under $r_\infty^{(0)}$ and $V_0^\pi(g_0)=1$ under
+$r_\infty^{(1)}$.  Therefore, any algorithm that outputs an estimate
+$\widehat{V}$ satisfying $|\widehat{V}-V_0^\pi(g_0)|\le 1/2$ with probability at
+least $0.9$ must distinguish these two instances with probability at least $0.9$.
+
+Under both instances, the offline distributions $\{\mu_h\}_{h=0}^{H-1}$ are the same.
+Moreover, for layers $h\le H-2$, all rewards on the support of $\mu_h$ are
+identically $0$ in both instances.  Hence \emph{all information about $r_\infty$}
+available in the offline data comes from the \emph{last layer} samples $D_{H-1}$.
+
+On the support of $\mu_{H-1}$, rewards are $\{\pm1\}$-valued with mean $r_\infty$:
+under $r_\infty^{(0)}$,
+\[
+\PP(r=1)=1/2,\qquad \PP(r=-1)=1/2,
+\]
+while under $r_\infty^{(1)}$,
+\[
+\PP(r=1)=(1+m^{-H/2})/2,\qquad \PP(r=-1)=(1-m^{-H/2})/2.
+\]
+Let $\Delta:=m^{-H/2}$.  A direct calculation shows that the KL divergence between
+a single sample under these two reward distributions satisfies
+\[
+\mathrm{KL}\big(P_{\Delta}\,\|\,P_{0}\big)
+= -\tfrac12\log(1-\Delta^2)
+\;\le\; 2\Delta^2
+\qquad (\text{for }\Delta\le 1/2).
+\]
+By independence, the KL divergence between $n$ last-layer samples is at most
+$2n\Delta^2$.  Standard two-point testing inequalities (e.g.\ Le Cam's
+method) imply that any test that distinguishes the two 
+instances with probability at least $0.9$ must have total KL at least a constant,
+and thus requires
+\[
+n\Delta^2 \;=\; \Omega(1)
+\qquad\Longrightarrow\qquad
+n \;=\; \Omega(\Delta^{-2}) \;=\; \Omega(m^H).
+\]
+Recalling $d=2m$, this is $\Omega((d/2)^H)$, establishing
+Theorem~\ref{thm:hard_offline_pe}.
 
 
-\begin{theorem}\label{thm:lower_gen}
-(Linear $Q^\star$; Generative Model Case) 
-Consider any algorithm $\mathcal{A}$ which has access to a generative
-model and which takes as input the feature mapping $\phi : \mathcal{S}
-\times \mathcal{A} \to \mathbb{R}^d$. 
-There exists an MDP with a feature mapping $\phi$ satisfying
-Assumption~\ref{assumption:realizability} and where the size of the
-action space is
-$|\Acal| = c_1 \lceil \min\{d^{1/4},H^{1/2} \}\rceil$
-such that if $\mathcal{A}$ (when given $\phi$ as input) finds
-a policy $\pi$ such that
-%$\min\{\Omega(|\mathcal{A}|), 2^{\Omega(d)}, 2^{\Omega(H)}\}$ samples to find a policy $\pi$ with
-\begin{equation*}
-   \E_{s_1\sim\mu}V^{\pi}(s_1)\ge \E_{s_1\sim\mu}V^*(s_1)-0.05
-\end{equation*}
-with probability $0.1$, then $\mathcal{A}$ 
-requires $\min\{2^{c_2 d}, 2^{c_2 H}\}$ samples ($c_1$ and $c_2$ are absolute constants).
-\end{theorem}
 
-Note that theorem above uses an MDP whose size of the action space is
-only of moderate size (actually sublinear in both $d$ and $H$). Of
-course, in order to prove such a result, we must rely on a state
-space which is exponential in $d$ or $H$ (else, we could apply a tabular
-algorithm to obtain a polynomial result). The implications of the
-above show that the linear $Q^\star$ assumption, alone, is not
-sufficient for sample efficient RL, even with access to a generative model.
-
-
-
-SK: the proof for this one will be in the appendix (but will use
-$\exp(d)$ actions).
 
 
 \section{Bibliographic Remarks and Further Readings}
