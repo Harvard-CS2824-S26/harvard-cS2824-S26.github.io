@@ -853,9 +853,6 @@ alone.  In particular, any unbiased estimator (when it exists) must have varianc
 growing exponentially with $H$, so Least-Squares Policy Evaluation inherits this
 pathology despite the strong coverage in Assumption~\ref{assmp:coverage_isotropic}.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Hard instance
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \subsubsection{A hard instance for offline policy evaluation}
 \label{subsubsec:hard_instance_offline_pe}
@@ -969,9 +966,6 @@ $r_\infty$ comes from the last layer rewards at the observed states $s_{H-1}^i$,
 whose mean differs by only $m^{-H/2}$.  Estimating that tiny mean to constant
 confidence requires $\Omega(m^H)$ samples, yielding the claimed lower bound.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Realizability verification
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \paragraph{Verifying Assumption~\ref{assmp:realizability_all_policies}.}
 \begin{lemma}
@@ -1047,9 +1041,6 @@ $\left\langle \theta_{H-1}^\pi,\frac{1}{\sqrt{m}}\sum_{i=1}^m e_i\right\rangle
 = r_\infty\sqrt{m}$.
 \end{proof}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Proof sketch / information-theoretic argument
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \subsubsection*{Proof sketch of Theorem~\ref{thm:hard_offline_pe} (information-theoretic argument)}
 We reduce policy evaluation to a two-point hypothesis test.

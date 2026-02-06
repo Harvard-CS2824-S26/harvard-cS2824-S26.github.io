@@ -1,41 +1,116 @@
-\chapter{Linearly Realizable $Q^\star$ Lower Bound}
+\chapter{Linearly realizable $Q^\star$ is exponentially hard}
 \label{app:linearQstar_lb}
 
-This section records a trajectory-tree hard instance in which $Q^\star$
-is linear in a given feature map, yet identifying a near-optimal policy
-requires exponentially many samples in $\min\{d,H\}$ (once the action
-set is taken to be exponentially large in $d$). 
+This appendix records a (trajectory-tree) hard instance in which $Q^\star$ is
+\emph{exactly} linear in a given feature map, yet identifying a near-optimal
+policy requires exponentially many queries in $\min\{d,H\}$ (once the action set
+is taken to be exponentially large in $d$).
 
 \begin{theorem}[Linear $Q^\star$ realizability can be exponentially hard (generative model)]
 \label{thm:lower_gen_gapless_simple}
-Consider any algorithm $\mathcal{A}$ that has access to a generative model and
-is given as input a feature map $\phi:\Scal\times\Acal\times[H]\to\R^d$.
-There exists a finite-horizon MDP $M$ with horizon $H$, together with a feature map $\phi$,
-such that Assumption~\ref{assumption:realizability} holds (i.e.\ for each $h\in[H]$,
-$Q_h^\star(\cdot,\cdot)$ is linear in $\phi(\cdot,\cdot,h)$), and such that the following is true:
+Fix integers $d\ge 1$ and $H\ge 1$. Consider any algorithm $\mathcal{A}$ that has
+access to a generative model and is given as input a feature map
+$\phi:\Scal\times\Acal\times[H]\to\R^d$.
+There exist absolute constants $c,C>0$ and a finite-horizon MDP $M$ with horizon
+$H$ and action set size $|\Acal| = \exp(c d)$, together with a feature map $\phi$,
+such that Assumption~\ref{assumption:realizability_Qstar} holds (i.e.\ for each
+$h\in[H]$, $Q_h^\star(\cdot,\cdot)$ is linear in $\phi(\cdot,\cdot,h)$), and the
+following is true. \section*{Proof sketch of Theorem~\ref{thm:lower_gen_gapless_simple}}
+
+\begin{proof}[Proof sketch of Theorem~\ref{thm:lower_gen_gapless_simple}]
+We instantiate $M$ as $\mathcal{M}_{a^\star}$ with $a^\star$ chosen uniformly in $[A]$.
+The feature map is shared across all instances; the index $a^\star$ only appears
+through $\theta^\star=v(a^\star)$ (and therefore through the mean rewards).
+
+SK: this proof feels weird to me in a generative model. it feels to me
+that:
+1) for all states not at the last level, then if don't select a* we
+gain no information.  and that means there, regardless of we sample,
+there is no informationt to be gained (untile exp samples)
+2) we need to sample the last level. now are just doing Fano. it feels
+like there should be a cleaner way to say this?
+easier to say this?
+
+\smallskip\noindent
+\textbf{Step 1: Near-optimality forces (essentially) identifying $a^\star$ at $s_0$.}
+By Lemma~\ref{lem:greedy_astar}, at the start state $s_0=\overline{\emptyset}$ the
+unique greedy action is $a^\star$, and
+\[
+\widetilde Q_0(s_0,a^\star)=1,
+\qquad
+\max_{a\neq a^\star}\widetilde Q_0(s_0,a)\le \rho \le \tfrac16.
+\]
+Thus any policy that does not select $a^\star$ at $s_0$ incurs a constant value
+gap (at least $5/6$ at the root), so producing a $0.05$-optimal policy with
+constant probability requires the algorithm to output $a^\star$ at $s_0$ with
+constant probability, i.e.\ to identify $a^\star$ with constant probability.
+
+\smallskip\noindent
+\textbf{Step 2: Two routes to learning $a^\star$, both expensive.}
+Consider any adaptive querying strategy with $T$ total generative-model calls.
+
+\emph{Route (i): hit $a^\star$ at some nonterminal state with $h\le H-2$.}
+For $h\le H-2$, whenever a query $(s,a,h)$ transitions to a nonterminal next state,
+the mean reward is the constant $-b_{h+1}$, which does not depend on $a^\star$.
+Dependence on $a^\star$ at these earlier layers can only occur if the query uses
+the action $a=a^\star$ (triggering termination).
+Averaging over uniform $a^\star$, the probability that the transcript ever uses
+$a^\star$ at an earlier layer is at most $T/A$ (a standard counting/averaging bound).
+
+\emph{Route (ii): use the ``leakage'' through last-layer rewards.}
+At $h=H-1$, the mean reward is $\widetilde Q_{H-1}(s,a)$, and by
+Lemma~\ref{lem:greedy_astar} its magnitude is uniformly bounded by $\lesssim b_{H-1}$.
+Hence, for any fixed query at $h=H-1$, the reward distribution under two different
+indices $a^\star\neq {a^\star}'$ are Gaussians with variance $1$ and means differing
+by at most $O(b_{H-1})$, so the per-query KL divergence is $O(b_{H-1}^2)$.
+Therefore the total mutual information between the full transcript and $a^\star$
+accumulated via such queries is at most $O(T\,b_{H-1}^2)$.
+By a standard Fano-type bound, identifying $a^\star$ among $A=\exp(\Theta(d))$
+possibilities with constant probability requires
+\[
+T \;\gtrsim\; \frac{\log A}{b_{H-1}^2}.
+\]
+Since $b_{H-1}=(3\rho)^{H-1}\le 2^{-(H-1)}$, the RHS is $\exp(\Omega(H))$ up to
+polynomial factors.
+
+\smallskip\noindent
+\textbf{Step 3: Combine and conclude.}
+Putting the two routes together yields a lower bound of the form
+\[
+T \;\ge\; \Omega\!\left(\min\left\{A,\ \frac{\log A}{b_{H-1}^2}\right\}\right).
+\]
+With $A=\exp(\Theta(d))$ and $b_{H-1}=(3\rho)^{H-1}$, this gives
+$T \ge \exp(\Omega(\min\{d,H\}))$ (up to polynomial factors), and by Step 1 this is
+necessary for producing a $0.05$-optimal policy with constant probability.
+\end{proof}
+
 
 If $\mathcal{A}$ outputs a policy $\pi$ satisfying
 \[
 V_0^{\pi}(s_0) \;\ge\; V_0^\star(s_0)-0.05
 \]
-with probability at least $0.1$, then $\mathcal{A}$ must make $\exp(\Omega(d))$
+with probability at least $0.1$, then $\mathcal{A}$ must make at least
+\[
+\exp\!\bigl(\Omega(\min\{d,H\})\bigr)
+\]
 calls to the generative model.
+
 \end{theorem}
 
-SK: say we prove a weaker version than that in the chapter due to that
-even this version is pretty involved. say we have exp(d) actions.
 
-\subsection*{Construction}
+\section*{Construction}
 
-Fix a horizon $H\ge 1$ and a feature dimension $d$. Let $\rho\in(0,1/6]$
-be a constant.
+Fix a horizon $H\ge 1$ and a feature dimension $d$. Let $\rho\in(0,1/6]$ be a
+constant and set $A:=|\Acal|$.
 
 \paragraph{Nearly orthogonal vectors.}
 Assume we are given unit vectors $\{v(a)\}_{a\in[A]}\subset\R^d$ such that
 \[
 \forall a\neq a',\qquad |\langle v(a),v(a')\rangle|\le \rho.
 \]
-Such a set exists for $A\le \exp(c_0\rho^2 d)$ (Johnson--Lindenstrauss packing).
+Such a set exists for $A\le \exp(c_0\rho^2 d)$ for an absolute constant $c_0$
+(e.g.\ a standard spherical packing / JL-type argument). We will take
+$A=\lfloor \exp(c d)\rfloor$ with $c$ small enough.
 
 \paragraph{State space.}
 For each layer $h\in\{0,1,\dots,H\}$, define the set of nonterminal states
@@ -45,14 +120,15 @@ For each layer $h\in\{0,1,\dots,H\}$, define the set of nonterminal states
 \]
 with $\Scal_0^{\mathrm{nt}}=\{\overline{\emptyset}\}$.
 Let $f$ be an absorbing terminal state and set $\Scal_h:=\Scal_h^{\mathrm{nt}}\cup\{f\}$.
+The action space is $\Acal=[A]$, and the initial state is $s_0=\overline{\emptyset}$.
 
 \paragraph{MDP family.}
-The family is indexed by $a^\star\in[A]$.  We write $\mathcal{M}_{a^\star}$ for the MDP
-with optimal-action index $a^\star$.  The action space is $\Acal=[A]$.
-The initial state is $s_0=\overline{\emptyset}$.
+The family is indexed by $a^\star\in[A]$.  We write $\mathcal{M}_{a^\star}$ for
+the MDP with distinguished index $a^\star$.
 
 \paragraph{Transitions.}
-For $h\le H-1$, if $s_h=f$ then $s_{h+1}=f$ surely.
+For each $h\le H-1$:
+if $s_h=f$ then $s_{h+1}=f$ surely.
 If $s_h=\overline{a_{1:h}}$ is nonterminal and the agent chooses $a\in[A]$, then
 \[
 s_{h+1} :=
@@ -62,22 +138,17 @@ f, & a=a^\star \qquad\qquad\quad\text{(the distinguished action)}\\
 \overline{a_{1:h}a}, & \text{otherwise}.
 \end{cases}
 \]
-Thus along any \emph{nonterminal} trajectory, the actions are distinct and never equal to $a^\star$.
-
-%-----------------------------
-% Bias sequence (0-indexed)
-%-----------------------------
+Thus along any \emph{nonterminal} trajectory, actions are distinct and never equal
+to $a^\star$.
 
 \paragraph{Bias sequence.}
 Set $b_0:=1$ and define recursively for $h=0,1,\dots,H-1$,
 \[
-b_{h+1} := 3\rho\, b_h .
+b_{h+1} := 3\rho\, b_h ,
+\qquad\text{so that}\qquad
+b_h=(3\rho)^h,
 \]
-Equivalently, $b_h=(3\rho)^h$ for $h\ge 0$ (note $3\rho\le 1/2$ when $\rho\le 1/6$).
-
-%-----------------------------
-% Feature map (with repeat-action truncation)
-%-----------------------------
+and note $3\rho\le 1/2$ when $\rho\le 1/6$.
 
 \paragraph{Feature map.}
 Define $\phi_h:\Scal_h\times\Acal\to\R^d$ recursively as follows.
@@ -91,56 +162,45 @@ For $h\ge 1$ and a nonterminal state $s_h=\overline{a_{1:h}}$, define for each $
 \phi_h(\overline{a_{1:h}},a)
 :=
 \begin{cases}
-0, & a\in\{a_1,\dots,a_h\} \qquad\text{(repeat action)}\\[3pt]
+0, & a\in\{a_1,\dots,a_h\} \\[3pt]
 \Big(\big\langle \phi_{h-1}(\overline{a_{1:h-1}},a_h),\, v(a)\big\rangle + b_h\Big)\, v(a),
 & a\notin\{a_1,\dots,a_h\}.
 \end{cases}
 \]
-(As usual, $\phi_{h-1}(\overline{a_{1:h-1}},a_h)$ is the feature on the edge entering $\overline{a_{1:h}}$.)
+We view the global feature map as $\phi(s,a,h):=\phi_h(s,a)$.
 
-%-----------------------------
-% Candidate parameter and Q
-%-----------------------------
-\paragraph{Parameter and candidate $Q$.}
+\paragraph{Candidate parameter and $Q$.}
 Fix $a^\star\in[A]$ and set $\theta^\star := v(a^\star)$.
-Define the \emph{candidate} action-value function
+Define
 \[
 \widetilde Q_h(s,a) := \langle \phi_h(s,a), \theta^\star\rangle,\qquad h=0,1,\dots,H-1,
 \]
 and $\widetilde V_h(s):=\max_{a\in\Acal}\widetilde Q_h(s,a)$, with $\widetilde V_H\equiv 0$.
 
-%-----------------------------
-% Rewards
-%-----------------------------
-
-
-\paragraph{Rewards (explicit, piecewise).}
-Define deterministic rewards $r_h:\Scal_h\times\Acal\to\R$ by:
-\begin{itemize}
-\item For the last layer $h=H-1$:
-\[
-r_{H-1}(s,a) := \widetilde Q_{H-1}(s,a)=\langle \phi_{H-1}(s,a),\theta^\star\rangle.
-\]
-\item For layers $h=0,1,\dots,H-2$:
+\paragraph{Mean rewards.}
+Define deterministic mean rewards $r_h:\Scal_h\times\Acal\to\R$ as follows.
+For each $h=0,1,\dots,H-2$,
 \[
 r_h(s,a) :=
 \begin{cases}
-\widetilde Q_h(s,a), & \text{if } s_{h+1}=f,\\
--b_{h+1}, & \text{if } s_{h+1}\in\Scal_{h+1}^{\mathrm{nt}}.
+\widetilde Q_h(s,a), & \text{if the transition sends } s_{h+1}=f,\\
+-b_{h+1}, & \text{if the transition sends } s_{h+1}\in\Scal_{h+1}^{\mathrm{nt}}.
 \end{cases}
 \]
-\end{itemize}
-
-\paragraph{Observed rewards (Gaussian noise model).}
-The environment has deterministic mean rewards $r_h(s,a)$ defined below, but the learner observes
+For the last layer $h=H-1$, set
 \[
-R_h = r_h(s,a) + \xi_h,\qquad \xi_h\sim\mathcal{N}(0,1)\ \text{i.i.d.}
+r_{H-1}(s,a) := \widetilde Q_{H-1}(s,a).
 \]
-independently across all queries (and independent of the learner's randomness).
 
+\paragraph{Observed rewards (Gaussian noise).}
+When the learner queries $(s,a,h)$, the generative model returns the next state
+according to the deterministic transition above and a noisy reward
+\[
+R_h = r_h(s,a) + \xi_h,\qquad \xi_h\sim\mathcal{N}(0,1)\ \text{i.i.d.},
+\]
+independently across all queries.
 
-%===========================================================
-\subsection*{Key inequality: $a^\star$ is greedy everywhere}
+\section*{Key inequalities: $a^\star$ is greedy everywhere}
 
 \begin{lemma}[Fresh-direction correlation bound]
 \label{lem:fresh_corr_bound}
@@ -157,7 +217,7 @@ $a'\notin\{a_1,\dots,a_t,a_{t+1}\}$, we have
 We proceed by induction on $t$.
 
 \emph{Base case $t=0$.}
-$\phi_0(\overline{\emptyset},a_1)=b_0 v(a_1)=v(a_1)$, hence for $a'\neq a_1$,
+$\phi_0(\overline{\emptyset},a_1)=v(a_1)$, hence for $a'\neq a_1$,
 \[
 |\langle \phi_0(\overline{\emptyset},a_1),v(a')\rangle|
 = |\langle v(a_1),v(a')\rangle|
@@ -165,7 +225,7 @@ $\phi_0(\overline{\emptyset},a_1)=b_0 v(a_1)=v(a_1)$, hence for $a'\neq a_1$,
 = \frac{1}{3} b_1
 \le \frac{1}{2} b_1,
 \]
-since $b_1=3\rho b_0=3\rho$.
+since $b_1=3\rho$.
 
 \emph{Inductive step.}
 Assume the claim holds for $t-1\ge 0$. Let $a'\notin\{a_1,\dots,a_{t+1}\}$.
@@ -184,7 +244,8 @@ Thus
 = \frac{3}{2}\rho b_t
 = \frac{1}{2} b_{t+1},
 \end{align*}
-using the induction hypothesis with $a'=a_{t+1}$ and the recursion $b_{t+1}=3\rho b_t$.
+using the induction hypothesis (with $a'=a_{t+1}$ at level $t-1$) and the
+recursion $b_{t+1}=3\rho b_t$.
 \end{proof}
 
 \begin{lemma}[Greedy action is $a^\star$ everywhere]
@@ -203,21 +264,19 @@ Fix $h$ and $s_h=\overline{a_{1:h}}\in\Scal_h^{\mathrm{nt}}$.
 
 \emph{Lower bound for $a^\star$.}
 If $h=0$, then $\widetilde Q_0(\overline{\emptyset},a^\star)=\langle v(a^\star),v(a^\star)\rangle=1=b_0$.
-If $h\ge 1$, then $a^\star\notin\{a_1,\dots,a_h\}$ along any nonterminal path, so
+If $h\ge 1$, then along any nonterminal path we have $a^\star\notin\{a_1,\dots,a_h\}$, so
 \[
 \widetilde Q_h(s_h,a^\star)
 = \langle \phi_h(s_h,a^\star), v(a^\star)\rangle
 = \langle \phi_{h-1}(\overline{a_{1:h-1}},a_h), v(a^\star)\rangle + b_h .
 \]
 By Lemma~\ref{lem:fresh_corr_bound} applied at time $t=h-1$ with $a_{t+1}=a_h$ and $a'=a^\star$,
-we have
 $\big|\langle \phi_{h-1}(\overline{a_{1:h-1}},a_h), v(a^\star)\rangle\big|\le \frac12 b_h$.
 Hence $\widetilde Q_h(s_h,a^\star)\ge \frac12 b_h$.
 
 \emph{Upper bound for $a\neq a^\star$.}
 Let $a\neq a^\star$.
-If $a$ is a repeat action (i.e.\ $a\in\{a_1,\dots,a_h\}$), then by construction $\phi_h(s_h,a)=0$,
-so $\widetilde Q_h(s_h,a)=0\le \frac14 b_h$.
+If $a\in\{a_1,\dots,a_h\}$, then $\phi_h(s_h,a)=0$ by construction, so $\widetilde Q_h(s_h,a)=0\le \frac14 b_h$.
 
 Otherwise $a\notin\{a_1,\dots,a_h\}$, and
 \[
@@ -227,8 +286,7 @@ Otherwise $a\notin\{a_1,\dots,a_h\}$, and
 \]
 By Lemma~\ref{lem:fresh_corr_bound} (with $t=h-1$, $a_{t+1}=a_h$, $a'=a$),
 $|\langle \phi_{h-1}(\overline{a_{1:h-1}},a_h), v(a)\rangle|\le \frac12 b_h$.
-Also $|\langle v(a),v(a^\star)\rangle|\le \rho$.
-Therefore,
+Also $|\langle v(a),v(a^\star)\rangle|\le \rho$. Therefore,
 \[
 \widetilde Q_h(s_h,a)
 \le \Big(\tfrac12 b_h + b_h\Big)\rho
@@ -238,13 +296,12 @@ Therefore,
 using $\rho\le 1/6$.
 \end{proof}
 
-%===========================================================
-\subsection*{Realizability and Bellman optimality}
+\section*{Realizability and Bellman optimality}
 
 \begin{lemma}[Bellman optimality of $\widetilde Q$]
 \label{lem:realizability_bellman}
-In $\mathcal{M}_{a^\star}$, the function $\widetilde Q$ satisfies the Bellman optimality equations:
-for all $h\in\{0,\dots,H-1\}$ and $(s,a)\in\Scal_h\times\Acal$,
+In $\mathcal{M}_{a^\star}$, the function $\widetilde Q$ satisfies the Bellman
+optimality equations: for all $h\in\{0,\dots,H-1\}$ and $(s,a)\in\Scal_h\times\Acal$,
 \[
 \widetilde Q_h(s,a)= r_h(s,a)+ \E\!\left[\widetilde V_{h+1}(s_{h+1})\mid s_h=s,a_h=a\right].
 \]
@@ -257,7 +314,8 @@ We verify the Bellman equation case-by-case.
 If $h=H-1$, then $\widetilde V_H\equiv 0$ and $r_{H-1}(s,a)=\widetilde Q_{H-1}(s,a)$ by definition.
 
 Now fix $h\le H-2$.
-If $s_{h+1}=f$, then $\widetilde V_{h+1}(f)=0$ and $r_h(s,a)=\widetilde Q_h(s,a)$ by definition.
+If the transition sends $s_{h+1}=f$, then $\widetilde V_{h+1}(f)=0$ and
+$r_h(s,a)=\widetilde Q_h(s,a)$ by definition.
 
 Otherwise $s_{h+1}\in\Scal_{h+1}^{\mathrm{nt}}$. By Lemma~\ref{lem:greedy_astar},
 the greedy action at $s_{h+1}$ is $a^\star$, hence
@@ -275,74 +333,110 @@ Therefore, using $r_h(s,a)=-b_{h+1}$ on this branch,
 \[
 r_h(s,a)+\widetilde V_{h+1}(s_{h+1})
 = (-b_{h+1}) + (\widetilde Q_h(s,a)+b_{h+1})
-= \widetilde Q_h(s,a),
+= \widetilde Q_h(s,a).
 \]
-which is exactly the Bellman equation.
-
-Finally, since $\widetilde Q$ satisfies Bellman optimality, it equals $Q^\star$.
+This establishes Bellman optimality, hence $\widetilde Q=Q^\star$.
 \end{proof}
 
-SK: move theorem to be the start
-\begin{theorem}[Linear $Q^\star$ realizability can be exponentially hard (generative model)]
-\label{thm:lower_gen_gapless_simple}
-Consider any algorithm $\mathcal{A}$ that has access to a generative model and
-is given as input a feature map $\phi:\Scal\times\Acal\times[H]\to\R^d$.
-There exists a finite-horizon MDP $M$ with horizon $H$, together with a feature map $\phi$,
-such that Assumption~\ref{assumption:realizability} holds (i.e.\ for each $h\in[H]$,
-$Q_h^\star(\cdot,\cdot)$ is linear in $\phi(\cdot,\cdot,h)$), and such that the following is true:
+\section*{Proof sketch of Theorem~\ref{thm:lower_gen_gapless_simple}}
 
-If $\mathcal{A}$ outputs a policy $\pi$ satisfying
-\[
-V_0^{\pi}(s_0) \;\ge\; V_0^\star(s_0)-0.05
-\]
-with probability at least $0.1$, then $\mathcal{A}$ must make $\exp(\Omega(d))$
-calls to the generative model.
-\end{theorem}
-
-
-\begin{proof}[Proof sketch]
-We instantiate $M$ as one member of the trajectory-tree family $\{M_{a^\star}\}$ from
-Section~\ref{sec:linearQstar_gapless_lb}, with Gaussian reward noise as defined above.
-In this family the feature map $\phi$ is shared across all instances; the index $a^\star$
-only appears through the parameter $\theta^\star=v(a^\star)$ inside $Q^\star$ (and hence the mean reward).
+\begin{proof}[Proof sketch of Theorem~\ref{thm:lower_gen_gapless_simple}]
+We instantiate $M$ as $\mathcal{M}_{a^\star}$ with $a^\star$ drawn uniformly from $[A]$.
+The feature map $\phi$ is shared across all instances; the instance index $a^\star$
+only appears through the parameter $\theta^\star = v(a^\star)$ (and hence through the
+mean rewards $r_h(s,a)=\langle \phi_h(s,a),\theta^\star\rangle$ at the last layer and on
+terminal transitions).
 
 \smallskip\noindent
-\textbf{Step 1: Near-optimality forces identifying $a^\star$.}
-By Lemma~\ref{lem:greedy_astar} (greedy action is $a^\star$ at every nonterminal state),
-in particular at the start state $s_0$ the unique optimal action is $a^\star$ and any $a\neq a^\star$
-incurs a constant value loss at $s_0$. Hence any policy that is $0.05$-optimal must select $a^\star$
-at $s_0$ with constant probability, i.e.\ it must identify $a^\star$ with constant probability.
+\textbf{Step 1: Near-optimality forces identifying $a^\star$ at the root.}
+By Lemma~\ref{lem:greedy_astar}, at the start state $s_0=\overline{\emptyset}$ we have
+\[
+Q_0^\star(s_0,a^\star)=\widetilde Q_0(s_0,a^\star)=1,
+\qquad
+\max_{a\neq a^\star} Q_0^\star(s_0,a)=\max_{a\neq a^\star}\widetilde Q_0(s_0,a)\le \rho \le \tfrac16.
+\]
+Thus any policy that fails to choose $a^\star$ at $s_0$ suffers a constant value gap
+(at least $1-\rho\ge 5/6$ at the root). In particular, producing a $0.05$-optimal policy
+with constant probability requires outputting $a^\star$ at $s_0$ with constant probability,
+i.e.\ identifying $a^\star$ with constant probability.
 
 \smallskip\noindent
-\textbf{Step 2: Until $\mathcal{A}$ queries $a^\star$, its transcript carries (essentially) no information about $a^\star$.}
-Fix any query $(s,a,h)$ with $a\neq a^\star$. In the construction, the transition is independent of $a^\star$
-and the mean reward $r_h(s,a)$ is also independent of $a^\star$; with Gaussian noise added, the full conditional
-distribution of the observed reward remains independent of $a^\star$.
-Therefore, the entire transcript distribution is identical across different $a^\star$ unless $\mathcal{A}$
-queries an action equal to $a^\star$ at least once.
+\textbf{Step 2: Unless the algorithm ever queries $a^\star$ before the last layer,
+the transcript depends on $a^\star$ only through last-layer rewards.}
+Let $Z$ denote the full transcript of $T$ generative-model queries and observations.
+Define the event
+\[
+E := \{\text{the algorithm makes at least one query with action } a=a^\star \text{ at some } h\le H-2\}.
+\]
+We claim that on the complementary event $E^c$, \emph{all observations from layers $h\le H-2$
+are independent of $a^\star$}. Indeed, fix any query $(s,a,h)$ with $h\le H-2$ and $a\neq a^\star$:
+\begin{itemize}
+\item If $a$ repeats an action already on the path encoded by $s$, then by construction
+$\phi_h(s,a)=0$, the next state is $f$, and the (mean) reward is $r_h(s,a)=\widetilde Q_h(s,a)=0$,
+independent of $a^\star$.
+\item Otherwise (a fresh action $a\neq a^\star$), the transition is to a nonterminal state and
+the mean reward is the constant $r_h(s,a)=-b_{h+1}$, again independent of $a^\star$.
+\end{itemize}
+Thus, conditioned on $E^c$, the only dependence of $Z$ on $a^\star$ comes from queries at the last
+layer $h=H-1$ (where the mean reward is $\widetilde Q_{H-1}(s,a)=\langle \phi_{H-1}(s,a),\theta^\star\rangle$).
 
 \smallskip\noindent
-\textbf{Step 3: A Fano/averaging bound gives $T=\Omega(|\Acal|)$.}
-Let $A:=|\Acal|$, and take $a^\star$ uniformly random in $[A]$.
-Let $T$ be the number of generative-model queries made by $\mathcal{A}$, and let $N_a$ be the number of times
-$\mathcal{A}$ queries action $a$. Then $\sum_{a=1}^A N_a = T$, so
+\textbf{Step 3: Hitting $a^\star$ early costs $\Omega(A)$ queries.}
+Let $N_{a^\star}$ be the number of times the algorithm queries action $a^\star$ at layers $h\le H-2$.
+Then $\mathbf{1}_E \le N_{a^\star}$, so
 \[
-\Pr(\text{$\mathcal{A}$ ever queries $a^\star$}) \;=\; \E\!\left[\frac{N_{a^\star}}{1}\right]
-\;=\; \frac{1}{A}\sum_{a=1}^A \Pr(\text{$\mathcal{A}$ queries $a$ at least once})
-\;\le\; \frac{T}{A}.
+\Pr(E) \;\le\; \E[N_{a^\star}].
 \]
-On the complementary event (probability $\ge 1-T/A$), the transcript is independent of $a^\star$ (Step 2),
-so $\mathcal{A}$ cannot identify $a^\star$ with probability better than $1/A$ on that event.
-Thus the overall success probability of identifying $a^\star$ is at most
+Averaging over the uniform draw of $a^\star$ and using $\sum_{a=1}^A N_a \le T$,
 \[
-\Pr(\text{identify $a^\star$}) \;\le\; \frac{T}{A} + \frac{1}{A}.
+\E[N_{a^\star}] \;=\; \frac{1}{A}\sum_{a=1}^A \E[N_a] \;\le\; \frac{T}{A}.
 \]
-Choosing $T \le cA$ for a sufficiently small constant $c$ makes this strictly smaller than $0.1$.
-By Step 1, failing to identify $a^\star$ with constant probability implies failing to output a $0.05$-optimal
-policy with probability $0.1$.
+Hence if $T \ll A$, then $\Pr(E)$ is small: with high probability the algorithm never queries $a^\star$
+at any layer $h\le H-2$.
 
-Finally, in our instantiation we take $A=\exp(\Theta(d))$ (via the packing lemma), yielding the stated
-$\exp(\Omega(d))$ lower bound on the required number of generative-model queries.
+\smallskip\noindent
+\textbf{Step 4: Conditioned on $E^c$, learning $a^\star$ from last-layer ``leakage'' costs
+$\Omega((\log A)/b_{H-1}^2)$ queries.}
+On $E^c$, the entire $a^\star$-dependence comes from last-layer reward observations.
+In our construction rewards are observed with i.i.d.\ $\mathcal{N}(0,1)$ noise, so each last-layer
+query yields an observation distributed as $\mathcal{N}(\mu_{a^\star},1)$ where
+$\mu_{a^\star}=\langle \phi_{H-1}(s,a), v(a^\star)\rangle$.
+
+Moreover, by the feature recursion and Lemma~\ref{lem:fresh_corr_bound}, whenever $\phi_{H-1}(s,a)\neq 0$
+its norm is on the order of $b_{H-1}$ (in fact $\|\phi_{H-1}(s,a)\|_2 \le \tfrac32 b_{H-1}$), so for any two
+instances $a^\star\neq {a^\star}'$ and any fixed last-layer query we have
+\[
+|\mu_{a^\star}-\mu_{{a^\star}'}|
+= \big|\langle \phi_{H-1}(s,a), v(a^\star)-v({a^\star}')\rangle\big|
+\;\le\; 3 b_{H-1}.
+\]
+Thus the per-query KL divergence between the two corresponding Gaussians is
+\[
+\mathrm{KL}\!\left(\mathcal{N}(\mu_{a^\star},1)\,\middle\|\,\mathcal{N}(\mu_{{a^\star}'},1)\right)
+= \frac{(\mu_{a^\star}-\mu_{{a^\star}'})^2}{2}
+\;\le\; O(b_{H-1}^2).
+\]
+By the chain rule for KL (or mutual information) and adaptivity, the total information in $T$ queries
+satisfies $\mathrm{KL}(P_{a^\star}^Z\|P_{{a^\star}'}^Z)\le O(T b_{H-1}^2)$ for all $a^\star\neq {a^\star}'$.
+A standard Fano-type bound then implies that to identify $a^\star$ among $A$ possibilities with constant
+probability, it is necessary that
+\[
+T \;\gtrsim\; \frac{\log A}{b_{H-1}^2}.
+\]
+Since $b_{H-1}=(3\rho)^{H-1}\le 2^{-(H-1)}$ (for $\rho\le 1/6$), this term is $\exp(\Omega(H))$ up to polynomial
+factors.
+
+\smallskip\noindent
+\textbf{Step 5: Combine and conclude.}
+Putting Steps 3--4 together yields a lower bound of the form
+\[
+T \;\ge\; \Omega\!\left(\min\left\{A,\ \frac{\log A}{b_{H-1}^2}\right\}\right).
+\]
+With $A=\exp(\Theta(d))$ (from the packing argument) and $b_{H-1}=(3\rho)^{H-1}$, this implies
+\[
+T \;\ge\; \exp(\Omega(\min\{d,H\})) \quad \text{(up to polynomial factors)}.
+\]
+In particular, taking $H=\Theta(d)$ recovers $T\ge \exp(\Omega(d))$ as stated.
+By Step 1, such a sample size is necessary for producing a $0.05$-optimal policy with constant probability.
 \end{proof}
-
 
