@@ -13,7 +13,7 @@ assumption which permit sample efficient reinforcement learning in
 various cases.   
 
 Recall our lower bounds from
-Chapter~\ref{chap:generalization_stat_limits} which suggest that
+Chapter~\ref{chap:linear_features} which suggest that
 assumptions which would permit sample efficient RL may be subtle due
 to that: (i) agnostic RL is not possible and (ii) any assumption which
 permits sample efficient requires stronger, and possibly more subtle,
@@ -172,7 +172,7 @@ as defined above, has a \emph{$Q$-Bellman rank} of $d$.
 \subsubsection{Linear Bellman Completion} 
 Let us now consider the
 linear Bellman completion setting
-(Definition~\ref{def:linear_bellman_complete}). We show that linear
+(Definition~\ref{def:bc}). We show that linear
 Bellman completion models have $Q$-Bellman rank equal to $d$.  In this
 setting, since $Q^\star_h(s,a) = (\theta_h^\star)^{\top} \phi(s,a),\forall s,a, h$, we use linear functions for our hypothesis class, i.e.,
 $\mathcal{H}_h = \{ \theta^{\top} \phi(s,a): \| \theta\|_2 \leq W, \|\theta^{\top} \phi(\cdot,\cdot)\|_{\infty} \leq H \}$
@@ -180,7 +180,7 @@ for some $W \in \mathbb{R}^+$ where $\|\theta_h^\star\|_2 \leq W$ ; as in Sectio
 set of values are those that are greedy with respect to these $Q$
 functions. 
 
-Recall from Definition~\ref{def:linear_bellman_complete}, given $\theta$, we use $\mathcal{T}_h(\theta)\in\mathbb{R}^d$ to represent the linear function resulting from the Bellman backup, i.e.,
+Recall from Definition~\ref{def:bc}, given $\theta$, we use $\mathcal{T}_h(\theta)\in\mathbb{R}^d$ to represent the linear function resulting from the Bellman backup, i.e.,
 \begin{align*}
 \forall s,a: \Tcal_h(\theta)^{\top} \phi(s,a)  = r(s,a ) + \E_{s'\sim P_h(\cdot | s,a)} [ \max_{a'} \theta^{\top}\phi(s',a')].
 \end{align*} We further assume feature is normalized, i.e., $\sup_{s,a} \| \phi(s,a) \|_2 \leq 1$, and $\sup_{h, \theta\in \Hcal_h}\| \Tcal_h(\theta) \|_2 \leq W$. Note that this condition holds in linear MDP with $W = 2H\sqrt{d}$.
@@ -248,7 +248,7 @@ $Q$-Bellman rank of $2d$.
 
 \paragraph{The linear $Q^\star$ assumption vs. the linear
   $Q^\star/V^\star$ assumption.} As we saw in
-Chapter~\ref{chap:generalization_stat_limits}, simply assuming that
+Chapter~\ref{chap:linear_features}, simply assuming that
 $Q^\star$ is linear is not sufficient for sample efficient RL. Thus it
 may seem surprising that assuming both $Q^\star$ and $V^\star$ are
 linear (in different features) permits a sample efficient algorithm
