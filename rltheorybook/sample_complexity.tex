@@ -519,15 +519,15 @@ N \;\gtrsim\; \frac{H^2}{\eps^2}\,\log\!\Big(\frac{|\Scal||\Acal|}{\delta}\Big),
 The dependence on $H$ looks different from the discounted case, but it is not directly comparable without specifying how one maps $\gamma$ to an effective horizon. One rough correspondence is $H \asymp \frac{1}{1-\gamma}$; under this heuristic, the leading-order scalings match up to constants and logarithmic factors.
 
 \paragraph{Lower bounds.}
-In the same minimax sense as Theorem~\ref{thm:lower_sample_complexity}, the above model-based rate is optimal (up to constant and logarithmic factors) for finite-horizon MDPs under a generative model. We omit the proof.
+In the same minimax sense as Theorem~\ref{thm:minimax_lower_discounted}, the above model-based rate is optimal (up to constant and logarithmic factors) for finite-horizon MDPs under a generative model. We omit the proof.
 
 
 \section{Analysis}\label{sec:analysis}
 
-We now prove the \emph{value-estimation} guarantee in Theorem~\ref{thm:sample_complexity}
+We now prove the \emph{value-estimation} guarantee in Theorem~\ref{thm:sample_complexity_finite}
 (i.e.\ the first bullet). For convenience, we restate it here.
 
-\begin{theorem}[Value estimation; restatement of Theorem~\ref{thm:sample_complexity}]
+\begin{theorem}[Value estimation; restatement of Theorem~\ref{thm:sample_complexity_finite}]
 \label{thm:sample_complexity_value_est}
 Fix $\delta\in(0,1)$. For an appropriately chosen absolute constant $c$, with probability at least $1-\delta$,
 \[
@@ -810,7 +810,7 @@ Bernstein remainder $\frac{1}{1-\gamma}\frac{\log(\cdot)}{N}\mathds{1}$ is absor
 
 \medskip
 
-\begin{proof}[Proof of Theorem~\ref{thm:sample_complexity}]
+\begin{proof}[Proof of Theorem~\ref{thm:sample_complexity_value_est}]
 We bound the two sides in Lemma~\ref{lemma:component}.
 
 We first handle the upper deviation.

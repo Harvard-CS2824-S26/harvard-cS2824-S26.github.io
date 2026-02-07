@@ -307,7 +307,7 @@ the reward $r_h(s,a)$).
 
 \begin{theorem}[LSVI under Bellman completeness; generative model]
 \label{thm:lsvi_bc_generative}
-Assume Bellman completeness (Section~\ref{subsec:BC_assumption}) and bounded rewards
+Assume Bellman completeness and bounded rewards
 $r_h(s,a)\in[0,1]$. Let $\rho$ be a D-optimal design as in
 Lemma~\ref{lem:d_opt_design}. Fix $\epsilon\in(0,1)$ and $\delta\in(0,1)$, and set
 \[
@@ -552,11 +552,11 @@ using Lemma~\ref{lem:d_opt_design}.
 \label{subsec:BC_offline_lsvi}
 
 We first consider learning a near-optimal policy from offline data. Under Bellman
-completeness (Section~\ref{subsec:BC_assumption}) and coverage, the proof of the
+completeness and coverage, the proof of the
 generative-model guarantee carries over with only minor changes.
 
 \begin{theorem}[Offline LSVI under Bellman completeness]\label{thm:lsvi_bc_offline}
-Assume Bellman completeness (Section~\ref{subsec:BC_assumption}), bounded rewards
+Assume Bellman completeness, bounded rewards
 $r_h(s,a)\in[0,1]$, and the coverage condition
 (Assumption~\ref{assumption:coverage}) with parameter $\kappa$.
 Fix $\epsilon\in(0,1)$ and $\delta\in(0,1)$, and suppose each stage dataset has size
