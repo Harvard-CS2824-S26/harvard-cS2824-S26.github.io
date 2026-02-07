@@ -5,16 +5,17 @@
   >=Latex,
   font=\small,
   state/.style={circle,draw,minimum size=9mm,inner sep=1pt},
-  obsbox/.style={draw,dashed,rounded corners,inner sep=2.8mm},
-  % If you want arrowheads, change to:
-  % aone/.style={thick,->},
-  % atwo/.style={thick,dashed,->}
+  % Make boxes visually distinct from a2 dashed edges:
+  obsbox/.style={draw,densely dotted,rounded corners,inner sep=3.0mm},
+  % If you want subtle arrowheads, use these instead:
+  % aone/.style={thick,-{Latex[length=1.9mm]}},
+  % atwo/.style={thick,dashed,-{Latex[length=1.9mm]}},
   aone/.style={thick},
   atwo/.style={thick,dashed}
 ]
 
 % -------------------------
-% Geometry
+% Geometry (as before)
 % -------------------------
 \def\xOne{0}
 \def\xTwo{2.1}
@@ -29,28 +30,39 @@
 \def\yRowHm{-6.4}
 \def\yRowH{-8.4}
 
+% How much extra room to the LEFT for the D_h boxes
+\def\boxLeftExtra{2.1cm}
+
+% Shift the whole picture right to create left margin
+\begin{scope}[xshift=1.6cm]
+
 % -------------------------
-% Top text: features + legend
+% Top text: features + rewards legend + action legend
 % -------------------------
-\node[align=left] at (3.6,2.45) {$\phi(s_h^c,a_1)=e_c$\\
+% Use text widths to make the top feel "more justified"/blocky.
+\node[anchor=north west,align=left,text width=6.2cm] at (1,2.9) {%
+\textbf{features:}\\
+$\phi(s_h^c,a_1)=e_c$\\
 $\phi(s_h^c,a_2)=e_{m+c}$\\
-$\phi(g_h,a)=\frac{1}{\sqrt m}\sum_{c=1}^m e_c$};
+$\phi(g_h,a)=\frac{1}{\sqrt m}(e_1+e_2+\cdots+e_m)$};
 
-% Legend box (slightly higher)
+\node[anchor=north west,align=left,text width=5.4cm] at (-3,2.9) {%
+\textbf{reward params:}\\
+$r_\infty\in\{0,\ m^{-H/2}\}$\\
+$\alpha_h := r_\infty\, m^{(H-h)/2}$};
+
+% Legend box (higher)
 \node[draw,minimum width=2.7cm,minimum height=1.4cm,anchor=north east] (leg)
-  at (\xAgg+2.9,2.85) {};
-
+  at (\xAgg+3.2,2.8) {};
 \draw[aone] ([xshift=-2.3cm,yshift=-0.45cm]leg.north east) -- ++(1.2,0)
   node[midway,above] {$a_1$};
-
 \draw[atwo] ([xshift=-2.3cm,yshift=-1.05cm]leg.north east) -- ++(1.2,0)
   node[midway,above] {$a_2$};
 
+  
 % -------------------------
 % Nodes
 % -------------------------
-
-% Row h=0
 \node[state] (s0-1) at (\xOne,\yRowZero) {$s_0^{1}$};
 \node[state] (s0-2) at (\xTwo,\yRowZero) {$s_0^{2}$};
 \node[state] (s0-3) at (\xThree,\yRowZero) {$s_0^{3}$};
@@ -58,7 +70,6 @@ $\phi(g_h,a)=\frac{1}{\sqrt m}\sum_{c=1}^m e_c$};
 \node[state] (s0-m) at (\xLast,\yRowZero) {$s_0^{m}$};
 \node[state] (g0)   at (\xAgg,\yRowZero) {$g_0$};
 
-% Row h=1
 \node[state] (s1-1) at (\xOne,\yRowOne) {$s_1^{1}$};
 \node[state] (s1-2) at (\xTwo,\yRowOne) {$s_1^{2}$};
 \node[state] (s1-3) at (\xThree,\yRowOne) {$s_1^{3}$};
@@ -66,7 +77,6 @@ $\phi(g_h,a)=\frac{1}{\sqrt m}\sum_{c=1}^m e_c$};
 \node[state] (s1-m) at (\xLast,\yRowOne) {$s_1^{m}$};
 \node[state] (g1)   at (\xAgg,\yRowOne) {$g_1$};
 
-% Row h (generic)
 \node[state] (sh-1) at (\xOne,\yRowMid) {$s_h^{1}$};
 \node[state] (sh-2) at (\xTwo,\yRowMid) {$s_h^{2}$};
 \node[state] (sh-3) at (\xThree,\yRowMid) {$s_h^{3}$};
@@ -74,15 +84,13 @@ $\phi(g_h,a)=\frac{1}{\sqrt m}\sum_{c=1}^m e_c$};
 \node[state] (sh-m) at (\xLast,\yRowMid) {$s_h^{m}$};
 \node[state] (gh)   at (\xAgg,\yRowMid) {$g_h$};
 
-% Row H-2
 \node[state] (sHm-1) at (\xOne,\yRowHm) {$s_{H-2}^{1}$};
 \node[state] (sHm-2) at (\xTwo,\yRowHm) {$s_{H-2}^{2}$};
 \node[state] (sHm-3) at (\xThree,\yRowHm) {$s_{H-2}^{3}$};
-\node         (sHm-d) at (\xDots,\yRowHm) {$\cdots$};
+\node        (sHm-d) at (\xDots,\yRowHm) {$\cdots$};
 \node[state] (sHm-m) at (\xLast,\yRowHm) {$s_{H-2}^{m}$};
 \node[state] (gHm)   at (\xAgg,\yRowHm) {$g_{H-2}$};
 
-% Row H-1
 \node[state] (sH-1) at (\xOne,\yRowH) {$s_{H-1}^{1}$};
 \node[state] (sH-2) at (\xTwo,\yRowH) {$s_{H-1}^{2}$};
 \node[state] (sH-3) at (\xThree,\yRowH) {$s_{H-1}^{3}$};
@@ -91,30 +99,59 @@ $\phi(g_h,a)=\frac{1}{\sqrt m}\sum_{c=1}^m e_c$};
 \node[state] (gH)   at (\xAgg,\yRowH) {$g_{H-1}$};
 
 % -------------------------
-% Data support boxes: only observed states
+% Data support boxes: extend LEFT to create writing room
 % -------------------------
-\tikzset{obsbox/.style={draw,densely dotted,rounded corners,inner sep=2.8mm}}
+\coordinate (L0)  at ([xshift=-\boxLeftExtra]s0-1.west);
+\coordinate (L1)  at ([xshift=-\boxLeftExtra]s1-1.west);
+\coordinate (Lh)  at ([xshift=-\boxLeftExtra]sh-1.west);
+\coordinate (LHm) at ([xshift=-\boxLeftExtra]sHm-1.west);
+\coordinate (LH)  at ([xshift=-\boxLeftExtra]sH-1.west);
 
-\node[obsbox,fit=(s0-1)(s0-m)] (box0) {};
-\node[obsbox,fit=(s1-1)(s1-m)] (box1) {};
-\node[obsbox,fit=(sh-1)(sh-m)] (boxh) {};
-\node[obsbox,fit=(sHm-1)(sHm-m)] (boxHm) {};
-\node[obsbox,fit=(sH-1)(sH-m)] (boxH) {};
+\node[obsbox,fit=(L0)(s0-m)] (box0) {};
+\node[obsbox,fit=(L1)(s1-m)] (box1) {};
+\node[obsbox,fit=(Lh)(sh-m)] (boxh) {};
+\node[obsbox,fit=(LHm)(sHm-m)] (boxHm) {};
+\node[obsbox,fit=(LH)(sH-m)] (boxH) {};
 
+% Labels INSIDE boxes (shifted down a bit more to avoid top-border collision)
+\def\labx{2.5mm}
+\def\laby{-3.2mm}
+\node[anchor=north west] at ([xshift=\labx,yshift=\laby]box0.north west) {$D_0$};
+\node[anchor=north west] at ([xshift=\labx,yshift=\laby]box1.north west) {$D_1$};
+\node[anchor=north west] at ([xshift=\labx,yshift=\laby]boxh.north west) {$D_h$};
+\node[anchor=north west] at ([xshift=\labx,yshift=\laby]boxHm.north west) {$D_{H-2}$};
+\node[anchor=north west] at ([xshift=\labx,yshift=\laby]boxH.north west) {$D_{H-1}$};
 
-% Labels: slightly DOWN and RIGHT (inside the box; avoids hitting the top border)
-\def\lblx{12mm}
-\def\lbly{-1.4mm}
-\node[anchor=north west] at ([xshift=\lblx,yshift=\lbly]box0.north west) {$D_0$};
-\node[anchor=north west] at ([xshift=\lblx,yshift=\lbly]box1.north west) {$D_1$};
-\node[anchor=north west] at ([xshift=\lblx,yshift=\lbly]boxh.north west) {$D_h$};
-\node[anchor=north west] at ([xshift=\lblx,yshift=\lbly]boxHm.north west) {$D_{H-2}$};
-\node[anchor=north west] at ([xshift=\lblx,yshift=\lbly]boxH.north west) {$D_{H-1}$};
+% Reward notes INSIDE boxes (left margin)
+\node[anchor=north west,align=left] at ([xshift=\labx,yshift=-8.2mm]box0.north west)
+  {\scriptsize $r_0=0$};
+\node[anchor=north west,align=left] at ([xshift=\labx,yshift=-8.2mm]box1.north west)
+  {\scriptsize $r_1=0$};
+\node[anchor=north west,align=left] at ([xshift=\labx,yshift=-8.2mm]boxh.north west)
+  {\scriptsize $r_h=0$};
+\node[anchor=north west,align=left] at ([xshift=\labx,yshift=-8.2mm]boxHm.north west)
+  {\scriptsize $r_{H-2}=0$};
+
+\node[anchor=north west,align=left] at ([xshift=\labx,yshift=-6.5mm]boxH.north west)
+  {\scriptsize $r_{H-1}\in\{\pm1\}$\\[-0.5mm]\scriptsize $\E[r_{H-1}]=r_\infty$};
+
+% -------------------------
+% Right-chain reward labels (stage-indexed, matches text)
+% -------------------------
+\node[anchor=west,align=left] at ([xshift=3mm]g0.east)
+  {\scriptsize $r_0=\alpha_0-\alpha_1$};
+\node[anchor=west,align=left] at ([xshift=3mm]g1.east)
+  {\scriptsize $r_1=\alpha_1-\alpha_2$};
+\node[anchor=west,align=left] at ([xshift=3mm]gh.east)
+  {\scriptsize $r_h=\alpha_h-\alpha_{h+1}$};
+\node[anchor=west,align=left] at ([xshift=3mm]gHm.east)
+  {\scriptsize $r_{H-2}=\alpha_{H-2}-\alpha_{H-1}$};
+\node[anchor=west,align=left] at ([xshift=3mm]gH.east)
+  {\scriptsize $r_{H-1}=\alpha_{H-1}$};
 
 % -------------------------
 % Transitions
 % -------------------------
-
 % a2 edges (vertical, observed chain)
 \foreach \u/\v in {s0-1/s1-1,s0-2/s1-2,s0-3/s1-3,s0-m/s1-m,
                   s1-1/sh-1,s1-2/sh-2,s1-3/sh-3,s1-m/sh-m,
@@ -141,4 +178,5 @@ $\phi(g_h,a)=\frac{1}{\sqrt m}\sum_{c=1}^m e_c$};
 \node at (\xAgg,{(\yRowMid+\yRowHm)/2}) {$\vdots$};
 \node at (\xOne,{(\yRowMid+\yRowHm)/2}) {$\vdots$};
 
+\end{scope}
 \end{tikzpicture}

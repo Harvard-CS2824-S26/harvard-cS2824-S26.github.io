@@ -703,3 +703,362 @@ bounded concentrability coefficient~\cite{munos2005error,
   szepesvari2005finite,antos2008learning,lazaric2016analysis}. \citet{chen2019information} provide a
 more detailed discussion on this quantity. 
 
+% SK and this was the start of the previous lower bound chapter. the "linear part" of the lower bounds is now in the previous chapter.
+
+\chapter{Information Theoretic Lower Bounds}
+%\chapter{Generalization in RL \\ \& Reductions to Supervised Learning}
+\label{chap:generalization_stat_limits}
+
+In reinforcement learning, we seek to have learnability results which
+are applicable to cases where number of states is large (or, possibly,
+countably or uncountably infinite). This is a question of
+generalization, which, more broadly, is one of the central
+challenges in machine learning. 
+
+%More generally, these are questions of
+%generalization, which is one of the central
+%challenges in machine learning.
+
+The previous two chapters largely focussed on \emph{sufficient}
+conditions under which we can obtain sample complexity results which
+do not explicitly depend on the size of the state (or action) space.  This chapter 
+focusses on what are \emph{necessary} conditions for
+generalization. Here, we can frame our questions by examining 
+the extent to which generalization in RL is similar to (or different
+from) that in supervised learning. Two most basic settings in
+supervised learning are: (i) agnostic learning (i.e. finding the best
+classifier or hypothesis in some class) and (ii) learning with linear
+models (i.e. learning the best linear regressor or the best linear
+classifier).  This chapter will focus on \emph{lower bounds} with
+regards to the analogues of these two questions for reinforcement learning:
+\begin{itemize}
+\item (Agnostic learning) Given some hypothesis class (of policies,
+  value functions, or models), what is the sample complexity of
+  finding (nearly) the best hypothesis in this class?
+\item (Linearly realizable values or policies) Suppose we are given
+  some $d$-dimensional feature mapping where we are guaranteed that
+  either the optimal value function is linear in these given features
+  or that the optimal policy has a linear parameterization.  Are we
+  able to obtain sample complexity guarantees that are polynomial in
+  $d$, with little to no explicit dependence on the size of the state
+  or action spaces? We will consider this question in both the offline
+  setting (for the purposes of policy evaluation, as in
+  Chapter~\ref{chap:Bellman_complete}) and for in online setting where
+  our goal is to learn a near optimal optimal policy.
+\end{itemize}
+Observe that supervised learning can be viewed as horizon one, $H=1$, RL
+problem (where the learner only receives feedback for the ``label'',
+i.e. the action, chosen). We can view the second question above as the
+analogue of linear regression or classification with halfspaces. In
+supervised learning, both of these settings have postive answers, and
+they are fundamental in our understanding of generalization.  Perhaps
+surprisingly, we will see negative answers to these questions in the
+RL setting.  The
+significance of this provides insights as to why our study of
+generalization in reinforcement learning is substantially more subtle than in
+supervised learning. Importantly, the insights we develop here will also help us to
+motivate the more refined assumptions and settings that we consider in
+subsequent chapters (see Section~\ref{sec:how_to_study_RL} for discussion).
+
+
+This chapter will work with finite horizon MDPs, where we consider
+both the episodic setting and the generative model setting. 
+With regards to the first question on agnostic learning, this chapter
+follows the ideas first introduced
+in~\cite{NIPS1999_1664}.  With regards to the second
+question on linear realizability, this chapter follows the results
+in~\cite{du2019good,wang2020statistical,WeiszAS21,Wang_linear_lower}. 
+
+
+\section{Agnostic Learning}
+
+Suppose we have a hypothesis class $\Hcal$ (either finite or
+infinite), where for each $f \in \Hcal$ we have an associated policy
+$\pi_f:\Scal \rightarrow \Acal$, which, for simplicity, we assume is deterministic.
+Here, we could have that:
+\begin{itemize}
+\item $\Hcal$ itself is a class of policies.
+\item $\Hcal$ is a set of state-action values, where for $f \in \Hcal$,
+  we associate it with the greedy policy $\pi_f(s,h) = \argmax_a
+  f_h(s,a)$, where $s\in\Scal$ and $h\in[H]$.
+\item $\Hcal$ could be a class of models (i.e. each $f \in \Hcal$ is an
+  MDP itself). Here, for each $f \in \Hcal$, we can let $\pi_f$ be the
+  optimal policy in the MDP $f$. 
+\end{itemize}
+We let $\Pi$ denote the induced set of policies from our hypothesis
+class $\Hcal$, i.e. $\Pi= \{\pi_f | f \in \Hcal\}$.
+
+
+The goal of agnostic learning can be formulated by the following optimization problem:
+\begin{equation}\label{eq:ag_learn_objective}
+\max_{\pi\in\Pi} \E_{s_0\sim \mu} V^{\pi}(s_0),
+\end{equation}
+where we are interested in the number of samples required to 
+approximately solve this optimization problem. We will work both in
+the episodic setting and the generative model setting, and, for
+simplicity, we will restrict ourselves to finite hypothesis classes.
+
+\iffalse
+As before, we only hope to perform favorably against the best policy
+in $\Pi$. Recall that in our aforementioned sampling model we have
+the ability to obtain trajectories from $s_0\sim \mu$ under policies
+of our choosing. As we have seen, agnostic learning is possible in
+the supervised learning setting, with regret bounds that have no dependence
+on the size of the domain --- the size of domain is analogous to the size
+the state space $|\Scal|$. 
+\fi
+
+\paragraph{Binary classification as an $H=1$ RL problem:} 
+Observe that the problem of binary classification can be viewed as
+learning in an MDP with a horizon of one. In particular, take $H=1$;
+take $|\Acal|=2$; let the distribution over starting states $s_0\sim\mu$
+correspond to the input distribution; and take the reward function as
+$r(s,a) = \ind(\textrm{label}(s) =a)$. In other words, we equate our
+action with the prediction of the binary class membership, and the reward
+function is determined by if our prediction is correct or not.
+
+\subsection{Review: Binary Classification}
+
+One of the most important concepts for learning binary classifiers is
+that it is possible to \emph{generalize} even when the state space is
+infinite. Here note that the domain of our classifiers, often denoted
+by $\mathcal{X}$, is analogous to the state space $\Scal$. We now
+briefly review some basics of supervised learning before we turn to
+the question of generalization in reinforcement learning.
+
+Consider the problem of binary classification with $N$ labeled
+examples of the form $(x_i, y_i)_{i=1}^N$, with $x_i \in
+\Xcal$ and $y_i \in \{0,1\}$. Suppose we have a (finite or infinte) set $\Hcal$ of
+binary classifiers where each $h \in \Hcal$ is a mapping of the form
+$h :\Xcal \to \{0,1\}$. Let $\ind(h(x) \ne y)$ be an indicator which
+takes the value $0$ if $h(x) = y$ and $1$ otherwise. We assume that our samples
+are drawn i.i.d. according to a fixed joint distribution $D$ over $(x,y)$.
+
+Define the empirical error and the true error as:
+\[
+\widehat{\err}(h) = 
+\frac{1}{N} \sum_{i=1}^N \ind(h(x_i) \ne y_i) , \quad
+\err(h) = \E_{(X,Y)\sim D} \ind(h(X) \ne Y).
+\]
+For a given $h \in \Hcal$, Hoeffding's inequality implies that with
+probability at least $1-\delta$: 
+\[\left|\textrm{err}(h) - \widehat{\textrm{err}}(h)
+\right| \leq \sqrt{\frac{1}{2N}\log\frac{2}{\delta}}.\]
+This and the union bound give rise to what is often referred to as the
+``Occam's razor'' bound:
+
+\begin{proposition}\label{proposition:occam_sl}
+(The ``Occam's razor'' bound)
+Suppose $\Hcal$ is finite.
+Let $\widehat{h} = \arg\min_{h \in \Hcal}\widehat{\textrm{err}}(h)$.
+%and $h^\star = \arg\min_{h \in  \Hcal} \err(h)$. 
+With probability at least $1-\delta$:
+\[
+\err(\widehat{h})  \leq \min_{h \in  \Hcal}\err(h) +
+\sqrt{\frac{2}{N}\log\frac{2|\Hcal|}{\delta}}.
+\]
+\end{proposition}
+
+Hence, provided that
+\[
+N \geq \frac{2 \log\frac{2|\Hcal|}{\delta}}{\eps^2},
+\]
+then with probability at least
+$1-\delta$, we have that:
+\[
+\err(\widehat{h})  \leq \min_{h \in  \Hcal}\err(h)+\eps.
+\]
+A key observation here is that the
+our regret --- the regret is the left hand side of the above
+inequality --- has \emph{no dependence} on the size of
+$\mathcal{X}$ (i.e. $\Scal$) which may be infinite and is only
+logarithmic in the number of hypothesis in our class.
+
+
+
+\subsection{Importance Sampling and a Reduction to Supervised Learning}
+
+Now let us return to the agnostic learning question in
+Equation~\ref{eq:ag_learn_objective}. We will see that, provided we
+are willing to be exponential in the horizon $H$, then agnostic
+learning is possible. Furthermore, it is a straightforward argument to
+see that we are not able to do better.
+
+
+\subsubsection*{An Occam's Razor Bound for RL}
+
+We now provide a reduction of RL to the supervised learning problem,
+given only sampling access in the episodic setting. The key issue is
+how to efficiently reuse data. The idea is that we will simply collect $N$
+trajectories by executing a policy which chooses actions uniformly at
+random; let $\textrm{Unif}_{\Acal}$ denote this policy. 
+
+The following shows how we can obtain an unbiased estimate of
+the value of any policy $\pi$ using this uniform policy $\textrm{Unif}_{\Acal}$:
+\begin{lemma}
+(Unbiased estimation of $V^\pi_0(\mu)$) Let $\pi$ be any
+deterministic policy. We have that:
+\[
+V^\pi_0(\mu) = 
+|\Acal|^H \cdot \E_{\tau\sim \Pr_{\textrm{Unif}_{\Acal}}}
+\left[\ind\Big(\pi(s_0)=a_0,\ \ldots ,\pi(s_{H-1})=a_{H-1}\Big)
+\sum_{h=0}^{H-1} r(s_h,a_h)\right]
+\]
+where $\Pr_{\textrm{Unif}_{\Acal}}$ specifies the distribution over 
+trajectories $\tau=(s_0,a_0,r_0, \ldots s_{H-1}, a_{H-1},r_{H-1})$
+under the policy $\textrm{Unif}_{\Acal}$.
+\end{lemma}
+
+The proof follows from a standard importance sampling
+argument (applied to the distribution over the trajectories). 
+\begin{proof}
+We have that:
+\begin{align*}
+V^\pi_0(\mu) &= 
+\E_{\tau\sim \Pr_{\pi}}
+\left[\sum_{h=0}^{H-1} r_h\right]\\
+&=
+\E_{\tau\sim \Pr_{\textrm{Unif}_{\Acal}}}
+\left[
+\frac{\Pr_{\pi}(\tau)}{\Pr_{\textrm{Unif}_{\Acal}}(\tau)}
+%\ind\Big(\pi(s_0)=a_0,\ \ldots ,\pi(s_{H-1})=a_{H-1}\Big)
+\sum_{h=0}^{H-1} r_h\right]\\
+&=|\Acal|^H \cdot \E_{\tau\sim \Pr_{\textrm{Unif}_{\Acal}}}
+\left[\ind\Big(\pi(s_0)=a_0,\ \ldots ,\pi(s_{H-1})=a_{H-1}\Big)
+\sum_{h=0}^{H-1} r_h\right]
+\end{align*}
+where the last step follows due to that the probability ratio is only
+nonzero when $\textrm{Unif}_{\Acal}$ choose actions identical to that
+of $\pi$.
+\end{proof}
+
+Crudely, the factor of $|\Acal|^H$ is due to that the estimated reward of $\pi$ on a
+trajectory is nonzero only when $\pi$ takes exactly identical
+actions to those taken by $\textrm{Unif}_{\Acal}$ on the trajectory,
+which occurs with probability $1/|\Acal|^H$.
+
+% in which case the
+%estimated value of $\pi$ is $|\Acal|^H$ times that of $\textrm{Unif}_{\Acal}$.
+
+
+Now, given sampling access in the episodic model, we can use
+$\textrm{Unif}_{\Acal}$ to get any estimate of any other policy
+$\pi\in\Pi$.
+Note that the factor of $|\Acal|^H$ in the previous lemma will lead to this approach being a high
+variance estimator. Suppose we draw $N$ trajectories under $\textrm{Unif}_{\Acal}$.
+Denote the $n$-th sampled trajectory by $(s_0^n, a_0^n, r_1^n, s_1^n,
+\ldots,s_{H-1}^n, a_{H-1}^n, r_{H-1}^n)$. We can then use following to estimate the
+finite horizon reward of any given policy $\pi$:
+\[
+\widehat V^\pi_0(\mu) = \frac{|\Acal|^H}{N}\sum_{n=1}^N 
+\ind\Big(\pi(s_0^n)=a_0^n, \ldots \pi(s_{H-1}^n)=a_{H-1}^n\Big)
+\sum_{t=0}^{H-1} r(s_t^n,a_t^n).
+\]
+
+\begin{proposition}\label{proposition:occam_RL}
+(An ``Occam's razor bound'' for RL)
+Let $\delta\geq 0$. Suppose $\Pi$ is a finite and suppose we use the aforementioned estimator, $\widehat
+V^{\pi}_0(\mu)$, to estimate the value of every $\pi\in\Pi$.  Let
+$\widehat{\pi} = \arg\max_{\pi\in\Pi}\widehat V^{\pi}_0(\mu)$. 
+%and  $\pi^\star = \arg\max_{\pi \in  \Pi} V^\pi(s_0)$.  
+We have that with probability at least
+$1-\delta$,
+\[
+V_0^{\widehat{\pi}}(\mu) \geq \max_{\pi \in  \Pi} V_0^{\pi}(\mu) -
+H |\Acal|^H\sqrt{\frac{2}{N}\log\frac{2|\Pi|}{\delta}}.
+\]
+\end{proposition}
+
+\begin{proof}
+Note that, fixing $\pi$, our estimator is sum of i.i.d. random variables,
+where each independent estimator,  $ |\Acal|^H
+\ind\Big(\pi(s_0^n)=a_0^n, \ldots \pi(s_{H-1}^n)=a_{H-1}^n\Big)
+\sum_{t=0}^{H-1} r(s_t^n,a_t^n)$, is bounded by $H |\Acal|^H$. The
+remainder of the argument is identical to that used in Proposition~\ref{proposition:occam_sl}.
+\end{proof}
+
+Hence, provided that 
+\[
+N \geq  H |\Acal|^H \ \frac{2\log(2|\Pi|/\delta)}{\eps^2},
+\]
+then with probability at least
+$1-\delta$, we have that:
+\[
+V_0^{\widehat \pi}(s_0) \geq \max_{\pi \in  \Pi} V_0^\pi(s_0)  -\eps.
+\]
+This is the analogue of the Occam's razor bound for RL.
+
+Importantly, the above shows that we can avoid dependence on the size
+of the state space, though this comes at the price of an exponential dependence
+on the horizon. As we see in the next section, this dependence is
+unavoidable (without making further assumptions).
+
+\paragraph{Infinite Policy Classes.}
+In the supervised learning setting, a crucial observation is that even
+though a hypothesis set $\Hcal$ of binary classifiers may be
+infinite, we may still be able to obtain non-trivial generalization
+bounds. A crucial observation here is that even
+though the set $\Hcal$ may be infinite, the number of
+possible behaviors of on a finite set of states is not necessarily
+exhaustive. 
+The
+\emph{Vapnik–Chervonenkis} (VC) dimension of $\Hcal$, $VC(\Hcal)$, is formal way to
+characterize this intuition, and, using this concept, we are able to
+obtain generalization bounds in terms of the $VC(\Hcal)$.
+
+With regards to infinite hypothesis classes of policies (say for the
+case where $|\Acal|=2$), extending our Occam's razor bound can be done
+with precisely the same approach. In particular, when $|\Acal|=2$,
+each $\pi\in\Pi$ can be viewed as Boolean function, and this gives
+rise to the VC dimension $\textrm{VC}(\Pi)$ of our policy class. The
+bound in Proposition~\ref{proposition:occam_RL} can be replaced with a
+VC-dimension bound that is analogous to that of binary
+classification (see Section~\ref{ch3:bib}). 
+
+
+\subsubsection*{Lower Bounds}
+
+Clearly, the drawback of this agnostic learning approach is that we
+would require a number of samples that is exponential in
+the problem horizon. We now see that if we desire a
+sample complexity that scales with $O(\log|\Pi|)$, then an
+exponential dependence on the effective horizon is unavoidable,
+without making further assumptions.
+
+Here, our lower bound permits a (possibly randomized) algorithm to utilize a generative
+model (which is a more powerful sampling model than the episodic one).
+% and
+%the algorithm may return a policy $\pi$ not necessarily corresponding to
+%any policy in $\Pi$.
+
+\begin{proposition}
+(Lower Bound with a Generative Model)
+Suppose algorithm $\Acal$ has access to a generative model.
+There exists a policy class $\Pi$, where $|\Pi| =|\Acal|^H$  such that if algorithm $\Acal$
+returns any policy $\pi$ (not necessarily in $\Pi$) such that
+\[
+V_0^{\pi}(\mu) \geq \max_{\pi\in\Pi} V_0^{\pi}(\mu) - 0.5.
+\]
+with probability greater than $1/2$, then $\Acal$ must make a number
+of number calls $N$ to the generative model where:
+\[
+N \geq c |\Acal|^H
+\]
+(where $c$ is an absolute constant).
+\end{proposition}
+
+
+\begin{proof}
+The proof is simple. Consider a $|\Acal|$-ary balanced tree, with
+$|\Acal|^H$ states and $|\Acal|$ actions, where states correspond
+nodes and actions correspond to edges; actions always move the agent
+from the root towards a leaf node. We make only one leaf node
+rewarding, which is unknown to the algorithm. We consider the policy class  to be
+all $|\Acal|^H$ policies. The theorem now immediately follows since
+the algorithm gains no knowledge of the rewarding leaf node unless it
+queries that node.
+\end{proof}
+
+Note this immediately rules out the possibility that any algorithm which can obtain a $\log
+|\Pi|$ dependence without paying a factor of $|\Acal|^H$ in the
+sample size due to that $\log |\Pi| = H \log |\Acal|$ in the example above.

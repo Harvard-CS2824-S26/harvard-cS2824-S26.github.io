@@ -1,4 +1,4 @@
-\chapter{Linearly realizable $Q^\star$ is exponentially hard}
+\chapter{Linearly realizable $Q^\star$ can still be exponentially hard}
 \label{app:linearQstar_lb}
 
 This appendix records a (trajectory-tree) hard instance in which $Q^\star$ is
@@ -7,7 +7,7 @@ policy requires exponentially many queries in $\min\{d,H\}$ (once the action set
 is taken to be exponentially large in $d$).
 
 \begin{theorem}[Linear $Q^\star$ realizability can be exponentially hard (generative model)]
-\label{thm:lower_gen_gapless_simple}
+\label{thm:lower_gen_linQstar_expA}
 Fix integers $d\ge 1$ and $H\ge 1$. Consider any algorithm $\mathcal{A}$ that has
 access to a generative model and is given as input a feature map
 $\phi:\Scal\times\Acal\times[H]\to\R^d$.
@@ -15,75 +15,7 @@ There exist absolute constants $c,C>0$ and a finite-horizon MDP $M$ with horizon
 $H$ and action set size $|\Acal| = \exp(c d)$, together with a feature map $\phi$,
 such that Assumption~\ref{assumption:realizability_Qstar} holds (i.e.\ for each
 $h\in[H]$, $Q_h^\star(\cdot,\cdot)$ is linear in $\phi(\cdot,\cdot,h)$), and the
-following is true. \section*{Proof sketch of Theorem~\ref{thm:lower_gen_gapless_simple}}
-
-\begin{proof}[Proof sketch of Theorem~\ref{thm:lower_gen_gapless_simple}]
-We instantiate $M$ as $\mathcal{M}_{a^\star}$ with $a^\star$ chosen uniformly in $[A]$.
-The feature map is shared across all instances; the index $a^\star$ only appears
-through $\theta^\star=v(a^\star)$ (and therefore through the mean rewards).
-
-SK: this proof feels weird to me in a generative model. it feels to me
-that:
-1) for all states not at the last level, then if don't select a* we
-gain no information.  and that means there, regardless of we sample,
-there is no informationt to be gained (untile exp samples)
-2) we need to sample the last level. now are just doing Fano. it feels
-like there should be a cleaner way to say this?
-easier to say this?
-
-\smallskip\noindent
-\textbf{Step 1: Near-optimality forces (essentially) identifying $a^\star$ at $s_0$.}
-By Lemma~\ref{lem:greedy_astar}, at the start state $s_0=\overline{\emptyset}$ the
-unique greedy action is $a^\star$, and
-\[
-\widetilde Q_0(s_0,a^\star)=1,
-\qquad
-\max_{a\neq a^\star}\widetilde Q_0(s_0,a)\le \rho \le \tfrac16.
-\]
-Thus any policy that does not select $a^\star$ at $s_0$ incurs a constant value
-gap (at least $5/6$ at the root), so producing a $0.05$-optimal policy with
-constant probability requires the algorithm to output $a^\star$ at $s_0$ with
-constant probability, i.e.\ to identify $a^\star$ with constant probability.
-
-\smallskip\noindent
-\textbf{Step 2: Two routes to learning $a^\star$, both expensive.}
-Consider any adaptive querying strategy with $T$ total generative-model calls.
-
-\emph{Route (i): hit $a^\star$ at some nonterminal state with $h\le H-2$.}
-For $h\le H-2$, whenever a query $(s,a,h)$ transitions to a nonterminal next state,
-the mean reward is the constant $-b_{h+1}$, which does not depend on $a^\star$.
-Dependence on $a^\star$ at these earlier layers can only occur if the query uses
-the action $a=a^\star$ (triggering termination).
-Averaging over uniform $a^\star$, the probability that the transcript ever uses
-$a^\star$ at an earlier layer is at most $T/A$ (a standard counting/averaging bound).
-
-\emph{Route (ii): use the ``leakage'' through last-layer rewards.}
-At $h=H-1$, the mean reward is $\widetilde Q_{H-1}(s,a)$, and by
-Lemma~\ref{lem:greedy_astar} its magnitude is uniformly bounded by $\lesssim b_{H-1}$.
-Hence, for any fixed query at $h=H-1$, the reward distribution under two different
-indices $a^\star\neq {a^\star}'$ are Gaussians with variance $1$ and means differing
-by at most $O(b_{H-1})$, so the per-query KL divergence is $O(b_{H-1}^2)$.
-Therefore the total mutual information between the full transcript and $a^\star$
-accumulated via such queries is at most $O(T\,b_{H-1}^2)$.
-By a standard Fano-type bound, identifying $a^\star$ among $A=\exp(\Theta(d))$
-possibilities with constant probability requires
-\[
-T \;\gtrsim\; \frac{\log A}{b_{H-1}^2}.
-\]
-Since $b_{H-1}=(3\rho)^{H-1}\le 2^{-(H-1)}$, the RHS is $\exp(\Omega(H))$ up to
-polynomial factors.
-
-\smallskip\noindent
-\textbf{Step 3: Combine and conclude.}
-Putting the two routes together yields a lower bound of the form
-\[
-T \;\ge\; \Omega\!\left(\min\left\{A,\ \frac{\log A}{b_{H-1}^2}\right\}\right).
-\]
-With $A=\exp(\Theta(d))$ and $b_{H-1}=(3\rho)^{H-1}$, this gives
-$T \ge \exp(\Omega(\min\{d,H\}))$ (up to polynomial factors), and by Step 1 this is
-necessary for producing a $0.05$-optimal policy with constant probability.
-\end{proof}
-
+following is true.
 
 If $\mathcal{A}$ outputs a policy $\pi$ satisfying
 \[
@@ -94,9 +26,9 @@ with probability at least $0.1$, then $\mathcal{A}$ must make at least
 \exp\!\bigl(\Omega(\min\{d,H\})\bigr)
 \]
 calls to the generative model.
-
 \end{theorem}
 
+The construction presented here follows from that in~\cite{WeiszAS21}.
 
 \section*{Construction}
 
@@ -200,7 +132,9 @@ R_h = r_h(s,a) + \xi_h,\qquad \xi_h\sim\mathcal{N}(0,1)\ \text{i.i.d.},
 \]
 independently across all queries.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section*{Key inequalities: $a^\star$ is greedy everywhere}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{lemma}[Fresh-direction correlation bound]
 \label{lem:fresh_corr_bound}
@@ -296,7 +230,9 @@ Also $|\langle v(a),v(a^\star)\rangle|\le \rho$. Therefore,
 using $\rho\le 1/6$.
 \end{proof}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section*{Realizability and Bellman optimality}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{lemma}[Bellman optimality of $\widetilde Q$]
 \label{lem:realizability_bellman}
@@ -338,9 +274,9 @@ r_h(s,a)+\widetilde V_{h+1}(s_{h+1})
 This establishes Bellman optimality, hence $\widetilde Q=Q^\star$.
 \end{proof}
 
-\section*{Proof sketch of Theorem~\ref{thm:lower_gen_gapless_simple}}
+\section*{Proof sketch of Theorem~\ref{thm:lower_gen_linQstar_expA}}
 
-\begin{proof}[Proof sketch of Theorem~\ref{thm:lower_gen_gapless_simple}]
+\begin{proof}[Proof sketch of Theorem~\ref{thm:lower_gen_linQstar_expA}]
 We instantiate $M$ as $\mathcal{M}_{a^\star}$ with $a^\star$ drawn uniformly from $[A]$.
 The feature map $\phi$ is shared across all instances; the instance index $a^\star$
 only appears through the parameter $\theta^\star = v(a^\star)$ (and hence through the
@@ -439,4 +375,3 @@ T \;\ge\; \exp(\Omega(\min\{d,H\})) \quad \text{(up to polynomial factors)}.
 In particular, taking $H=\Theta(d)$ recovers $T\ge \exp(\Omega(d))$ as stated.
 By Step 1, such a sample size is necessary for producing a $0.05$-optimal policy with constant probability.
 \end{proof}
-

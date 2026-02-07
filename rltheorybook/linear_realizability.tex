@@ -862,7 +862,9 @@ key idea is that although the offline data have essentially perfect coverage ove
 the \emph{observed} feature directions, the value of the policy depends on
 \emph{unobserved} ``aggregator'' states.  Linearity then forces the value at these
 aggregator states to be an amplified combination of quantities that can only be
-estimated from the last layer, causing an exponential dependence on the horizon.
+estimated from the last layer, causing an exponential dependence on
+the horizon. Figure~\ref{fig:offline_pe_hard_instance_clean} shows
+this instance.
 
 Let $m\ge 1$ be an integer and set
 \[
@@ -891,16 +893,19 @@ Equivalently: action $a_1$ always jumps to the aggregator chain, while $a_2$
 preserves the index $i$ on the $\{s_h^i\}$ states (and keeps the $g$-chain on $g$).
 
 
-\begin{figure}[t]
+\begin{figure}[t!]
 \centering
 \input{Figures/tikzpicture_lb}
 \caption{\textbf{Offline policy-evaluation hard instance (schematic).}
 Each layer $h$ has $m$ ``observed'' states $\{s_h^i\}_{i=1}^m$ (boxed: states covered by the offline dataset $D_h$)
 and one ``aggregator'' state $g_h$ (never covered by the offline data).
 Action $a_2$ (dashed) keeps the trajectory in the observed chain $s_h^i\to s_{h+1}^i$,
-while action $a_1$ (solid) jumps to the aggregator chain $s_h^i\to g_{h+1}$.
-From aggregator states, both actions transition to the next aggregator state (shown by the two parallel edges).
-}
+while action $a_1$ (solid) jumps to the aggregator chain $s_h^i\to g_{h+1}$; from aggregator states, both actions transition to the next aggregator state.
+Rewards are stage-dependent: on observed states, $r_h=0$ for $h\le H-2$ and $r_{H-1}\in\{\pm1\}$ with $\E[r_{H-1}]=r_\infty$;
+on aggregator states, $r_h(g_h,\cdot)=\alpha_h-\alpha_{h+1}$ for $h\le H-2$ and $r_{H-1}(g_{H-1},\cdot)=\alpha_{H-1}=r_\infty\sqrt m$, where $\alpha_h:=r_\infty m^{(H-h)/2}$.
+The lower bound compares two instances with $r_\infty=0$ versus
+$r_\infty=m^{-H/2}$, which induce identical offline data on the boxed
+support but different values at $g_0$. See text for further description.} 
 \label{fig:offline_pe_hard_instance_clean}
 \end{figure}
 
@@ -1097,61 +1102,63 @@ Recalling $d=2m$, this is $\Omega((d/2)^H)$, establishing
 Theorem~\ref{thm:hard_offline_pe}.
 
 
-
-
-
 \section{Bibliographic Remarks and Further Readings}
 \label{chapterBC_bib}
 
-The idea of Bellman completion under general function class was introduced in \cite{munos2005error} under the setting of batch RL. For the episodic online learning setting, \citet{zanette2020learning} provided a statistically efficient algorithm under the linear Bellman completion condition, and \cite{jin2021bellman}  proposes a statistically efficient algorithms under the Bellman completion condition with general function approximation.
+The closure idea behind \emph{Bellman completeness} (for general function classes)
+appears already in early work on error propagation in approximate dynamic
+programming and batch RL; see, for example, \citet{munos2005error}.  In episodic
+online RL, \citet{zanette2020learning} gave statistically efficient algorithms
+under \emph{linear} Bellman completeness, and \citet{jin2021bellman} extended the
+picture to statistically efficient algorithms under Bellman completeness with
+general function approximation.
 
-We refer readers to to \cite{lattimore2020bandit} for a proof of the
-D-optimal design;  the idea directly follows from John's theorem (e.g. see~\cite{ball1997elementary,todd2016minimum}). 
+The geometric viewpoint on $D$-optimal design is classical and goes back to
+John's theorem on minimum-volume ellipsoids \citep{john1948extremum}.  The
+Kiefer--Wolfowitz equivalence between the $D$-optimal (log-determinant) and
+$G$-optimal (maximum variance) formulations is due to \citet{Kiefer1960TheEO}.
+For an accessible modern proof and additional context (including connections to
+bandits and experimental design), see \citet{lattimore2020bandit}.
 
-The reduction from reinforcement learning to supervised learning was
-first introduced in~\cite{NIPS1999_1664}, which used a different
-algorithm (the ``trajectory tree'' algorithm), as opposed to the
-importance sampling approach presented here. \cite{NIPS1999_1664} made
-the connection to the VC dimension of the policy class. The fundamental
-sample complexity tradeoff --- between polynomial dependence on the
-size of the state space and exponential dependence on the horizon --- 
-was discussed in depth in~\cite{kakade2003sample}.
+The theme that, under the right structural assumptions, reinforcement learning
+can be reduced to a sequence of supervised learning problems goes back at least
+to \citet{NIPS1999_1664}, which analyzed a ``trajectory tree'' approach and
+connected sample complexity to the VC dimension of a policy class.  The
+fundamental tradeoff between polynomial dependence on the size of the state
+space and exponential dependence on the horizon is discussed in depth
+in \citet{kakade2003sample}.
 
-\iffalse
-Utilizing linear methods for dynamic programming goes back to, at
-least, \cite{Shan50,bellman1959functional}.  Formally considering the
-linear $Q^\star$ assumption goes back to at
-least~\cite{wen2017efficient}.  Resolving the learnability under this
-assumption was an important open question discussed in
-\cite{du2019good}, which is now resolved.  Here,
-Theorem~\ref{thm:lower_gen}, due to~\cite{WeiszAS21}, resolved this
-question. Furthermore, Theorem~\ref{thm:lower_episodic}, due
-to~\cite{Wang_linear_lower}, resolves this question in the online
-setting with the additional assumption of having a constant sub-optimality
-gap. Theorem~\ref{thm:lower_pi}, which assumed a linearly realizable
-optimal policy, is due to~\cite{du2019good}. Theorem~\ref{thm:hard_det_1}, on
-offline policy evaluation, is due to~\cite{wang2020statistical,zanette2021exponential}.
-\fi
+Linear methods for dynamic programming have a long history, going back at least
+to \citet{Shan50,bellman1959functional}.  The modern formulation of the
+\emph{linear $Q^\star$ realizability} assumption appears (at least) in
+\citet{wen2017efficient} and is highlighted as a central learnability question
+in \citet{du2019good}.  In the offline (policy evaluation) setting, exponential
+lower bounds under strong linear realizability assumptions are due to
+\citet{wang2020statistical,zanette2021exponential}, and we present a variant as
+Theorem~\ref{thm:hard_offline_pe}.  With a generative model, the breakthrough
+impossibility result under linear $Q^\star$ realizability is due to
+\citet{WeiszAS21}.  Subsequent work \citep{weisz2021tensorplan} extends these
+ideas to yield lower bounds that continue to hold even when the action space is
+only polynomial in $(d,H)$; this is the form we invoke for
+Theorem~\ref{thm:lower_gen_linearQstar}.  In Appendix~\ref{app:linearQstar_lb} we
+also include a simpler (but weaker) proof in the spirit of the original
+construction of \citet{WeiszAS21}, using exponentially many actions.
 
-Utilizing linear methods for dynamic programming goes back to, at
-least, \cite{Shan50,bellman1959functional}.  Formally considering the
-linear $Q^\star$ assumption goes back to at
-least~\cite{wen2017efficient}.  Resolving the learnability under this
-assumption was an important open question discussed in
-\cite{du2019good}, which is now resolved.  In the offline (policy
-evaluation) setting, the lower bound in Theorem~\ref{thm:hard_det_1}
-is due to~\cite{wang2020statistical,zanette2021exponential}.  With a
-generative model, the breakthrough result of~\cite{WeiszAS21}
-established the impossibility result with the linear $Q^\star$
-assumption.  Furthermore, Theorem~\ref{thm:lower_episodic}, due
-to~\cite{Wang_linear_lower}, resolves this question in the online
-setting with the additional assumption of having a constant
-sub-optimality gap.  Also,~\cite{weisz2021tensorplan} extends the
-ideas from ~\cite{WeiszAS21}, so that the lower bound is applicable
-with action spaces of polynomial size (in $d$ and $H$); this is the
-result we use for Theorem~\ref{thm:lower_gen}.
+Finally, \citet{Wang_linear_lower} studies the \emph{episodic} (online) setting
+under linear $Q^\star$ realizability, together with an additional
+\emph{constant suboptimality gap} assumption. As we discuss below, this gap
+assumption permits sample-efficient learning with a generative model. However,
+the main result of \citet{Wang_linear_lower} is negative: even with a constant
+gap, \emph{episodic} interaction alone does not guarantee sample-efficient
+learning under these two assumptions --- they prove an $\exp(\Omega(\min\{d,H\}))$ sample
+lower bound for obtaining a constant-accuracy guarantee in the online model.
 
-Theorem~\ref{thm:lower_pi}, which assumed a linearly realizable
-optimal policy, is due to~\cite{du2019good}. 
-
-
+This stands in sharp contrast to the \emph{generative-model} setting, where the
+same gap assumption can be exploited for \emph{identification}.  A
+backward-induction-style elimination argument can compare actions locally and
+rule out suboptimal ones using only polynomially many queries, since each is
+separated from the optimum by a constant margin.  Once the optimal action is
+identified stage by stage, one can propagate \emph{unbiased} estimates of
+$Q^\star$ backward through the horizon, because the Bellman targets are evaluated
+under the true optimal continuation rather than a biased surrogate—precisely the
+kind of targeted identification that episodic data do not reliably support.
