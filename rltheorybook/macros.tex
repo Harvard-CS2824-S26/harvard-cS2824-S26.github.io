@@ -25,17 +25,17 @@
 \DeclareMathOperator*{\argmin}{argmin}
 \newcommand{\norm}[1]{\left\lVert#1\right\rVert}
 \newcommand{\maxnorm}[1]{\left\| #1 \right\|_\infty}
-\newcommand{\poly}{\mathrm{poly}}
+
+\newcommand{\bigNorm}[1]{\bigl\lVert#1\bigr\rVert}
+\newcommand{\BigNorm}[1]{\Bigl\lVert#1\Bigr\rVert}
 
 % --- Probability ---
-\newcommand{\PP}{\mathbb{P}}
-\newcommand{\EE}{\mathbb{E}}
 \newcommand{\E}{\mathbb{E}}
 \newcommand{\Cond}{~\Big\vert~}
 \newcommand{\cond}{~\big\vert~}
 \newcommand{\Expe}[1]{\mathbb{E}\Big[#1\Big]}
 \DeclareMathOperator{\Var}{Var}
-\newcommand{\err}{\text{err}}
+\newcommand{\kl}{\mathrm{KL}}
 
 % --- MDP Notation ---
 \newcommand{\Scal}{\mathcal{S}}
@@ -54,3 +54,16 @@
 \newcommand{\Xcal}{\mathcal{X}}
 \newcommand{\Fcal}{\mathcal{F}} 
 \newcommand{\Gcal}{\mathcal{G}}
+
+\newcommand{\vmax}{V_{\max}}
+
+% --- Error & Complexity ---
+\newcommand{\poly}{\mathrm{poly}}
+
+\newcommand{\err}{\text{err}}
+\newcommand{\epsopt}{\eps_{\text{opt}}}
+\newcommand{\epsapp}{\eps_{\text{approx}}}
+\newcommand{\epstransfer}{\eps_{\text{transfer}}}
+
+% --- PG notation ---
+\newcommand{\w}{w}

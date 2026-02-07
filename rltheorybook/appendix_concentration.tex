@@ -1,206 +1,329 @@
 \chapter{Concentration}
 
+This appendix collects a few standard concentration inequalities used throughout
+the monograph.
 
+\section{Scalar concentration}
 
-\begin{lemma}
-  (Hoeffding's inequality)
-Suppose $X_1, X_2, \ldots X_n$ are a sequence of independent,
-identically distributed (i.i.d.) random variables with mean $\mu$. Let $\bar{X}_n=n^{-1} \sum_{i=1}^n
-X_i$. Suppose that $X_i \in [b_{-},b_{+}]$ with probability $1$, then
+\begin{lemma}[Hoeffding's inequality]\label{lem:hoeffding}
+Suppose $X_1,\dots,X_n$ are independent, identically distributed random variables
+with mean $\mu$. Let $\bar X_n := \frac{1}{n}\sum_{i=1}^n X_i$.
+If $X_i\in[b_-,b_+]$ almost surely, then for any $\epsilon>0$,
 \[
-P( \bar{X}_n \geq \mu + \epsilon) \leq e^{-2n \epsilon^2/(b_{+}-b_{-})^2} .
+\Pr\!\left(\bar X_n - \mu \ge \epsilon\right)
+\le
+\exp\!\left(-\frac{2n\epsilon^2}{(b_+-b_-)^2}\right),
+\qquad
+\Pr\!\left(\mu-\bar X_n \ge \epsilon\right)
+\le
+\exp\!\left(-\frac{2n\epsilon^2}{(b_+-b_-)^2}\right).
 \]
-Similarly,
+Equivalently,
 \[
-P( \bar{X}_n \leq \mu - \epsilon) \leq e^{-2n \epsilon^2/(b_{+}-b_{-})^2} .
-\]\label{lem:hoeffding}
+\Pr\!\left(|\bar X_n-\mu|\ge \epsilon\right)
+\le 2\exp\!\left(-\frac{2n\epsilon^2}{(b_+-b_-)^2}\right).
+\]
 \end{lemma}
 
-The Chernoff bound implies that with probability $1-\delta$:
+In particular, inverting the two-sided bound yields: with probability at least
+$1-\delta$,
 \[
-  \bar{X}_n - E X \leq (b_{+}-b_{-})\sqrt{\ln (1/\delta)/(2n)}\, .
-  \]
+|\bar X_n-\mu|
+\le
+(b_+-b_-)\sqrt{\frac{\log(2/\delta)}{2n}}.
+\]
 
-Now we introduce the definition of subGaussian random variables.
+\section{Sub-Gaussian random variables}
 
-\begin{definition}\label{def:sub-gauss}[Sub-Gaussian Random Variable] A random variable $X$ is $\sigma$-subGaussian if for all $\lambda \in \mathbb{R}$, it holds that $\mathbb{E}\left[ \exp(\lambda X) \right] \leq \exp\left( \lambda^2 \sigma^2 / 2 \right)$.
+\begin{definition}[Sub-Gaussian random variable]\label{def:sub-gauss}
+A real-valued random variable $X$ is $\sigma$-sub-Gaussian if for all
+$\lambda\in\mathbb{R}$,
+\[
+\E\!\left[\exp\big(\lambda(X-\E X)\big)\right]
+\le
+\exp\!\left(\frac{\lambda^2\sigma^2}{2}\right).
+\]
 \end{definition}
-One can show that a Gaussian random variable with zero mean and standard deviation $\sigma$ is a $\sigma$-subGaussian random variable. 
 
+A centered Gaussian $X\sim \mathcal{N}(0,\sigma^2)$ is $\sigma$-sub-Gaussian.
 
-The following theorem shows that the tails of a $\sigma$-subGaussian random variable decay approximately as fast as that of a Gaussian variable with zero mean and standard deviation $\sigma$. 
-\begin{theorem} \label{them:sub_gaussian_property_1}
-If $X$ is a $\sigma$-subGaussian, then for any $\epsilon > 0$, we have $\mathrm{Pr}\left( X \geq \epsilon \right) \leq \exp\left( - \frac{ \epsilon^2 }{2\sigma^2} \right)$.
-\end{theorem}
-The following lemma  shows that the sum of independent sub-Gaussian variables is still sub-Gaussian. 
-\begin{lemma}\label{lemma:sub_gaussian_property_2}
-Suppose that $X_1$ and $X_2$ are independent and $\sigma_1$ and $\sigma_2$ subGaussian, respectively. Then for any $c\in \mathbb{R}$, we have $cX$ being $|c|\sigma$-subGaussian. We also have $X_1 + X_2$ being $\sqrt{\sigma_1^2 + \sigma_2^2}$-subGaussian.
-\end{lemma}
-
-
-
-
-
-\begin{theorem}[Hoeffding-Azuma Inequality] \label{thm:Azuma}
-Suppose $X_1, \dots, X_T$ is a martingale difference sequence where
-each $X_t$ is a $\sigma_t$ sub-Gaussian, 
-Then, for all $\epsilon > 0$ and all positive integer $N$,
+\begin{theorem}[Sub-Gaussian tail bound]\label{them:sub_gaussian_property_1}
+If $X$ is $\sigma$-sub-Gaussian, then for all $\epsilon>0$,
 \[
-P\left(\sum_{i=1}^N X_i \ge \eps\right) \le \exp
-\left(\frac{-\eps^2}{2\sum_{i=1}^N \sigma_i^2}\right).
+\Pr\!\left(X-\E X \ge \epsilon\right)
+\le
+\exp\!\left(-\frac{\epsilon^2}{2\sigma^2}\right),
+\qquad
+\Pr\!\left(|X-\E X|\ge \epsilon\right)
+\le
+2\exp\!\left(-\frac{\epsilon^2}{2\sigma^2}\right).
 \]
 \end{theorem}
 
+\begin{lemma}[Stability under scaling and sums]\label{lemma:sub_gaussian_property_2}
+If $X$ is $\sigma$-sub-Gaussian then for any $c\in\mathbb{R}$, $cX$ is
+$|c|\sigma$-sub-Gaussian. If $X_1$ and $X_2$ are independent and
+$\sigma_1$- and $\sigma_2$-sub-Gaussian respectively, then $X_1+X_2$ is
+$\sqrt{\sigma_1^2+\sigma_2^2}$-sub-Gaussian.
+\end{lemma}
 
-\begin{lemma}
-(Bernstein's inequality)  Suppose $X_1,\ldots, X_n$ are independent random variables.
-Let $\bar{X}_n= n^{-1} \sum_{i=1}^n X_i$, $\mu= \E \bar{X}_n$, and
-$\textrm{\textrm{Var}}(X_i)$ denote the variance of $X_i$.
-If $X_i- E X_i \leq b$ for all $i$, then
+\section{Martingale concentration}
+
+\begin{theorem}[Hoeffding--Azuma inequality (conditional sub-Gaussian form)]\label{thm:Azuma}
+Let $(\mathcal{F}_t)_{t\ge 0}$ be a filtration and $(X_t)_{t=1}^N$ a martingale
+difference sequence, i.e.\ $X_t$ is $\mathcal{F}_t$-measurable and
+$\E[X_t\mid \mathcal{F}_{t-1}]=0$.
+Assume $X_t$ is conditionally $\sigma_t$-sub-Gaussian given $\mathcal{F}_{t-1}$,
+meaning that for all $\lambda\in\mathbb{R}$,
 \[
-P( \bar{X}_n \geq \mu + \epsilon) \leq \exp \left[- \frac{n^2 \epsilon^2}{2\sum_{i=1}^n \textrm{\textrm{Var}}(X_i) + 2 n b\epsilon/3} \right] .
+\E\!\left[\exp(\lambda X_t)\mid \mathcal{F}_{t-1}\right]
+\le
+\exp\!\left(\frac{\lambda^2\sigma_t^2}{2}\right)\quad \text{a.s.}
+\]
+Then for all $\epsilon>0$,
+\[
+\Pr\!\left(\sum_{t=1}^N X_t \ge \epsilon\right)
+\le
+\exp\!\left(-\frac{\epsilon^2}{2\sum_{t=1}^N\sigma_t^2}\right),
+\qquad
+\Pr\!\left(\left|\sum_{t=1}^N X_t\right| \ge \epsilon\right)
+\le
+2\exp\!\left(-\frac{\epsilon^2}{2\sum_{t=1}^N\sigma_t^2}\right).
+\]
+\end{theorem}
+
+\begin{lemma}[Bernstein's inequality (i.i.d.)]\label{lem:bernstein_iid}
+Let $X_1,\dots,X_n$ be independent random variables with
+$\mu:=\E[X_i]$ and $\Var(X_i)\le \sigma^2$ for all $i$.
+Assume $|X_i-\mu|\le b$ almost surely.
+Then for all $\epsilon>0$,
+\[
+\Pr\!\left(\bar X_n-\mu \ge \epsilon\right)
+\le
+\exp\!\left(
+-\frac{n\epsilon^2}{2\sigma^2+\frac{2}{3}b\epsilon}
+\right),
+\qquad
+\Pr\!\left(|\bar X_n-\mu| \ge \epsilon\right)
+\le
+2\exp\!\left(
+-\frac{n\epsilon^2}{2\sigma^2+\frac{2}{3}b\epsilon}
+\right).
 \]
 \end{lemma}
 
-If all the variances are equal, the Bernstein inequality implies that, with probability at least $1-\delta$,
+In particular, with probability at least $1-\delta$,
 \[
-\bar{X}_n - E X \leq \sqrt{2 \textrm{Var}(X) \ln(1/\delta)/n} + \frac{2 b \ln (1/\delta)}{3n}  .
+|\bar X_n-\mu|
+\le
+\sqrt{\frac{2\sigma^2\log(2/\delta)}{n}}
+\;+\;
+\frac{2b\log(2/\delta)}{3n}.
 \]
 
-
-\begin{lemma}[Bernstein's Inequality for Martingales]
-Suppose $X_1,X_2\dots$ is a martingale difference sequence where $|X_i| \leq M \in \mathbb{R}^+$ almost surely. Then for all positive $t$ and $ n \in \mathbb{N}^+$, we have:
-\begin{align*}
-P\left( \sum_{i=1}^n X_i \geq t \right) \leq \exp\left( - \frac{t^2 / 2 }{  \sum_{i=1}^n \EE\left[ X^2_i | X_{<i}\right]  + M t / 3 }  \right).
-\end{align*}
+\begin{lemma}[Freedman's inequality (martingale Bernstein)]\label{lem:freedman}
+Let $(X_t)_{t=1}^n$ be a martingale difference sequence w.r.t.\ a filtration
+$(\mathcal{F}_t)_{t\ge 0}$ and assume $|X_t|\le M$ almost surely.
+Define the predictable quadratic variation
+\[
+V_n := \sum_{t=1}^n \E[X_t^2\mid \mathcal{F}_{t-1}].
+\]
+Then for all $t>0$,
+\[
+\Pr\!\left(\sum_{i=1}^n X_i \ge t\right)
+\le
+\exp\!\left(
+-\frac{t^2}{2\big(V_n + Mt/3\big)}
+\right).
+\]
 \end{lemma}
 
+\section{A discrete distribution concentration bound}
 
+The following bound is a standard application of bounded-differences/McDiarmid
+(e.g.\ \citep{McD89}).
 
-The following concentration bound is a simple application of the
-McDiarmid's inequality \citep{McD89} (e.g. see ~\citep{HsuSpectral}
-for proof).
-
-
-\begin{proposition} \label{app:discrete}
-(Concentration for Discrete Distributions)
-Let $z$ be a discrete random variable that takes values in
-$\{1,\ldots,d\}$, distributed according to $q$. We write $q$ as a
-vector where $\vec{q}=[\Pr(z=j)]_{j=1}^d$.
-% We are interested in estimating the vector
-%$\vec{q}=[\Pr(z=j)]_{j=1}^d$ from $N$ i.i.d.~copies $z_i$ of $z$ ($i=1,\ldo
-%ts,N$). 
-Assume we have $N$ iid samples, and that our empirical estimate of
-$\vec{q}$ is $[\widehat{q}]_j=\sum_{i=1}^N \mathbf{1}[z_i=j]/
-N$.
-
-We have that $\forall \epsilon>0$:
-  \[
-  \Pr\left(\left\|\widehat{q} -  \vec{q}\right\|_2 \geq 
-    1/\sqrt{N} + \epsilon \right)
-  \leq e^{-N \epsilon^2} .
-  \]
-which implies that:
-  \[
-  \Pr\big(\left\|\widehat{q} -  \vec{q}\right\|_1 \geq 
-    \sqrt{d}(1/\sqrt{N} + \epsilon) \big)
-  \leq e^{-N \epsilon^2} .
-  \]
+\begin{proposition}[Concentration for discrete distributions]\label{app:discrete}
+Let $Z$ be a discrete random variable supported on $\{1,\dots,d\}$ with
+distribution $q\in\Delta([d])$, and let $\widehat q$ be the empirical distribution
+from $N$ i.i.d.\ samples. Then with probability at least $1-\delta$,
+\[
+\|\widehat q-q\|_2
+\le
+\frac{1}{\sqrt{N}} + \sqrt{\frac{\log(1/\delta)}{2N}}.
+\]
+Consequently,
+\[
+\|\widehat q-q\|_1
+\le
+\sqrt{d}\left(\frac{1}{\sqrt{N}} + \sqrt{\frac{\log(1/\delta)}{2N}}\right).
+\]
 \end{proposition}
 
+\section{Self-normalized bounds and least squares}
 
-
-\begin{lemma}[Self-Normalized Bound for Vector-Valued Martingales;
-  \citep{abbasi2011improved}] \label{lemma:self_norm}
-Let $\{\varepsilon_i\}_{i=1}^{\infty}$ be a real-valued stochastic
-process with corresponding filtration $\{\mathcal{F}_{i}\}_{i=1}^{\infty}$
-such that $\varepsilon_i$ is $\mathcal{F}_i$ measurable, $\E[
-\varepsilon_i | \mathcal{F}_{i-1} ] = 0$, and $\varepsilon_i$ is
-conditionally $\sigma$-sub-Gaussian with $\sigma\in\mathbb{R}^+$. Let
-$\{X_i\}_{i=1}^{\infty}$ be a stochastic process with $X_i\in
-\mathcal{H}$ (some Hilbert space) and $X_i$ being $\mathcal{F}_t$ measurable. Assume that a
-linear operator $\Sigma:\mathcal{H}\to\mathcal{H}$ is positive definite,
-i.e., $x^{\top} \Sigma x > 0$ for any $x\in\mathcal{H}$. For any $t$,
-define the linear operator $\Sigma_t = \Sigma_0 + \sum_{i=1}^{t} X_iX_i^{\top}$ (here
-$xx^{\top}$ denotes outer-product in $\mathcal{H}$). With probability
-at least $1-\delta$, we have for all $t\geq 1$: 
-\begin{align*}
-\left\|  \sum_{i=1}^{t} X_i \varepsilon_i \right\|^2_{\Sigma_t^{-1}} \leq \sigma^2 \log\left(\frac{ \det( \Sigma_t) \det(\Sigma_0)^{-1} }{ \delta^2  }\right).
-\end{align*}
+\begin{lemma}[Self-normalized bound for vector-valued martingales; \citep{abbasi2011improved}]
+\label{lemma:self_norm}
+Let $(\varepsilon_t)_{t\ge 1}$ be a real-valued process adapted to a filtration
+$(\mathcal{F}_t)_{t\ge 0}$ such that $\E[\varepsilon_t\mid \mathcal{F}_{t-1}]=0$
+and $\varepsilon_t$ is conditionally $\sigma$-sub-Gaussian given $\mathcal{F}_{t-1}$.
+Let $(X_t)_{t\ge 1}$ be an $\mathbb{R}^d$-valued adapted process, and let
+$V_0\in\mathbb{R}^{d\times d}$ be positive definite. Define
+\[
+V_t := V_0 + \sum_{i=1}^t X_iX_i^\top.
+\]
+Then for any $\delta\in(0,1)$, with probability at least $1-\delta$,
+simultaneously for all $t\ge 1$,
+\[
+\left\|\sum_{i=1}^t X_i\varepsilon_i\right\|_{V_t^{-1}}
+\le
+\sigma\sqrt{2\log\!\left(\frac{\det(V_t)^{1/2}\det(V_0)^{-1/2}}{\delta}\right)}.
+\]
+Equivalently, squaring both sides,
+\[
+\left\|\sum_{i=1}^t X_i\varepsilon_i\right\|_{V_t^{-1}}^2
+\le
+2\sigma^2\log\!\left(\frac{\det(V_t)^{1/2}\det(V_0)^{-1/2}}{\delta}\right).
+\]
 \end{lemma}
 
-\begin{theorem}[OLS with a fixed design] \label{thm:ols_fixed_design} Consider a fixed dataset $\Dcal = \{x_i, y_i\}_{i=1}^N$ where $x_i\in\mathbb{R}^d$, and $y_i = (\theta^\star)^{\top} x_i + \epsilon_i$,  where $\{\epsilon_i\}_{i=1}^N $ are independent $\sigma$-sub-Gaussian random variables, and $\EE[\epsilon_i] = 0$. Denote $\Lambda  = \sum_{i=1}^N x_i x_i^{\top}$, and we further assume that $\Lambda$ is full rank such that $\Lambda^{-1}$ exists.  Denote $\hat\theta$ as the least squares solution, i.e., $\hat\theta = \Lambda^{-1} \sum_{i=1}^N x_i y_i$. Pick $\delta \in (0,1)$, with probability at least $1-\delta$, we have:
-\begin{align*}
-\left\| \hat\theta - \theta^\star \right\|^2_{\Lambda} \leq { \sigma^2 ( d + \sqrt{d \ln(1/\delta)} + 2 \ln(1/\delta)) }.
-\end{align*}
+The following OLS bound above can be derived by writing
+$\hat\theta-\theta^\star = \Lambda^{-1}\sum_i x_i\epsilon_i$ and observing that
+$\|\hat\theta-\theta^\star\|_\Lambda = \|\Lambda^{-1/2}\sum_i x_i\epsilon_i\|_2$
+is the Euclidean norm of a $d$-dimensional sub-Gaussian vector (e.g. see also \citep{HsuSpectral}).
+
+\begin{theorem}[OLS with a fixed design]\label{thm:ols_fixed_design}
+Consider a fixed design $\{x_i\}_{i=1}^N\subset\mathbb{R}^d$ and responses
+$y_i = \langle \theta^\star, x_i\rangle + \epsilon_i$, where
+$\epsilon_1,\dots,\epsilon_N$ are independent, mean-zero, $\sigma$-sub-Gaussian
+random variables. Let
+\[
+\Lambda := \sum_{i=1}^N x_ix_i^\top
+\]
+and assume $\Lambda$ is invertible. The ordinary least squares estimator is
+\[
+\hat\theta := \Lambda^{-1}\sum_{i=1}^N x_i y_i.
+\]
+Then for any $\delta\in(0,1)$, with probability at least $1-\delta$,
+\[
+\|\hat\theta-\theta^\star\|_{\Lambda}
+\le
+\sigma\Big(\sqrt{d}+\sqrt{2\log(1/\delta)}\Big),
+\]
+and hence
+\[
+\|\hat\theta-\theta^\star\|_{\Lambda}^2
+\le
+\sigma^2\Big(d + 2\sqrt{2d\log(1/\delta)} + 2\log(1/\delta)\Big).
+\]
 \end{theorem}
-The proof of the above theorem is standard (e.g. the proof can be
-easily adapted from Lemma 6 in \cite{Hsu2012RandomDA}).
 
+The following is a standard ``fast-rate'' bound for squared-loss ERM over a
+finite function class (e.g.\ \cite{Gyrfi2002ADT}), which we include for
+completeness.
 
-\begin{lemma}[Least Squares Generalization Bound] \label{lem:least_square_gen}Given a dataset $\Dcal = \{x_i, y_i\}_{i=1}^n$ where $x_i\in\Xcal$ and $x_i,y_i \sim \nu$, $y_i = f^\star(x_i) + \epsilon_i$, where $|y_i| \leq Y, \max_x |f^\star(x) |\leq Y$ and $ |\epsilon_i | \leq \sigma$ for all $i$, and $\{\epsilon_i\}$ are independent from each other. Given a function class $\Fcal: \Xcal\mapsto [0, Y]$, we assume approximate realizable, i.e., $\min_{f\in\Fcal} \EE_{x\sim \nu} \lvert f^\star(x)- f(x) \rvert^2 \leq \epsilon_{approx}$. Denote $\hat{f}$ as the least square solution, i.e., $\hat{f} = \argmin_{f\in\Fcal} \sum_{i=1}^n \left( f(x_i) - y_i \right)^2$. With probability at least $1-\delta$, we have:
-\begin{align*}
-\EE_{x\sim \nu}\left( \hat{f}(x) - f^\star(x) \right)^2 \leq  \frac{22 Y^2 \ln(|\Fcal |/\delta)}{ n } + 20 \epsilon_{approx}.
-\end{align*}
+\begin{lemma}[Least-squares generalization bound (finite class)]
+\label{lem:least_square_gen}
+Let $(X_1,Y_1),\dots,(X_n,Y_n)$ be i.i.d.\ with $X_i\sim \nu$ on $\Xcal$ and
+$Y_i\in[0,B]$ almost surely for some $B>0$. Let
+\[
+f^\star(x) := \E[\,Y \mid X=x\,]
+\]
+and assume $f^\star(x)\in[0,B]$ for all $x$. Let $\Fcal\subseteq\{f:\Xcal\to[0,B]\}$
+be finite and define
+\[
+\epsilon_{\mathrm{approx}}
+:= \min_{f\in\Fcal}\ \|f-f^\star\|_{2,\nu}^2.
+\]
+Let $\hat f\in\argmin_{f\in\Fcal}\sum_{i=1}^n (f(X_i)-Y_i)^2$ be a squared-loss ERM.
+Then for any $\delta\in(0,1)$, with probability at least $1-\delta$,
+\[
+\|\hat f - f^\star\|_{2,\nu}^2
+\;\le\;
+\frac{20\,B^2\,\ln\!\big(2|\Fcal|/\delta\big)}{n}
+\;+\;
+3\,\epsilon_{\mathrm{approx}}.
+\]
 \end{lemma}
 
-\begin{proof}%[Proof of Lemma~\ref{lem:least_square_gen}]
+\begin{proof}
+For $f\in\Fcal$ define
+\[
+z_i^f := (f(X_i)-Y_i)^2 - (f^\star(X_i)-Y_i)^2.
+\]
+A direct expansion gives
+\[
+z_i^f = (f(X_i)-f^\star(X_i))\big(f(X_i)+f^\star(X_i)-2Y_i\big).
+\]
+Since $f,f^\star,Y_i\in[0,B]$, we have $|z_i^f|\le B^2$ almost surely. Moreover,
+using $\E[Y_i\mid X_i]=f^\star(X_i)$,
+\[
+\E[z_i^f\mid X_i] = (f(X_i)-f^\star(X_i))^2,
+\qquad\text{so}\qquad
+\E[z_i^f] = \|f-f^\star\|_{2,\nu}^2 =: u_f.
+\]
+Finally,
+\[
+(z_i^f)^2 \le (f(X_i)-f^\star(X_i))^2\cdot (2B)^2
+\quad\Rightarrow\quad
+\Var(z_i^f)\le \E[(z_i^f)^2]\le 4B^2 u_f.
+\]
 
-For notation simplicity, let us denote $f^\star(x) := \EE[y | x]$. Let us consider a fixed function $f\in\Fcal$. 
-
-Denote random variables $z_i^f := ( f(x_i) - y_i )^2 - ( f^\star(x_i) - y_i )^2$. We now show that $\EE[z_i^f] = \| f - f^\star \|^2_{2,v}$, and $\EE[(z_i^f)^2] \leq 4 Y^2 \|f - f^\star\|_{2,\nu}^2$:
-\begin{align*}
-\EE[ z_i^f  ] = \EE\left[ ( f(x_i) - f^\star(x_i)) (f(x_i) + f^\star(x_i) - 2y_i) \right] = \EE[ (f(x_i) - f^\star(x_i))^2 ] := \| f- f^\star \|_{2,\nu}^2
-\end{align*} where the last equality uses the fact that $\EE[ y_i | x_i] = f^\star(x_i)$. For the second moment, we have:
-\begin{align*}
-\EE[ (z_i^f)^2] = \EE\left[ ( f(x_i) - f^\star(x_i))^2 (f(x_i) + f^\star(x_i) - 2y_i)^2 \right]  \leq 4Y^2 \EE[ (f(x_i) - f^\star(x_i))^2 ] := 4Y^2 \| f - f^\star \|_{2,\nu}^2,
-\end{align*} where the inequality uses the conditions that $\|f^\star\|_{\infty} \leq Y, \|f\|_{\infty}\leq Y, | y_i|\leq Y$. Now we can bound the deviation from the empirical mean $\sum_{i=1}^n  z_i^f / n$ to its expectation $\|f - f^\star\|_{2,\nu}^2$ using Bernstein's inequality. Together with a union bound over all $f\in\Fcal$, with probability at least $1-\delta$, we have
-\begin{align}
-\forall f\in\Fcal: \| f -f^\star\|_{2,\nu}^2 - \sum_{i=1}^n z_i^f /n \leq \sqrt{ \frac{ 8 Y^2 \| f-f^\star \|_{2,\nu}^2\ln(|\Fcal|/\delta)  }{n}  } + \frac{4Y^2 \ln(|\Fcal|/\delta)}{n}.
-\label{eq:uniform_convergence_ls}
-\end{align}
-Below we first bound $\sum_{i=1}^n z_i^{\hat f} / n$ where recall $\hat{f}$ is the least squares solution.
-
-Denote $\tilde{f} := \argmin_{f\in\Fcal} \| f -  f^\star \|_{2,\nu}^2$. Note that $\tilde{f}$ is independent of the dataset by its definition.   Our previous calculation implies that $\EE[z_i^{\tilde{f}} ] = \| \tilde{f} - f^\star \|_{2,\nu}^2$, and $\EE[ (z_i^{\tilde{f}})^2 ] \leq 4Y^2 \|\tilde{f} - f^\star \|_{2,\nu}^2$. Directly applying Bernstein's inequality to bound $\sum_{i=1}^n z_i^{\tilde{f}} / n  - \| \tilde{f} - f^\star \|_{2,\nu}^2$, we have that with probability at least $1-\delta$:
-\begin{align*}
-\sum_{i=1}^n z_i^{\tilde f} / n - \|\tilde{f} - f^\star \|_{2,\nu}^2 \leq \sqrt{ \frac{8 Y^2 \| \tilde{f} - f^\star \|_{2,\nu}^2 \ln(1/\delta)}{n}} + \frac{4Y^2 \ln(1/\delta)}{3n}.
-\end{align*}
-Using this inequality, we discuss two cases.  First when $\sum_{i=1}^n z_i^{\tilde f} / n \geq Y^2 \ln(1/\delta) / n$. In this case, the above inequality implies that:
-\begin{align*}
-\sum_{i=1}^n z_i^{\tilde f} / n - \|\tilde{f} - f^\star \|_{2,\nu}^2 \leq \sqrt{  8  \| \tilde{f} - f^\star \|_{2,\nu}^2 \cdot \sum_{i=1}^n z_i^{\tilde f} / n}  + \frac{4Y^2 \ln(1/\delta)}{3n}.
-\end{align*} Solve for $\sum_{i=1}^n z_i^{\tilde f} / n$, we get:
-\begin{align*}
-\sum_{i=1}^n z_i^{\tilde f} / n \leq 10 \| \tilde{f} -f^\star \|_{2,\nu}^2 + \frac{8 Y^2 \ln(1/\delta)}{3n}.
-\end{align*}
-
-For the other case where $\sum_{i=1}^n z_i^{\tilde f} / n \leq Y^2 \ln(1/\delta) / n$, we immediately have:
-\begin{align*}
-\sum_{i=1}^n z_i^{\tilde f} / n \leq Y^2 \ln(1/\delta) / n \leq 10 \| \tilde{f} -f^\star \|_{2,\nu}^2 + \frac{8 Y^2 \ln(1/\delta)}{3n}.
-\end{align*}Thus $\sum_{i=1}^n z_i^{\tilde f} / n \leq  10 \| \tilde{f} -f^\star \|_{2,\nu}^2 + \frac{8 Y^2 \ln(1/\delta)}{3n}$ regardless.
-
-%Under this inequality, when $\sum_{i=1}^n z_i^{\tilde f} / n \geq 4Y^2 \ln(1/\delta) / n$, we can show that the above inequality implies that:
-%\begin{align*}
-%\sum_{i=1}^n z_i^{\tilde f} / n \leq \frac{ \| \tilde{f} -f^\star \|_{2,\nu}^2 }{  2} + \frac{10 Y^2 \ln(1/\delta)}{ 3n}.
-%\end{align*} 
-Since $\|\tilde{f} - f^\star \|_{2,\nu}^2 \leq \epsilon_{approx}$ by the assumption, we can conclude that:
-\begin{align*}
-\sum_{i=1}^n z_i^{\tilde f} / n \leq {10 \epsilon_{approx} } + \frac{8 Y^2 \ln(1/\delta)}{ 3n}.
-\end{align*}
-Note that by definition of $\hat{f}$, we have $\sum_{i=1}^n z_i^{\hat f} \leq \sum_{i=1}^n z_i^{\tilde f}$, which implies that:
-\begin{align*}
-\sum_{i=1}^n z_i^{\hat f} / n \leq {10 \epsilon_{approx} } + \frac{8 Y^2 \ln(1/\delta)}{ 3n},
-\end{align*} which concludes the upper bound of $\sum_{i=1}^n z_i^{\hat f} / n$.
-
-Going back to Eq.~\ref{eq:uniform_convergence_ls}, by setting $f =\hat{f}$ there, and use the upper bound on $\sum_{i=1}^n z_i^{\hat f} /n$, we have that:
-\begin{align*}
-\| \hat{f} -f^\star\|_{2,\nu}^2 \leq \sqrt{ \frac{ 8 Y^2 \| \hat{f}-f^\star \|_{2,\nu}^2\ln(|\Fcal|/\delta)  }{n}  } + \frac{4Y^2 \ln(|\Fcal|/\delta)}{n} + \frac{8 Y^2 \ln( |\Fcal| / \delta)}{3n} +10 \epsilon_{approx}.
-\end{align*}
-Solve for $\|\hat{f} - f^\star\|_{2,\nu}^2$ from the above inequality, we get:
-\begin{align*}
-\| \hat{f} -f^\star\|_{2,\nu}^2 \leq \frac{22 Y^2 \ln(|\Fcal |/\delta)}{ n } + 20 \epsilon_{approx}.
-\end{align*}
-This concludes the proof. 
+Let $L:=\ln(2|\Fcal|/\delta)$. Applying Bernstein’s inequality to $z_i^f$ and to
+$-z_i^f$, and taking a union bound over $f\in\Fcal$, yields that with probability
+at least $1-\delta$, simultaneously for all $f\in\Fcal$,
+\begin{equation}\label{eq:bern_all_f}
+\left|\frac{1}{n}\sum_{i=1}^n z_i^f - u_f\right|
+\le
+\sqrt{\frac{8B^2 u_f\,L}{n}}
++
+\frac{2B^2 L}{3n}.
+\end{equation}
+Let $\tilde f\in\argmin_{f\in\Fcal}\|f-f^\star\|_{2,\nu}^2$, so $u_{\tilde f}=\epsilon_{\mathrm{approx}}$.
+Since $\hat f$ minimizes the empirical squared loss,
+\[
+\frac{1}{n}\sum_{i=1}^n z_i^{\hat f}\ \le\ \frac{1}{n}\sum_{i=1}^n z_i^{\tilde f}.
+\]
+Using \eqref{eq:bern_all_f} twice (once for $\hat f$, once for $\tilde f$), we get
+\[
+u_{\hat f}
+\le
+u_{\tilde f}
++
+\sqrt{\frac{8B^2 u_{\tilde f}L}{n}}
++\frac{4B^2 L}{3n}
++
+\sqrt{\frac{8B^2 u_{\hat f}L}{n}}.
+\]
+Let $\alpha:=\frac{8B^2 L}{n}$ and $\beta:=\frac{2B^2 L}{3n}$, and write $u:=u_{\hat f}$ and
+$\eps:=u_{\tilde f}=\epsilon_{\mathrm{approx}}$. Then
+\[
+u \le \eps + \sqrt{\alpha\eps} + 2\beta + \sqrt{\alpha u}.
+\]
+Using $\sqrt{\alpha u}\le \frac{u}{2}+\frac{\alpha}{2}$ gives
+\[
+u \le 2\eps + 2\sqrt{\alpha\eps} + 4\beta + \alpha.
+\]
+Using $2\sqrt{\alpha\eps}\le \eps+\alpha$ yields
+\[
+u \le 3\eps + 2\alpha + 4\beta.
+\]
+Finally,
+\[
+2\alpha+4\beta
+=
+\left(16+\frac{8}{3}\right)\frac{B^2 L}{n}
+=
+\frac{56}{3}\frac{B^2 L}{n}
+\le
+20\frac{B^2 L}{n},
+\]
+which completes the proof.
 \end{proof}
+
+
+
+\section{Other Bounds}
 
 \begin{lemma}[Uniform convergence for Bellman error under linear function hypothesis class ]  \label{lem:b_error_linear_uniform_conv}
 Given a feature $\phi:\Scal\times\Acal\mapsto \mathbb{R}^d$ with $\| \phi(s,a) \|_2 \leq 1, \forall s,a$. Define $\Hcal_h = \{ w^{\top} \phi(s,a) : \|w\|_2 \leq W, w\in\mathbb{R}^d, \|w^{\top}\phi(\cdot,\cdot)\|_{\infty} \leq H \}$. Given $g\in\Hcal$, denote $\ell(s,a,s', g)$ as follows:
@@ -210,14 +333,14 @@ Given a feature $\phi:\Scal\times\Acal\mapsto \mathbb{R}^d$ with $\| \phi(s,a) \
 For any distribution $\nu \in\Delta(\Scal)$, with probability $1-\delta$ over the randomness of the $m$ i.i.d triples $\{s_i,a_i,s'_i\}_{i=1}^m$ with $s_i\sim \mu,a_i\sim \mathrm{Unif}_{\Acal}, s'_i\sim P_h(\cdot | s_i,a_i)$, we have:
  %Define $\mathcal{W} \subset \{ w: w\in\mathbb{R}^d, \|w\|_2 \leq W\}$. Suppose for all $x\in\mathcal{X}$ we have $\|x\|_2 \leq 1$. For any distribution $\nu\in \Delta(\Xcal)$, with probability $1-\delta$ over the randomness of the $m$ i.i.d samples $\{x_i\}_{i=1}^m \sim \nu$, we have:
 \begin{align*}
-\max_{g\in\Hcal} \left\lvert \EE_{s\sim \nu,a\sim \text{Unif}_{\Acal}, s'\sim P_h(\cdot|s,a)} [ \ell(s,a,s', h, g) ] - \sum_{i=1}^m \ell(s_i,a_i,s'_i,h, g) / m  \right\rvert \leq 3 HA \sqrt{ \frac{ 2d \ln(1 + 4A W m )  + \ln(1/\delta)}{ m} }.
+\max_{g\in\Hcal} \left\lvert \E_{s\sim \nu,a\sim \text{Unif}_{\Acal}, s'\sim P_h(\cdot|s,a)} [ \ell(s,a,s', h, g) ] - \sum_{i=1}^m \ell(s_i,a_i,s'_i,h, g) / m  \right\rvert \leq 3 HA \sqrt{ \frac{ 2d \ln(1 + 4A W m )  + \ln(1/\delta)}{ m} }.
 \end{align*}
 Similarly, when $\ell(s,a,s',g)$ is defined as:
 \begin{align*}
 \ell(s,a, s', h, g) = w_h^{\top} \phi(s,a) - r(s,a) - \max_{a'} w_{h+1}^{\top}  \phi(s',a') ,
 \end{align*}  for any distribution $\nu\in \Delta(\Scal\times\Acal)$, with probability $1-\delta$ over randomness of the $m$ i.i.d triples $\{s_i,a_i,s'_i\}_{i=1}^m$ with $s_i,a_i\sim \nu, s_i' \sim P_h(\cdot | s_i,a_i)$, we have:
 \begin{align*}
-\max_{g\in\Hcal} \left\lvert \EE_{s\sim \nu,a\sim \text{Unif}_{\Acal}, s'\sim P_h(\cdot|s,a)} [ \ell(s,a,s', h, g) ] - \sum_{i=1}^m \ell(s_i,a_i,s'_i,h, g) / m  \right\rvert \leq 3 H \sqrt{ \frac{ 2d \ln(1 + 4 W m )  + \ln(1/\delta)}{ m} }.
+\max_{g\in\Hcal} \left\lvert \E_{s\sim \nu,a\sim \text{Unif}_{\Acal}, s'\sim P_h(\cdot|s,a)} [ \ell(s,a,s', h, g) ] - \sum_{i=1}^m \ell(s_i,a_i,s'_i,h, g) / m  \right\rvert \leq 3 H \sqrt{ \frac{ 2d \ln(1 + 4 W m )  + \ln(1/\delta)}{ m} }.
 \end{align*}
 \end{lemma}
 \begin{proof}
@@ -231,19 +354,19 @@ The proof uses the standard $\epsilon$-net argument.  Define $\mathcal{N}_{\epsi
 
 Consider a $w_h \in \Ncal_{\epsilon}, w_{h+1} \in \Ncal_{\epsilon}$, via Hoeffding's inequality, we have that with probability at least $1-\delta$:
 \begin{align*}
-\left\lvert \EE [ \ell(s,a,s', h, (w_h,w_{h+1})) ] -  \bar{\EE} [ \ell(s,a,s', h, (w_h,w_{h+1})) ]  \right\rvert \leq  2 HA \sqrt{ \ln(1/\delta) / m  }.
-\end{align*} where for notation simplicity, we denote $\bar\EE$ as the empirical average over the $m$ data triples. 
+\left\lvert \E [ \ell(s,a,s', h, (w_h,w_{h+1})) ] -  \bar{\E} [ \ell(s,a,s', h, (w_h,w_{h+1})) ]  \right\rvert \leq  2 HA \sqrt{ \ln(1/\delta) / m  }.
+\end{align*} where for notation simplicity, we denote $\bar\E$ as the empirical average over the $m$ data triples. 
 Apply a union bound over all $w_h\in\Ncal_\epsilon$ and $w_{h+1} \in \Ncal_{\epsilon}$, we have that with probability at least $1-\delta$:
 \begin{align*}
-\forall w_h\in\Ncal_\epsilon, w_{h+1}\in\Ncal_\epsilon: \left\lvert  \EE [ \ell(s,a,s', h, (w_h,w_{h+1})) ]  - \bar\EE [ \ell(s,a,s', h, (w_h,w_{h+1}))  ] \right\rvert \leq  2 HA \sqrt{ 2 \ln(|\Ncal_\epsilon |/\delta) / m  }.
+\forall w_h\in\Ncal_\epsilon, w_{h+1}\in\Ncal_\epsilon: \left\lvert  \E [ \ell(s,a,s', h, (w_h,w_{h+1})) ]  - \bar\E [ \ell(s,a,s', h, (w_h,w_{h+1}))  ] \right\rvert \leq  2 HA \sqrt{ 2 \ln(|\Ncal_\epsilon |/\delta) / m  }.
 \end{align*}
 Thus for any $w_h \in \Wcal, w_{h+1} \in \Wcal$,  we have:
 \begin{align*}
-\left\lvert \EE [ \ell(s,a,s', h, (w_h,w_{h+1})) ]  -\bar\EE [  \ell(s,a,s', h, (w_h,w_{h+1}))  ]  \right\rvert \leq  2 HA \sqrt{ 2 \ln(|\Ncal_\epsilon |/\delta) / m  }
+\left\lvert \E [ \ell(s,a,s', h, (w_h,w_{h+1})) ]  -\bar\E [  \ell(s,a,s', h, (w_h,w_{h+1}))  ]  \right\rvert \leq  2 HA \sqrt{ 2 \ln(|\Ncal_\epsilon |/\delta) / m  }
  + 4A \epsilon.
  \end{align*} Set $\epsilon = 1 / (4 A m)$, we have:
  \begin{align*}
- \left\lvert \EE [ \ell(s,a,s', h, (w_h,w_{h+1}))  ] -\bar\EE [  \ell(s,a,s', h, (w_h,w_{h+1})) ] \right\rvert & \leq  2HA \sqrt{ ( 2 d \ln  (1 + 4 A W m ) + \ln(1/\delta) )/ m   } + 1 / m \\
+ \left\lvert \E [ \ell(s,a,s', h, (w_h,w_{h+1}))  ] -\bar\E [  \ell(s,a,s', h, (w_h,w_{h+1})) ] \right\rvert & \leq  2HA \sqrt{ ( 2 d \ln  (1 + 4 A W m ) + \ln(1/\delta) )/ m   } + 1 / m \\
  & \leq  3 HA \sqrt{ \frac{ 2d \ln(1 + 4A W m )  + \ln(1/\delta)}{ m} }.
  \end{align*} This proves the first claim in the lemma.
 
@@ -255,23 +378,3 @@ The second claim in the lemma can be proved in a similar way, noting that withou
 \end{proof}
 
 
-
-
-
-
-
-
-
-\iffalse
-\begin{lemma}[Version of Freedman's inequality from~\citet{beygelzimer2011contextual}]
-    Let $X_1,X_2,\ldots,X_T$ be a sequence of real-valued random variables adapted to the filtration $\calF_i$. That is, $X_i$ is measurable with respect to $\calF_i$ and further assume that $\E[X_i \given \calF_{i-1}]$. Define $S = \sum_{t=1}^T X_t$, $V = \sum_{t=1}^T \E[X_t^2\given \calF_{t-1}]$ and let $X_t \leq R$ almost surely for all $t$. Then for any $\delta \in (0,1)$ and $\lambda \in [0,1/R]$, with probability at least $1-\delta$, 
-    \[
-        S \leq (e-2)\lambda V + \frac{\ln(1/\delta)}{\lambda}.
-    \]
-    In particular, choosing $\lambda = \min\left\{\frac{1}{R}, \sqrt{\ln(1/\delta)}{V}\right\}$, we get the Bernstein-style bound
-    \[
-        S \leq 2\sqrt{V\ln\frac{1}{\delta}} + R\ln\frac{1}{\delta}.
-    \]
-\label{lemma:freedman}
-\end{lemma}
-\fi

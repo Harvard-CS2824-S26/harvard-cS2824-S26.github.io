@@ -1074,11 +1074,11 @@ available in the offline data comes from the \emph{last layer} samples $D_{H-1}$
 On the support of $\mu_{H-1}$, rewards are $\{\pm1\}$-valued with mean $r_\infty$:
 under $r_\infty^{(0)}$,
 \[
-\PP(r=1)=1/2,\qquad \PP(r=-1)=1/2,
+\Pr(r=1)=1/2,\qquad \Pr(r=-1)=1/2,
 \]
 while under $r_\infty^{(1)}$,
 \[
-\PP(r=1)=(1+m^{-H/2})/2,\qquad \PP(r=-1)=(1-m^{-H/2})/2.
+\Pr(r=1)=(1+m^{-H/2})/2,\qquad \Pr(r=-1)=(1-m^{-H/2})/2.
 \]
 Let $\Delta:=m^{-H/2}$.  A direct calculation shows that the KL divergence between
 a single sample under these two reward distributions satisfies
@@ -1123,10 +1123,8 @@ bandits and experimental design), see \citet{lattimore2020bandit}.
 The theme that, under the right structural assumptions, reinforcement learning
 can be reduced to a sequence of supervised learning problems goes back at least
 to \citet{NIPS1999_1664}, which analyzed a ``trajectory tree'' approach and
-connected sample complexity to the VC dimension of a policy class.  The
-fundamental tradeoff between polynomial dependence on the size of the state
-space and exponential dependence on the horizon is discussed in depth
-in \citet{kakade2003sample}.
+connected sample complexity to the VC dimension of a policy class. We
+examine this in the next chapter with importance sampling.
 
 Linear methods for dynamic programming have a long history, going back at least
 to \citet{Shan50,bellman1959functional}.  The modern formulation of the

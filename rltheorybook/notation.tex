@@ -104,5 +104,10 @@ V^\pi(\mu) := \E_{s\sim \mu} \left[V^\pi(s)\right].
   \Tcal_h^\pi Q &:= r_h + P_h^\pi Q.
   \end{align*}
 
+\item For a policy $\pi$ and initial distribution $\mu$, the \emph{discounted state-action occupancy measure} $d_\mu^\pi \in \Delta(\Scal\times\Acal)$ is defined as:
+\[
+d_\mu^\pi(s,a) := (1-\gamma)\sum_{t=0}^\infty \gamma^t {\Pr}^\pi(s_t=s, a_t=a \mid s_0 \sim \mu).
+\]
+We similarly define the state occupancy measure $d_\mu^\pi(s) := \sum_{a\in\Acal} d_\mu^\pi(s,a)$.
   
 \end{itemize}

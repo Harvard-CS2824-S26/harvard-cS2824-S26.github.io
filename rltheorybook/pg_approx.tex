@@ -14,8 +14,8 @@ where $\Pi$ may not contain all stochastic policies (and it may not
 even contain an optimal policy).
 In contrast with the tabular results in
 the previous sections, the policy classes that we are often
-interested in are not fully expressive, e.g. $d \ll |\Sset| |\Aset|$\
-(indeed $\card{\Sset}$ or $\card{\Aset}$ need not even be finite for the results in this
+interested in are not fully expressive, e.g. $d \ll |\Scal| |\Acal|$\
+(indeed $|\Scal|$ or $|\Acal|$ need not even be finite for the results in this
 section); in this sense, we are in the regime of function
 approximation.
 
@@ -153,7 +153,7 @@ In practice, the most common policy classes are of the form:
 \begin{equation}\label{eq:policy_class}
 \Pi=  \left\{
   \pi_\theta(a| s) = \frac{\exp\big(f_\theta(s,a)\big) }
-  {\sum_{a' \in \Aset} \exp\big(f_\theta(s,a')\big)}
+  {\sum_{a' \in \Acal} \exp\big(f_\theta(s,a')\big)}
 \ \bigg\vert \ \theta \in \R^d\right\},
 \end{equation}
 where $f_\theta$ is a differentiable function. For example, the tabular softmax
@@ -168,7 +168,7 @@ mapping $\phi_{s,a} \in \R^d$. Each policy in the log-linear policy class is of
 the form:
 \[
   \pi_\theta(a| s) = \frac{\exp(\theta \cdot \phi_{s,a})}
-  {\sum_{a' \in \Aset} \exp(\theta \cdot \phi_{s,a'})},
+  {\sum_{a' \in \Acal} \exp(\theta \cdot \phi_{s,a'})},
 \]
 with $\theta \in
 \R^d$. Here, we can take

@@ -338,12 +338,12 @@ that for all starting state distributions $\rho$:
 \begin{eqnarray*}
   V^{\pi_\theta}(\rho)
   &\geq& V^\star (\rho) -
-         \frac{2 \lambda}{1-\gamma} \Norm{\frac{d^{\pi^\star}_{\rho}}{\mu } }_\infty         .
+         \frac{2 \lambda}{1-\gamma} \norm{\frac{d^{\pi^\star}_{\rho}}{\mu } }_\infty         .
 \end{eqnarray*}
 %\label{lem:small-gradient}
 \end{theorem}
 
-We refer to $\Norm{\frac{d^{\pi^\star}_{\rho}}{\mu} }_\infty$ as the
+We refer to $\norm{\frac{d^{\pi^\star}_{\rho}}{\mu} }_\infty$ as the
 \emph{distribution mismatch coefficient}. The above theorem shows the
 importance of having an appropriate measure $\mu(s)$ in order for the
 approximate first-order stationary points to be near optimal.
@@ -432,12 +432,12 @@ Let $\beta_\lambda :=\frac{8\gamma }{(1-\gamma)^3} + \frac{2\lambda
 }{|\Scal|}$.
   Starting from any initial
   $\theta^{(0)}$, consider the updates~\eqref{eqn:gd-entropic} with
-  \mbox{$\lambda = \frac{\epsilon(1-\gamma)}{2\Norm{\frac{d^{\pi^\star}_{\rho}}{\mu} }_\infty}$} and $\eta = 1/\beta_\lambda$.
+  \mbox{$\lambda = \frac{\epsilon(1-\gamma)}{2\norm{\frac{d^{\pi^\star}_{\rho}}{\mu} }_\infty}$} and $\eta = 1/\beta_\lambda$.
 Then for all starting state distributions $\rho$, we have
     \[
       \min_{t< T} \left\{ V^\star(\rho) - V^{(t)}(\rho)\right\}
       \leq \epsilon \quad \mbox{whenever}
-      \quad T \geq \frac{320 |\Scal|^2|\Acal|^2}{(1-\gamma)^6\,\epsilon^2} \Norm{\frac{d^{\pi^\star}_{\rho}}{\mu } }_\infty^2.
+      \quad T \geq \frac{320 |\Scal|^2|\Acal|^2}{(1-\gamma)^6\,\epsilon^2} \norm{\frac{d^{\pi^\star}_{\rho}}{\mu } }_\infty^2.
     \]
 \label{corollary:entropy}
 \end{corollary}
@@ -460,7 +460,7 @@ where we leave the proof as an exercise to the reader.
 Using Theorem~\ref{thm:small-gradient}, the desired optimality gap
 $\epsilon$ will follow if we set 
 $
-\lambda = \frac{\epsilon(1-\gamma)}{2\Norm{\frac{d^{\pi^\star}_{\rho}}{\mu} }_\infty}
+\lambda = \frac{\epsilon(1-\gamma)}{2\norm{\frac{d^{\pi^\star}_{\rho}}{\mu} }_\infty}
 $
 and if $\|\nabla_\theta L_\lambda(\theta)\|_2 \leq \lambda/(2|\Scal|\, |\Acal|)$.
 In order to complete the proof, we need to bound the iteration
@@ -490,7 +490,7 @@ above inequality. Hence,
 	&\leq& \frac{80\,
 		|\Scal|^2|\Acal|^2}{(1-\gamma)^4\, \lambda^2}\\
 	&=& \frac{320\,
-		|\Scal|^2|\Acal|^2 }{(1-\gamma)^6\, \eps^2}\Norm{\frac{d^{\pi^\star}_{\rho}}{\mu} }_\infty^2
+		|\Scal|^2|\Acal|^2 }{(1-\gamma)^6\, \eps^2}\norm{\frac{d^{\pi^\star}_{\rho}}{\mu} }_\infty^2
 \end{eqnarray*}
 where we have used that $\lambda<1$. This completes the proof.
 \end{proof}
@@ -556,11 +556,11 @@ Throughout this section, we restrict to using the initial
 state distribution $\rho\in \Delta(\Scal)$ in our update rule in
 \eqref{eqn:npg} (so our optimization measure $\mu$ and the performance
 measure $\rho$ are identical). Also, we restrict attention to states
-$s\in\Sset$ reachable from $\rho$, since, without loss of generality,
+$s\in\Scal$ reachable from $\rho$, since, without loss of generality,
 we can exclude states that are not reachable under this start state
 distribution\footnote{Specifically, we restrict the MDP to the set of
   states
-  $\{s\in\Sset~:~\exists \pi ~~\text{such that}~~ d^\pi_\rho(s) >
+  $\{s\in\Scal~:~\exists \pi ~~\text{such that}~~ d^\pi_\rho(s) >
   0\}$.}.
 
 For the softmax parameterization, this method takes a particularly

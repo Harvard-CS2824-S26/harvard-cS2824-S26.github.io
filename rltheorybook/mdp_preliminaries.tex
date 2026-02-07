@@ -136,8 +136,8 @@ Stationary policies satisfy the following consistency conditions:
 Suppose that $\pi$ is a stationary policy (possibly randomized). Then $V^\pi$ and $Q^\pi$
 satisfy the following \emph{Bellman consistency equations}: for all $s \in \Scal$ and $a\in\Acal$,
 \begin{align*}
-V^\pi(s) &= \EE_{a\sim \pi(\cdot\mid s)}\!\left[ Q^\pi(s,a)\right], \\
-Q^\pi(s,a) &= r(s,a) + \gamma \EE_{s' \sim P(\cdot\mid s, a)}\!\left[
+V^\pi(s) &= \E_{a\sim \pi(\cdot\mid s)}\!\left[ Q^\pi(s,a)\right], \\
+Q^\pi(s,a) &= r(s,a) + \gamma \E_{s' \sim P(\cdot\mid s, a)}\!\left[
 V^\pi(s') \right].
 \end{align*}
 In particular, if $\pi$ is deterministic, then $V^\pi(s)=Q^\pi(s,\pi(s))$.
@@ -323,7 +323,7 @@ action-value function.
 We say that a vector $Q \in \R^{|\Scal||\Acal|}$ satisfies the \emph{Bellman
 optimality equations} if, for all $(s,a)\in\Scal\times\Acal$,
 \[
-Q(s,a) =  r(s,a) + \gamma \EE_{s' \sim P(\cdot\mid s, a)}\left[ \max_{a'\in\Acal} Q(s',a') \right].
+Q(s,a) =  r(s,a) + \gamma \E_{s' \sim P(\cdot\mid s, a)}\left[ \max_{a'\in\Acal} Q(s',a') \right].
 \]
 For any $Q \in \R^{|\Scal||\Acal|}$, we have $Q=Q^\star$ if and only if $Q$
 satisfies the Bellman optimality equations. Furthermore, any deterministic policy
@@ -400,8 +400,8 @@ For the converse, suppose $Q=\Tcal Q$ for some $Q$. We now show that $Q=Q^\star$
 Let $\pi=\pi_Q$ be a greedy policy with respect to $Q$. The identity $Q=\Tcal Q$
 means
 \[
-Q(s,a)=r(s,a)+\gamma \EE_{s'\sim P(\cdot\mid s,a)}[V_Q(s')]
-= r(s,a)+\gamma \EE_{s'\sim P(\cdot\mid s,a)}[Q(s',\pi(s'))],
+Q(s,a)=r(s,a)+\gamma \E_{s'\sim P(\cdot\mid s,a)}[V_Q(s')]
+= r(s,a)+\gamma \E_{s'\sim P(\cdot\mid s,a)}[Q(s',\pi(s'))],
 \]
 which in matrix form is $Q=r+\gamma P^\pi Q$. Thus,
 \[
@@ -413,7 +413,7 @@ It remains to show that $\pi$ is optimal. Let $\pi'$ be any other deterministic
 stationary policy. First note that
 \[
 \big[(P^\pi-P^{\pi'})Q^\pi\big]_{s,a}
-= \EE_{s'\sim P(\cdot\mid s,a)}\!\left[Q^\pi(s',\pi(s'))-Q^\pi(s',\pi'(s'))\right]\ge 0,
+= \E_{s'\sim P(\cdot\mid s,a)}\!\left[Q^\pi(s',\pi(s'))-Q^\pi(s',\pi'(s'))\right]\ge 0,
 \]
 since $\pi$ is greedy with respect to $Q=Q^\pi$. Using $Q^\pi=r+\gamma P^\pi Q^\pi$
 and $Q^{\pi'}=(I-\gamma P^{\pi'})^{-1}r$, we have
@@ -510,7 +510,7 @@ Then $\{Q^\star_h\}_{h=0}^{H}$ is the unique collection of functions satisfying,
 $h\in\{0,\ldots,H-1\}$ and $(s,a)\in\Scal\times\Acal$,
 \begin{equation}
 \label{eqn:Beq_finite}
-Q_h(s,a) \;=\; r_h(s,a) \;+\; \EE_{s' \sim P_h(\cdot\mid s, a)}\!\left[\max_{a'\in\Acal} Q_{h+1}(s',a')\right].
+Q_h(s,a) \;=\; r_h(s,a) \;+\; \E_{s' \sim P_h(\cdot\mid s, a)}\!\left[\max_{a'\in\Acal} Q_{h+1}(s',a')\right].
 \end{equation}
 Moreover, any policy $\pi^\star$ defined by
 \[
@@ -679,7 +679,7 @@ Q^\star(s,\pi^\star(s)) - Q^\star(s,a)
 For the second term, Bellman consistency for $\pi_Q$ gives
 \[
 Q^\star(s,a) - Q^{\pi_Q}(s,a)
-= \gamma \EE_{s'\sim P(\cdot\mid s,a)}\!\left[V^\star(s') - V^{\pi_Q}(s')\right]
+= \gamma \E_{s'\sim P(\cdot\mid s,a)}\!\left[V^\star(s') - V^{\pi_Q}(s')\right]
 \le \gamma \|V^\star - V^{\pi_Q}\|_\infty.
 \]
 Combining,
@@ -761,7 +761,7 @@ deterministic stationary policy $\pi_0$ and repeats, for $k=0,1,2,\ldots$:
       compute $V^{\pi_k}$ by solving the linear system
       $V^{\pi_k} = r(\cdot,\pi_k(\cdot)) + \gamma P^{\pi_k} V^{\pi_k}$,
       and then obtain $Q^{\pi_k}$ via
-      $Q^{\pi_k}(s,a)=r(s,a)+\gamma \EE_{s'\sim P(\cdot\mid s,a)}[V^{\pi_k}(s')]$.
+      $Q^{\pi_k}(s,a)=r(s,a)+\gamma \E_{s'\sim P(\cdot\mid s,a)}[V^{\pi_k}(s')]$.
       (Equivalently, one may compute $Q^{\pi_k}$ directly using
       Equation~\ref{eq:policy_value_matrix_form}.)
 \item \emph{Policy improvement.} Update the policy to be greedy w.r.t.\ $Q^{\pi_k}$:
@@ -795,8 +795,8 @@ $V_{Q^{\pi_k}}(s)=\max_a Q^{\pi_k}(s,a) \ge Q^{\pi_k}(s,\pi_k(s))=V^{\pi_k}(s)$.
 Therefore, for every $(s,a)$,
 \[
 \Tcal Q^{\pi_k}(s,a)
-= r(s,a) + \gamma \EE_{s'\sim P(\cdot\mid s,a)}[V_{Q^{\pi_k}}(s')]
-\ge r(s,a) + \gamma \EE_{s'\sim P(\cdot\mid s,a)}[V^{\pi_k}(s')]
+= r(s,a) + \gamma \E_{s'\sim P(\cdot\mid s,a)}[V_{Q^{\pi_k}}(s')]
+\ge r(s,a) + \gamma \E_{s'\sim P(\cdot\mid s,a)}[V^{\pi_k}(s')]
 = Q^{\pi_k}(s,a).
 \]
 
@@ -804,7 +804,7 @@ Therefore, for every $(s,a)$,
 Let $\pi'=\pi_{k+1}=\pi_{Q^{\pi_k}}$.
 Define the (policy-specific) Bellman evaluation operator on state values,
 \[
-(\Tcal^{\pi'} V)(s) := r(s,\pi'(s)) + \gamma \EE_{s'\sim P(\cdot\mid s,\pi'(s))}[V(s')].
+(\Tcal^{\pi'} V)(s) := r(s,\pi'(s)) + \gamma \E_{s'\sim P(\cdot\mid s,\pi'(s))}[V(s')].
 \]
 This operator is monotone and a $\gamma$-contraction in $\|\cdot\|_\infty$,
 with unique fixed point $V^{\pi'}$.
@@ -812,7 +812,7 @@ with unique fixed point $V^{\pi'}$.
 By greediness of $\pi'$ w.r.t.\ $Q^{\pi_k}$,
 \[
 (\Tcal^{\pi'} V^{\pi_k})(s)
-= r(s,\pi'(s)) + \gamma \EE_{s'\sim P(\cdot\mid s,\pi'(s))}[V^{\pi_k}(s')]
+= r(s,\pi'(s)) + \gamma \E_{s'\sim P(\cdot\mid s,\pi'(s))}[V^{\pi_k}(s')]
 = Q^{\pi_k}(s,\pi'(s))
 = \max_a Q^{\pi_k}(s,a)
 = V_{Q^{\pi_k}}(s)
@@ -827,8 +827,8 @@ V^{\pi_{k+1}} = V^{\pi'} \;\ge\; V_{Q^{\pi_k}} \quad \text{(elementwise)}.
 Now, for any $(s,a)$,
 \[
 Q^{\pi_{k+1}}(s,a)
-= r(s,a) + \gamma \EE_{s'\sim P(\cdot\mid s,a)}[V^{\pi_{k+1}}(s')]
-\ge r(s,a) + \gamma \EE_{s'\sim P(\cdot\mid s,a)}[V_{Q^{\pi_k}}(s')]
+= r(s,a) + \gamma \E_{s'\sim P(\cdot\mid s,a)}[V^{\pi_{k+1}}(s')]
+\ge r(s,a) + \gamma \E_{s'\sim P(\cdot\mid s,a)}[V_{Q^{\pi_k}}(s')]
 = \Tcal Q^{\pi_k}(s,a),
 \]
 which proves $Q^{\pi_{k+1}} \ge \Tcal Q^{\pi_k}$ and completes the sandwich bound.
@@ -889,7 +889,7 @@ of value iteration and policy iteration coincide.
 Let $Q_H(s,a)\equiv 0$ for all $(s,a)$. For $h=H-1,H-2,\ldots,0$, define
 \begin{equation}\label{eq:finite_value_iteration}
 Q_h(s,a)
-= r_h(s,a) + \EE_{s'\sim P_h(\cdot\mid s,a)}\!\left[\max_{a'\in\Acal} Q_{h+1}(s',a')\right].
+= r_h(s,a) + \E_{s'\sim P_h(\cdot\mid s,a)}\!\left[\max_{a'\in\Acal} Q_{h+1}(s',a')\right].
 \end{equation}
 Equivalently, one may initialize $Q_{H-1}(s,a)=r_{H-1}(s,a)$ and then run the same
 recursion for $h=H-2,\ldots,0$.
@@ -957,7 +957,7 @@ It is straightforward to verify that $d_{s_0}^\pi$ is a probability distribution
 over $\Scal\times\Acal$ (since $(1-\gamma)\sum_{t\ge0}\gamma^t=1$).  For a starting
 distribution $\mu$, we also define the averaged occupancy measure
 \[
-d_\mu^\pi(s,a) := \EE_{s_0\sim \mu}\!\left[d_{s_0}^\pi(s,a)\right].
+d_\mu^\pi(s,a) := \E_{s_0\sim \mu}\!\left[d_{s_0}^\pi(s,a)\right].
 \]
 
 \paragraph{Flow (consistency) constraints.}
@@ -996,7 +996,7 @@ stationary policies: $d\in \mathcal{K}_\mu$ if and only if there exists a statio
 \paragraph{The dual LP.}
 Using the identity
 \[
-V^\pi(\mu) = \EE\!\left[\sum_{t=0}^\infty \gamma^t r(s_t,a_t)\right]
+V^\pi(\mu) = \E\!\left[\sum_{t=0}^\infty \gamma^t r(s_t,a_t)\right]
 = \frac{1}{1-\gamma}\sum_{s\in\Scal}\sum_{a\in\Acal} d_\mu^\pi(s,a)\, r(s,a),
 \]
 we can write a dual LP in the variables $d\in \R^{|\Scal|\cdot|\Acal|}$:

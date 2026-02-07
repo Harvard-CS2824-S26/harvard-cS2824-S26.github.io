@@ -53,14 +53,14 @@ V^\star - V^{\widehat\pi} \leq  \frac{3}{(1-\gamma)^2} \sqrt{ \frac{ \ln(|\Pi| /
 \end{align*}
 \end{theorem}
 \begin{proof}
-We start with the performance difference lemma and the fact that $\EE_{a\sim \pi(\cdot | s)}A^{\pi}(s,a) = 0$:
+We start with the performance difference lemma and the fact that $\E_{a\sim \pi(\cdot | s)}A^{\pi}(s,a) = 0$:
 \begin{align*}
-&(1-\gamma) \left(V^{\star} - V^{\widehat\pi}\right) = \mathbb{E}_{s\sim d^{\pi^\star}} \EE_{a\sim \pi^\star(\cdot | s)}A^{\widehat\pi}(s,a) \\
-& =   \mathbb{E}_{s\sim d^{\pi^\star}} \EE_{a\sim \pi^\star(\cdot | s)}A^{\widehat\pi}(s,a) - \mathbb{E}_{s\sim d^{\pi^\star}} \EE_{a\sim \widehat\pi(\cdot | s)}A^{\widehat\pi}(s,a) \\
-& \leq \EE_{s\sim d^{\pi^\star}} \frac{1}{1-\gamma }\left\| \pi^\star(\cdot | s) - \widehat\pi(\cdot | s)   \right\|_1 \\
-& \leq \frac{1}{1-\gamma} \sqrt{  \EE_{s\sim d^{\pi^\star}}\left\| \pi^\star(\cdot | s) - \widehat\pi(\cdot | s)   \right\|^2_1}\\
-& = \frac{1}{1-\gamma} \sqrt{ 4 \EE_{s\sim d^{\pi^\star}}\left\| \pi^\star(\cdot | s) - \widehat\pi(\cdot | s)   \right\|^2_{tv}}.
-\end{align*} where we use the fact that $\sup_{s,a,\pi} | A^{\pi}(s,a) | \leq \frac{1}{1-\gamma}$, and the fact that $(\EE[x])^2 \leq \EE[x^2]$.
+&(1-\gamma) \left(V^{\star} - V^{\widehat\pi}\right) = \mathbb{E}_{s\sim d^{\pi^\star}} \E_{a\sim \pi^\star(\cdot | s)}A^{\widehat\pi}(s,a) \\
+& =   \mathbb{E}_{s\sim d^{\pi^\star}} \E_{a\sim \pi^\star(\cdot | s)}A^{\widehat\pi}(s,a) - \mathbb{E}_{s\sim d^{\pi^\star}} \E_{a\sim \widehat\pi(\cdot | s)}A^{\widehat\pi}(s,a) \\
+& \leq \E_{s\sim d^{\pi^\star}} \frac{1}{1-\gamma }\left\| \pi^\star(\cdot | s) - \widehat\pi(\cdot | s)   \right\|_1 \\
+& \leq \frac{1}{1-\gamma} \sqrt{  \E_{s\sim d^{\pi^\star}}\left\| \pi^\star(\cdot | s) - \widehat\pi(\cdot | s)   \right\|^2_1}\\
+& = \frac{1}{1-\gamma} \sqrt{ 4 \E_{s\sim d^{\pi^\star}}\left\| \pi^\star(\cdot | s) - \widehat\pi(\cdot | s)   \right\|^2_{tv}}.
+\end{align*} where we use the fact that $\sup_{s,a,\pi} | A^{\pi}(s,a) | \leq \frac{1}{1-\gamma}$, and the fact that $(\E[x])^2 \leq \E[x^2]$.
 
 Using Theorem~\ref{them:mle_to_tv} and rearranging terms conclude the proof. 
 \end{proof}
@@ -89,7 +89,7 @@ Below we present an algorithm which we called Distribution Matching with Scheff\
 
 For any two policies $\pi$ and $\pi'$, we denote $f_{\pi,\pi'}$ as the following witness function:
 \begin{align*}
-f_{\pi,\pi'} := \argmax_{f: \|f\|_{\infty} \leq 1}\left[ \EE_{s,a\sim d^{\pi}} f(s,a) - \EE_{s,a\sim d^{\pi'}}f(s,a) \right].
+f_{\pi,\pi'} := \argmax_{f: \|f\|_{\infty} \leq 1}\left[ \E_{s,a\sim d^{\pi}} f(s,a) - \E_{s,a\sim d^{\pi'}}f(s,a) \right].
 \end{align*} We denote the set of witness functions as:
 \begin{align*}
 \Fcal = \{ f_{\pi,\pi'}: \pi,\pi' \in \Pi, \pi\neq \pi' \}. 
@@ -109,25 +109,25 @@ V^{\star} - V^{\widehat\pi} \leq \frac{4}{1-\gamma}  \sqrt{ \frac{ 2\ln(|\Pi|) +
 \begin{proof}
 The proof basically relies on a uniform convergence argument over $\Fcal$ of which the size is $|\Pi|^2$.  First we note that for all policy $\pi\in \Pi$:
 \begin{align*}
-\max_{f\in \Fcal} \left[ \mathbb{E}_{s,a\sim d^{\pi}} f(s,a) - \EE_{s,a\sim d^{\star}} f(s,a)  \right]  &  = \max_{f: \|f\|_{\infty}\leq 1} \left[ \mathbb{E}_{s,a\sim d^{\pi}} f(s,a) - \EE_{s,a\sim d^\star}f(s,a)  \right]  =  \left\|  d^{\pi} - d^{\pi^\star}   \right\|_{1},
-\end{align*} where the first equality comes from the fact that $\Fcal$ includes  $\arg\max_{f: \|f\|_{\infty}\leq 1} \left[ \mathbb{E}_{s,a\sim d^{\pi}} f(s,a) - \EE_{s,a\sim d^\star}f(s,a)  \right]$.
+\max_{f\in \Fcal} \left[ \mathbb{E}_{s,a\sim d^{\pi}} f(s,a) - \E_{s,a\sim d^{\star}} f(s,a)  \right]  &  = \max_{f: \|f\|_{\infty}\leq 1} \left[ \mathbb{E}_{s,a\sim d^{\pi}} f(s,a) - \E_{s,a\sim d^\star}f(s,a)  \right]  =  \left\|  d^{\pi} - d^{\pi^\star}   \right\|_{1},
+\end{align*} where the first equality comes from the fact that $\Fcal$ includes  $\arg\max_{f: \|f\|_{\infty}\leq 1} \left[ \mathbb{E}_{s,a\sim d^{\pi}} f(s,a) - \E_{s,a\sim d^\star}f(s,a)  \right]$.
 
 Via Hoeffding's inequality and a union bound over $\Fcal$, we get that with probability at least $1-\delta$, for all $f\in\Fcal$:
 \begin{align*}
-\left\lvert  \frac{1}{M} \sum_{i=1}^M f(s^\star_i,a^\star_i) - \EE_{s,a\sim d^\star}f(s,a)  \right\rvert \leq 2\sqrt{ \frac{ \ln(|\Fcal |/\delta) }{M} } := \epsilon_{stat}.
+\left\lvert  \frac{1}{M} \sum_{i=1}^M f(s^\star_i,a^\star_i) - \E_{s,a\sim d^\star}f(s,a)  \right\rvert \leq 2\sqrt{ \frac{ \ln(|\Fcal |/\delta) }{M} } := \epsilon_{stat}.
 \end{align*}
-Denote $\widehat{f} := \arg\max_{f\in \Fcal} \left[ \mathbb{E}_{s,a\sim d^{\widehat\pi}} f(s,a) - \EE_{s,a\sim d^{\star}} f(s,a)  \right] $, and $\widetilde{f}:= \arg\max_{f\in\Fcal} \mathbb{E}_{s,a\sim d^{\widehat\pi}} {f}(s,a) - \frac{1}{M} \sum_{i=1}^M {f}(s_i,a_i)$.
+Denote $\widehat{f} := \arg\max_{f\in \Fcal} \left[ \mathbb{E}_{s,a\sim d^{\widehat\pi}} f(s,a) - \E_{s,a\sim d^{\star}} f(s,a)  \right] $, and $\widetilde{f}:= \arg\max_{f\in\Fcal} \mathbb{E}_{s,a\sim d^{\widehat\pi}} {f}(s,a) - \frac{1}{M} \sum_{i=1}^M {f}(s_i,a_i)$.
 Hence, for $\widehat\pi$, we have:
 \begin{align*}
-\left\| d^{\widehat\pi} - d^\star  \right\|_{1} & = \mathbb{E}_{s,a\sim d^{\widehat\pi}} \widehat{f}(s,a) - \EE_{s,a\sim d^{\star}} \widehat{f}(s,a)  \leq \mathbb{E}_{s,a\sim d^{\widehat\pi}} \widehat{f}(s,a) - \frac{1}{M} \sum_{i=1}^M \widehat{f}(s^\star_i,a^\star_i) + \epsilon_{stat} \\
+\left\| d^{\widehat\pi} - d^\star  \right\|_{1} & = \mathbb{E}_{s,a\sim d^{\widehat\pi}} \widehat{f}(s,a) - \E_{s,a\sim d^{\star}} \widehat{f}(s,a)  \leq \mathbb{E}_{s,a\sim d^{\widehat\pi}} \widehat{f}(s,a) - \frac{1}{M} \sum_{i=1}^M \widehat{f}(s^\star_i,a^\star_i) + \epsilon_{stat} \\
 & \leq \mathbb{E}_{s,a\sim d^{\widehat\pi}} \widetilde{f}(s,a) - \frac{1}{M} \sum_{i=1}^M \widetilde{f}(s_i,a_i) + \epsilon_{stat} \\
 & \leq \mathbb{E}_{s,a\sim d^{\pi^\star}} \widetilde{f}(s,a) - \frac{1}{M} \sum_{i=1}^M \widetilde{f}(s_i,a_i) + \epsilon_{stat} \\
-& \leq \mathbb{E}_{s,a\sim d^{\pi^\star}} \widetilde{f}(s,a) - \EE_{s,a\sim d^\star} \widetilde{f}(s,a) +2 \epsilon_{stat}  = 2\epsilon_{stat},
+& \leq \mathbb{E}_{s,a\sim d^{\pi^\star}} \widetilde{f}(s,a) - \E_{s,a\sim d^\star} \widetilde{f}(s,a) +2 \epsilon_{stat}  = 2\epsilon_{stat},
 \end{align*} where in the third inequality we use the optimality of $\widehat\pi$. 
 
-Recall that $V^{\pi} = \EE_{s,a\sim d^{\pi}} r(s,a) / (1-\gamma)$, we have:
+Recall that $V^{\pi} = \E_{s,a\sim d^{\pi}} r(s,a) / (1-\gamma)$, we have:
 \begin{align*}
-V^{\widehat\pi} - V^\star = \frac{1}{1-\gamma} \left( \EE_{s,a\sim d^{\widehat\pi}}r(s,a) - \EE_{s,a\sim d^\star}r(s,a) \right) \leq \frac{\sup_{s,a} |r(s,a)| }{1-\gamma} \left\| d^{\widehat\pi} - d^\star \right\|_1 \leq \frac{2}{1-\gamma} \epsilon_{stat}. 
+V^{\widehat\pi} - V^\star = \frac{1}{1-\gamma} \left( \E_{s,a\sim d^{\widehat\pi}}r(s,a) - \E_{s,a\sim d^\star}r(s,a) \right) \leq \frac{\sup_{s,a} |r(s,a)| }{1-\gamma} \left\| d^{\widehat\pi} - d^\star \right\|_1 \leq \frac{2}{1-\gamma} \epsilon_{stat}. 
 \end{align*} 
 This concludes the proof. 
 \end{proof}
@@ -146,22 +146,22 @@ V^{\star} - V^{\widehat\pi} \leq  \frac{1}{1-\gamma} \| d^\star - d^{\widetilde\
 \begin{proof}
 We first define some terms below. Denote $\widetilde\pi:= \argmin_{\pi\in\Pi} \| d^{\pi} - d^\star \|_1 $.  Let us denote:
 \begin{align*}
-&\widetilde{f} = \argmax_{f\in\Fcal} \left[ \EE_{s,a\sim d^{\widehat\pi}} f(s,a) - \EE_{s,a\sim d^{\widetilde\pi}} f(s,a) \right], \\
-& \overline{f} = \argmax_{f\in \Fcal} \left[ \EE_{s,a\sim d^{\widehat\pi}} f(s,a) - \frac{1}{M}\sum_{i=1}^M f(s^\star_i,a^\star_i) \right], \\
-& f' = \arg\max_{f\in\Fcal} \left[\EE_{s,a\sim d^{\widetilde\pi}} \left[ {f}(s,a)\right] -  \frac{1}{M}\sum_{i=1}^M {f}( s_i^\star, a_i^\star ) \right] .
+&\widetilde{f} = \argmax_{f\in\Fcal} \left[ \E_{s,a\sim d^{\widehat\pi}} f(s,a) - \E_{s,a\sim d^{\widetilde\pi}} f(s,a) \right], \\
+& \overline{f} = \argmax_{f\in \Fcal} \left[ \E_{s,a\sim d^{\widehat\pi}} f(s,a) - \frac{1}{M}\sum_{i=1}^M f(s^\star_i,a^\star_i) \right], \\
+& f' = \arg\max_{f\in\Fcal} \left[\E_{s,a\sim d^{\widetilde\pi}} \left[ {f}(s,a)\right] -  \frac{1}{M}\sum_{i=1}^M {f}( s_i^\star, a_i^\star ) \right] .
 \end{align*} Starting with a triangle inequality, we have:
 \begin{align*}
 \left\| d^{\widehat\pi} - d^{\pi^\star} \right\|_1&  \leq \left\| d^{\widehat\pi} - d^{\widetilde\pi} \right\|_1 + \left\| d^{\widetilde\pi} - d^{\pi^\star} \right\|_1 \\
-& =  \EE_{s,a\sim d^{\widehat\pi}} \left[ \widetilde{f}(s,a)\right] - \EE_{s,a\sim d^{\widetilde\pi}}\left[ \widetilde{f}(s,a)\right]   + \left\| d^{\widetilde\pi} - d^{\pi^\star} \right\|_1  \\
-&  =  \EE_{s,a\sim d^{\widehat\pi}} \left[ \widetilde{f}(s,a)\right] -  \frac{1}{M}\sum_{i=1}^M \widetilde{f}( s_i^\star, a_i^\star )  + \frac{1}{M}\sum_{i=1}^M \widetilde{f}( s_i^\star, a_i^\star ) -
-\EE_{s,a\sim d^{\widetilde\pi}}\left[ \widetilde{f}(s,a)\right]   + \left\| d^{\widetilde\pi} - d^{\pi^\star} \right\|_1 \\
-& \leq  \EE_{s,a\sim d^{\widehat\pi}} \left[ \overline{f}(s,a)\right] -  \frac{1}{M}\sum_{i=1}^M \overline{f}( s_i^\star, a_i^\star )  + \frac{1}{M}\sum_{i=1}^M \widetilde{f}( s_i^\star, a_i^\star ) - \EE_{s,a\sim d^\star} \widetilde{f}(s,a) \\
-& \qquad + \left[ \EE_{s,a\sim d^\star} \widetilde{f}(s,a)-
-\EE_{s,a\sim d^{\widetilde\pi}}\left[ \widetilde{f}(s,a)\right]  \right] + \left\| d^{\widetilde\pi} - d^{\pi^\star} \right\|_1 \\
-& \leq \EE_{s,a\sim d^{\widetilde\pi}} \left[ {f'}(s,a)\right] -  \frac{1}{M}\sum_{i=1}^M {f'}( s_i^\star, a_i^\star ) +   2 \sqrt{\frac{\ln(|\Fcal|/\delta)}{ M }} + 2\| d^{\widetilde\pi} - d^\star\|_1  \\
-& \leq \EE_{s,a\sim d^{\widetilde\pi}} \left[ {f'}(s,a)\right] -  \EE_{s,a\sim d^{\star}}\left[ f'( s, a ) \right] + 4 \sqrt{\frac{\ln(|\Fcal|/\delta)}{ M }} + 2\| d^{\widetilde\pi} - d^\star\|_1 \\
+& =  \E_{s,a\sim d^{\widehat\pi}} \left[ \widetilde{f}(s,a)\right] - \E_{s,a\sim d^{\widetilde\pi}}\left[ \widetilde{f}(s,a)\right]   + \left\| d^{\widetilde\pi} - d^{\pi^\star} \right\|_1  \\
+&  =  \E_{s,a\sim d^{\widehat\pi}} \left[ \widetilde{f}(s,a)\right] -  \frac{1}{M}\sum_{i=1}^M \widetilde{f}( s_i^\star, a_i^\star )  + \frac{1}{M}\sum_{i=1}^M \widetilde{f}( s_i^\star, a_i^\star ) -
+\E_{s,a\sim d^{\widetilde\pi}}\left[ \widetilde{f}(s,a)\right]   + \left\| d^{\widetilde\pi} - d^{\pi^\star} \right\|_1 \\
+& \leq  \E_{s,a\sim d^{\widehat\pi}} \left[ \overline{f}(s,a)\right] -  \frac{1}{M}\sum_{i=1}^M \overline{f}( s_i^\star, a_i^\star )  + \frac{1}{M}\sum_{i=1}^M \widetilde{f}( s_i^\star, a_i^\star ) - \E_{s,a\sim d^\star} \widetilde{f}(s,a) \\
+& \qquad + \left[ \E_{s,a\sim d^\star} \widetilde{f}(s,a)-
+\E_{s,a\sim d^{\widetilde\pi}}\left[ \widetilde{f}(s,a)\right]  \right] + \left\| d^{\widetilde\pi} - d^{\pi^\star} \right\|_1 \\
+& \leq \E_{s,a\sim d^{\widetilde\pi}} \left[ {f'}(s,a)\right] -  \frac{1}{M}\sum_{i=1}^M {f'}( s_i^\star, a_i^\star ) +   2 \sqrt{\frac{\ln(|\Fcal|/\delta)}{ M }} + 2\| d^{\widetilde\pi} - d^\star\|_1  \\
+& \leq \E_{s,a\sim d^{\widetilde\pi}} \left[ {f'}(s,a)\right] -  \E_{s,a\sim d^{\star}}\left[ f'( s, a ) \right] + 4 \sqrt{\frac{\ln(|\Fcal|/\delta)}{ M }} + 2\| d^{\widetilde\pi} - d^\star\|_1 \\
 & \leq 3 \| d^\star - d^{\widetilde\pi} \|_1 + 4 \sqrt{ \frac{\ln(|\Fcal|/\delta)}{M } },
-\end{align*} where the first inequality uses the definition of $\overline{f}$, the second inequality uses the fact that $\widehat\pi$ is the minimizer of $\max_{f\in\Fcal} \EE_{s,a\sim d^{\pi}}f(s,a) - \frac{1}{M}\sum_{i=1}^M f(s_i^\star,a_i^\star)$, along the way we also use Heoffding's  inequality where $\forall f\in\Fcal$, $| \EE_{s,a\sim d^\star} f(s,a) - \sum_{i=1}^M f(s_i^\star,a_i^\star) | \leq 2\sqrt{ \ln(|\Fcal|/\delta) / M}$, with probability at least $1-\delta$.
+\end{align*} where the first inequality uses the definition of $\overline{f}$, the second inequality uses the fact that $\widehat\pi$ is the minimizer of $\max_{f\in\Fcal} \E_{s,a\sim d^{\pi}}f(s,a) - \frac{1}{M}\sum_{i=1}^M f(s_i^\star,a_i^\star)$, along the way we also use Heoffding's  inequality where $\forall f\in\Fcal$, $| \E_{s,a\sim d^\star} f(s,a) - \sum_{i=1}^M f(s_i^\star,a_i^\star) | \leq 2\sqrt{ \ln(|\Fcal|/\delta) / M}$, with probability at least $1-\delta$.
 \end{proof}
 
 As we can see, comparing to the realizable setting, here we have an extra term that is related to $\min_{\pi\in \Pi} \| d^\pi - d^\star \|_{1} $. Note that the dependency on horizon also scales linearly in this case.  In general, the constant $3$ in front of $\min_{\pi\in \Pi} \| d^\pi - d^\star \|_{1} $ is not avoidable in Scheff\'e estimator \cite{devroye2012combinatorial}. 
@@ -178,7 +178,7 @@ Similar to Behavior cloning, we assume we have a dataset of state-action pairs f
 
 We assume that we are given a state-action feature mapping $\phi:\Scal\times\Acal\mapsto \mathbb{R}^d$ (this can be extended infinite dimensional feature space in RKHS, but we present finite dimensional setting for simplicity).  We assume the true ground truth cost function as $c(s,a) := \theta^\star \cdot\phi(s,a)$ with $\|\theta^\star\|_2 \leq 1$ and $\theta^\star$ being unknown. 
 
-The goal of the learner is to compute a policy $\pi: \Scal\mapsto \Delta(A)$ such that when measured under the true cost function, it performs as good as the expert, i.e., $\EE_{s,a\sim d^{\pi}} \theta^\star\cdot \phi(s,a) \approx \EE_{s,a\sim d^{\pi^\star}} \theta^\star\cdot \phi(s,a)$.
+The goal of the learner is to compute a policy $\pi: \Scal\mapsto \Delta(A)$ such that when measured under the true cost function, it performs as good as the expert, i.e., $\E_{s,a\sim d^{\pi}} \theta^\star\cdot \phi(s,a) \approx \E_{s,a\sim d^{\pi^\star}} \theta^\star\cdot \phi(s,a)$.
 
 We will focus on finite horizon MDP setting in this section. We denote $\rho^{\pi}(\tau)$ as the trajectory distribution induced by $\pi$ and $d^{\pi}$ as the average state-action distribution induced by $\pi$. 
 
@@ -332,10 +332,10 @@ V_{H-1}^\star(s) = - \ln \left( \sum_{a} \exp\left( -c(s,a) \right) \right),
 
 With $V^\star_{h+1}$, we can continue to $h$. Denote $Q^\star(s,a)$ as follows:
 \begin{align*}
-Q^\star_h(s,a) = r(s,a) + \EE_{s'\sim P(\cdot | s,a)} V^\star_{h+1}(s').
+Q^\star_h(s,a) = r(s,a) + \E_{s'\sim P(\cdot | s,a)} V^\star_{h+1}(s').
 \end{align*} For $V^\star_h$, we have:
 \begin{align*}
-V^{\star}_{h}(s) = \min_{\rho\in\Delta(\Acal)} \sum_{a} \rho(a) \left( c(s,a)  +  \ln \rho(a)   + \EE_{s'\sim P(\cdot|s,a)}V^\star_{h+1}(s')\right).
+V^{\star}_{h}(s) = \min_{\rho\in\Delta(\Acal)} \sum_{a} \rho(a) \left( c(s,a)  +  \ln \rho(a)   + \E_{s'\sim P(\cdot|s,a)}V^\star_{h+1}(s')\right).
 \end{align*} Again we can show that the minimizer of the above program has the following form:
 \begin{align}
 \pi^\star_{h}(a|s) \propto \exp\left(- { Q_h^\star(s,a) }  \right).
@@ -379,7 +379,7 @@ AggreVaTe assumes an interactive expert from whom I can query for action feedbac
     \For{$t=0,2,\ldots,$}
     	\State Sample $s_t \sim d^{\pi_{\rho_t}}$
 	\State Query expert to get $A^\star(s_t,a)$ for all $a\in \Acal$
-	\State Policy update: $\rho_{t+1} = \argmax_{\rho\in \Delta(|\Pi|)} \sum_{j=0}^t \sum_{i=1}^{|\Pi|} \rho[i] \left(\EE_{a\sim\pi_i(\cdot|s_t)}A^\star(s_t,a)\right) - \lambda \sum_{i=1}^{|\Pi|} \rho[i] \ln(\rho[i])$
+	\State Policy update: $\rho_{t+1} = \argmax_{\rho\in \Delta(|\Pi|)} \sum_{j=0}^t \sum_{i=1}^{|\Pi|} \rho[i] \left(\E_{a\sim\pi_i(\cdot|s_t)}A^\star(s_t,a)\right) - \lambda \sum_{i=1}^{|\Pi|} \rho[i] \ln(\rho[i])$
     \EndFor
 \end{algorithmic}
 \caption{AggreVaTe}
@@ -388,7 +388,7 @@ AggreVaTe assumes an interactive expert from whom I can query for action feedbac
 
 The algorithm in summarized in Alg.~\ref{alg:AggreVaTe}.
 
-To analyze the algorithm, let us introduce some additional notations. Let us denote $\ell_t(\rho) = \sum_{i=1}^{|\Pi|} \rho[i] \EE_{a\sim \pi_i(\cdot | s)} A^\star(s_t, a)$, which is dependent on state $s_t$ generated at iteration $t$, and is a linear function with respect to decision variable $\rho$. AggreVaTe is essentially running the specific online learning algorithm, Follow-the-Regularized Leader (FTRL) (e.g., see \cite{shalev2011online}) with Entropy regularization:
+To analyze the algorithm, let us introduce some additional notations. Let us denote $\ell_t(\rho) = \sum_{i=1}^{|\Pi|} \rho[i] \E_{a\sim \pi_i(\cdot | s)} A^\star(s_t, a)$, which is dependent on state $s_t$ generated at iteration $t$, and is a linear function with respect to decision variable $\rho$. AggreVaTe is essentially running the specific online learning algorithm, Follow-the-Regularized Leader (FTRL) (e.g., see \cite{shalev2011online}) with Entropy regularization:
 \begin{align*}
 \rho_{t+1} = \argmax_{\rho\in \Delta(|\Pi|)} \sum_{i=0}^{t} \ell_t(\rho) + \lambda \text{Entropy}(\rho).
 \end{align*} Denote $c = \max_{s,a} A^{\pi}(s,a)$. This implies that $\sup_{\rho,t}\| \ell_t(\rho) \| \leq c$.
@@ -412,8 +412,8 @@ V^\star - V^{\widehat\pi} \leq   \frac{c}{1-\gamma} \epsilon_{stat} - \frac{1}{1
 \begin{proof}
 At each iteration $t$, let us define $\tilde\ell_t(\rho_t)$ as follows:
 \begin{align*}
-\tilde\ell_t(\rho_t) =  \EE_{s\sim d^{\pi_{\rho_t}}} \sum_{i=1}^{|\Pi|} \rho_t[i] \EE_{a\sim \pi_i(\cdot | s)} A^\star(s,a)
-\end{align*} Denote $\EE_t[ \ell_t(\rho_t)]$ as the conditional expectation of $\ell_t(\rho_t)$, conditioned on all history up and including the end of iteration $t-1$. Thus, we have $\EE_{t}[\ell_t](\rho_t) = \tilde\ell_t(\rho_t)$ as $\rho_t$ only depends on the history up to the end of iteration $t-1$.  Also note that $|\ell_t(\rho)| \leq c$. Thus by Azuma-Hoeffding inequality (Theorem~\ref{thm:Azuma}), we get:
+\tilde\ell_t(\rho_t) =  \E_{s\sim d^{\pi_{\rho_t}}} \sum_{i=1}^{|\Pi|} \rho_t[i] \E_{a\sim \pi_i(\cdot | s)} A^\star(s,a)
+\end{align*} Denote $\E_t[ \ell_t(\rho_t)]$ as the conditional expectation of $\ell_t(\rho_t)$, conditioned on all history up and including the end of iteration $t-1$. Thus, we have $\E_{t}[\ell_t](\rho_t) = \tilde\ell_t(\rho_t)$ as $\rho_t$ only depends on the history up to the end of iteration $t-1$.  Also note that $|\ell_t(\rho)| \leq c$. Thus by Azuma-Hoeffding inequality (Theorem~\ref{thm:Azuma}), we get:
 \begin{align*}
 \left\lvert \frac{1}{M}\sum_{t=0}^{M-1} \tilde\ell_t(\rho_t) - \frac{1}{T}\sum_{t=0}^{M-1} \ell_t(\rho_t)   \right\rvert \leq 2c \sqrt{ \frac{ \ln(1/\delta) }{M}},
 \end{align*} with probability at least $1-\delta$.
@@ -429,7 +429,7 @@ which means that there must exist a $\hat{t}\in \{0, \dots, {M-1}\}$, such that:
 \end{align*}
 Now use Performance difference lemma, we have:
 \begin{align*}
-(1-\gamma)\left( - V^{\star} + V^{\pi_{\rho_{\hat{t}}}}\right) & = \EE_{s\sim d^{\pi_{\rho_{\hat{t}}}}} \sum_{i=1}^{|\Pi|}\rho_{\hat{t}}[i] \EE_{a\sim \pi_i(\cdot | s)} A^\star(s,a) = \ell_{\hat{t}} (\rho_{\hat{t}}) \\
+(1-\gamma)\left( - V^{\star} + V^{\pi_{\rho_{\hat{t}}}}\right) & = \E_{s\sim d^{\pi_{\rho_{\hat{t}}}}} \sum_{i=1}^{|\Pi|}\rho_{\hat{t}}[i] \E_{a\sim \pi_i(\cdot | s)} A^\star(s,a) = \ell_{\hat{t}} (\rho_{\hat{t}}) \\
 & \geq  \frac{1}{M} \sum_{t=0}^{M-1} \ell_t(\rho^\star)  - c\sqrt{ \frac{\ln(|\Pi|)}{T}} - 2c\sqrt{\frac{\ln(1/\delta)}{T}}.
 \end{align*} Rearrange terms, we get:
 \begin{align*}
@@ -478,7 +478,7 @@ Recall the LQR model:
 \end{align*}
 We start from $h = H-1$. For any $s$, we have:
 \begin{align*}
-V^\star(s)_{H-1} = \min_{\pi_{H-1}(\cdot | s) \in \Delta(\Acal)} \EE_{a\sim \rho}\left[   \frac{1}{2} s^{\top} Q x + \frac{1}{2} a^{\top} R a +  \beta \ln \rho(a)   \right]
+V^\star(s)_{H-1} = \min_{\pi_{H-1}(\cdot | s) \in \Delta(\Acal)} \E_{a\sim \rho}\left[   \frac{1}{2} s^{\top} Q x + \frac{1}{2} a^{\top} R a +  \beta \ln \rho(a)   \right]
 \end{align*}
 Take derivative with respect to $\pi_{H-1}(a|s)$, set it to zero and solve for $\pi_{H-1}(a|s)$, we get:
 \begin{align*}
@@ -517,18 +517,18 @@ We present the Data Aggregation (DAgger) algorithm below. We again focus on real
 
 DAgger finds a policy $\widehat\pi$ such that under the distribution $d^{\pi}$, $\pi$ can predict $\pi^\star$ well. Specifically, we have:
 \begin{align*}
-\EE_{s \sim d^{\widehat\pi}} \left\| \widehat\pi(\cdot | s) - \pi^\star(\cdot | s)  \right\|_{tv} \leq  \epsilon. 
+\E_{s \sim d^{\widehat\pi}} \left\| \widehat\pi(\cdot | s) - \pi^\star(\cdot | s)  \right\|_{tv} \leq  \epsilon. 
 \end{align*}
 Via performance difference lemma, this immediately implies that:
 \begin{align*}
-(1-\gamma)\left(V^{\star} - V^{\widehat\pi}\right)  & =  - \EE_{s\sim d^{\widehat\pi}} \EE_{a\sim \widehat\pi(\cdot | s)} A^{\star}(s,a)  = - \EE_{s\sim d^{\widehat\pi}} \EE_{a\sim \widehat\pi(\cdot | s)} A^{\star}(s,a)  +  \EE_{s\sim d^{\widehat\pi}} \EE_{a\sim \pi^\star(\cdot | s)} A^{\star}(s,a) \\
-& \leq  \left( \sup_{s,a} \left\lvert A^\star(s,a) \right\lvert \right)  \EE_{s\sim \widehat\pi} \left\| \widehat\pi(\cdot | s) - \pi^\star(\cdot | s) \right\|_{1}.
+(1-\gamma)\left(V^{\star} - V^{\widehat\pi}\right)  & =  - \E_{s\sim d^{\widehat\pi}} \E_{a\sim \widehat\pi(\cdot | s)} A^{\star}(s,a)  = - \E_{s\sim d^{\widehat\pi}} \E_{a\sim \widehat\pi(\cdot | s)} A^{\star}(s,a)  +  \E_{s\sim d^{\widehat\pi}} \E_{a\sim \pi^\star(\cdot | s)} A^{\star}(s,a) \\
+& \leq  \left( \sup_{s,a} \left\lvert A^\star(s,a) \right\lvert \right)  \E_{s\sim \widehat\pi} \left\| \widehat\pi(\cdot | s) - \pi^\star(\cdot | s) \right\|_{1}.
 \end{align*}
 Thus, we have:
 \begin{align*}
 V^{\star} - V^{\widehat\pi} \leq \frac{ \sup_{s,a} | A^\star(s,a) |  }{1-\gamma} \epsilon. 
 \end{align*}
-DAgger avoids the quadratic effective horizon dependency $1/(1-\gamma)^2$ only under the condition that $\EE_{s\sim d^{\widetilde\pi}} \max_{a} | A^\star(s,a) | = o\left( \frac{1}{1-\gamma} \right)$. Note that in the worst case, it is possible that $\EE_{s\sim d^{\widetilde\pi}} \max_{a} | A^\star(s,a) | = \Theta\left( 1/ (1-\gamma)\right)$, in which case unlike DM-ST, DAgger indeed cannot avoid the quadratic dependency on the effective horizon and also suffers distribution shift issue as the Behavior cloning algorithm. Cooking up such MDPs is not hard. 
+DAgger avoids the quadratic effective horizon dependency $1/(1-\gamma)^2$ only under the condition that $\E_{s\sim d^{\widetilde\pi}} \max_{a} | A^\star(s,a) | = o\left( \frac{1}{1-\gamma} \right)$. Note that in the worst case, it is possible that $\E_{s\sim d^{\widetilde\pi}} \max_{a} | A^\star(s,a) | = \Theta\left( 1/ (1-\gamma)\right)$, in which case unlike DM-ST, DAgger indeed cannot avoid the quadratic dependency on the effective horizon and also suffers distribution shift issue as the Behavior cloning algorithm. Cooking up such MDPs is not hard. 
 
 \fi
 

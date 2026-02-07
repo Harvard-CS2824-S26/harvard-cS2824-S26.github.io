@@ -1,4 +1,4 @@
-\chapter{Linearly realizable $Q^\star$ can still be exponentially hard}
+\chapter{Linearly realizable $Q^\star$ is exponentially hard}
 \label{app:linearQstar_lb}
 
 This appendix records a (trajectory-tree) hard instance in which $Q^\star$ is
@@ -30,7 +30,7 @@ calls to the generative model.
 
 The construction presented here follows from that in~\cite{WeiszAS21}.
 
-\section*{Construction}
+\section{Construction}
 
 Fix a horizon $H\ge 1$ and a feature dimension $d$. Let $\rho\in(0,1/6]$ be a
 constant and set $A:=|\Acal|$.
@@ -132,9 +132,7 @@ R_h = r_h(s,a) + \xi_h,\qquad \xi_h\sim\mathcal{N}(0,1)\ \text{i.i.d.},
 \]
 independently across all queries.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section*{Key inequalities: $a^\star$ is greedy everywhere}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Key inequalities: $a^\star$ is greedy everywhere}
 
 \begin{lemma}[Fresh-direction correlation bound]
 \label{lem:fresh_corr_bound}
@@ -230,9 +228,7 @@ Also $|\langle v(a),v(a^\star)\rangle|\le \rho$. Therefore,
 using $\rho\le 1/6$.
 \end{proof}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section*{Realizability and Bellman optimality}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Realizability and Bellman optimality}
 
 \begin{lemma}[Bellman optimality of $\widetilde Q$]
 \label{lem:realizability_bellman}
@@ -274,7 +270,7 @@ r_h(s,a)+\widetilde V_{h+1}(s_{h+1})
 This establishes Bellman optimality, hence $\widetilde Q=Q^\star$.
 \end{proof}
 
-\section*{Proof sketch of Theorem~\ref{thm:lower_gen_linQstar_expA}}
+\section{Proof sketch of Theorem~\ref{thm:lower_gen_linQstar_expA}}
 
 \begin{proof}[Proof sketch of Theorem~\ref{thm:lower_gen_linQstar_expA}]
 We instantiate $M$ as $\mathcal{M}_{a^\star}$ with $a^\star$ drawn uniformly from $[A]$.
