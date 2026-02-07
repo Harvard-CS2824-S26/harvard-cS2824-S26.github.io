@@ -19,7 +19,7 @@ We consider episodic finite horizon MDP with horizon $H$, $\Mcal = \{\Scal,\Acal
 
 We define the learning protocol below. Learning happens in an episodic setting. Every episode $k$, learner first proposes a policy $\pi^k$ based on all the history information up to the end of episode $k-1$. The learner then executes $\pi^k$ in the underlying MDP to generate a single trajectory $\tau^k = \{s^k_h,a_h^k\}_{h=0}^{H-1}$ with $a_h = \pi_h^k(s_h^k)$ and $s_{h+1}^k \sim P_h(\cdot |s_h^k,a_h^k)$. The goal of the learner is to minimize the following cumulative regret over $N$ episodes:
 \begin{align*}
-    \textrm{Regret} := \EE \left[ \sum_{k=0}^{K-1} \left(V^{\star}  - V^{\pi^k} \right)  \right],
+    \textrm{Regret} := \E \left[ \sum_{k=0}^{K-1} \left(V^{\star}  - V^{\pi^k} \right)  \right],
 \end{align*} where the expectation is with respect to the randomness of the MDP environment and potentially the randomness of the learner (i.e., the learner might make decisions in a randomized fashion). 
 
 \subsection{Low-Rank MDPs and Linear MDPs} 
@@ -51,7 +51,7 @@ We start from $Q^\star_{H-1}(s,a) = \theta_{H-1}^\star \cdot \phi(s,a)$, and $\p
 Now we do dynamic programming from $h+1$ to $h$:
 \begin{align}
 \label{eq:linear_MDP_VI}
-Q^\star_{h}(s,a) & = \theta_h^\star\cdot \phi(s,a) + \EE_{s\sim P_h(\cdot | s,a)} V_{h+1}^\star(s') = \theta_h^\star \cdot \phi(s,a) + P_h(\cdot | s,a) \cdot V^\star_{h+1} = \theta_h^\star \cdot \phi(s,a) +  (\mu_h^\star \phi(s,a))^{\top} V^\star_{h+1}  \\
+Q^\star_{h}(s,a) & = \theta_h^\star\cdot \phi(s,a) + \E_{s\sim P_h(\cdot | s,a)} V_{h+1}^\star(s') = \theta_h^\star \cdot \phi(s,a) + P_h(\cdot | s,a) \cdot V^\star_{h+1} = \theta_h^\star \cdot \phi(s,a) +  (\mu_h^\star \phi(s,a))^{\top} V^\star_{h+1}  \\
 &  = \phi(s,a) \cdot\left( \theta_h^\star +   (\mu_h^\star)^{\top} V^\star_{h+1}  \right)  = \phi(s,a) \cdot w_{h},  
 \end{align} where we denote $w_h := \theta_h^\star + (\mu_h^\star)^{\top} V^\star_{h+1}$. Namely we see that $Q^\star_{h}(s,a)$ is a linear function with respect to $\phi(s,a)$! We can continue by defining $\pi^\star_h(s) = \argmax_{a} Q^\star_h(s,a)$ and $V^\star_h(s) = \max_{a} Q^\star_h(s,a)$.
 
@@ -89,7 +89,7 @@ To get intuition of $\Lambda^n$, think about the tabular setting where $\phi(s,a
 
 We consider the following multi-variate linear regression problem. Denote $\delta(s)$ as a one-hot vector   that has zero everywhere except that the entry corresponding to $s$ is one.   Denote $\epsilon_{h}^i = P(\cdot | s_h^i,a_h^i) - \delta(s_{h+1}^i)$. Conditioned on history $\Hcal_{h}^i$ (history $\Hcal_{h}^i$ denotes  all information from the very beginning of the learning process up to and including $(s_h^i,a_h^i)$), we have:
 \begin{align*}
-\EE\left[ \epsilon_{h}^i \vert \Hcal_{h}^i \right] = 0,
+\E\left[ \epsilon_{h}^i \vert \Hcal_{h}^i \right] = 0,
 \end{align*}  simply because $s_{h+1}^i$ is sampled from $P_h(\cdot | s_h^i,a_h^i)$ conditioned on $(s_h^i,a_h^i)$. 
 Also note that $\| \epsilon_h^i \|_1 \leq 2$ for all $h,i$.
 
@@ -143,7 +143,7 @@ Fix $V:\Scal\mapsto [0,H]$. For all $n$ and $s,a\in\Scal\times\Acal$, and $h$, w
 \begin{proof}
 We first check the noise terms $\{ V^{\top} \epsilon_h^i \}_{h,i}$.  Since $V$ is independent of the data (it's a pre-fixed function), and by linear property of expectation, we have:
 \begin{align*}
-\EE\left[ V^{\top} \epsilon_h^i  \vert \Hcal_{h}^i \right]  = 0, \quad | V^{\top} \epsilon_h^i  | \leq \|V\|_{\infty} \|\epsilon_h^i \|_1 \leq 2 H, \forall h,i.
+\E\left[ V^{\top} \epsilon_h^i  \vert \Hcal_{h}^i \right]  = 0, \quad | V^{\top} \epsilon_h^i  | \leq \|V\|_{\infty} \|\epsilon_h^i \|_1 \leq 2 H, \forall h,i.
 \end{align*}
 Hence, this is a Martingale difference sequence. Using the Self-Normalized vector-valued Martingale Bound (Lemma~\ref{lemma:self_norm}), we have that for all $n$, with probability at least $1-\delta$:
 \begin{align*}
@@ -350,7 +350,7 @@ In this section, to make notation simple, we set $\lambda = 1$ directly.
 
 
 
-Proving optimism requires us to first bound model error which we have built in the uniform convergence result shown in Lemma~\ref{lem:uniform_converge}, namely, the bound we get for $(\widehat{P}^n_h(\cdot | s,a) - P(\cdot | s,a))\cdot f$ for all $f\in \mathcal{V}$. Recall Lemma~\ref{lem:uniform_converge} but this time replacing $\Fcal$ by $\mathcal{V}$ defined in Eq.~\ref{eq:function_range}. With probability at least $1-\delta$, for all $n, h, s,a$ and for all $f\in\Vcal$, 
+Proving optimism requires us to first bound model error which we have built in the uniform convergence result shown in Lemma~\ref{lem:uniform_converge}, namely, the bound we get for $(\widehat{P}^n_h(\cdot | s,a) - P(\cdot | s,a))\cdot f$ for all $f\in \mathcal{V}$. Recall Lemma~\ref{lem:uniform_converge} but this time replacing $\Fcal$ by $\mathcal{V}$ defined in Eq.~\ref{eq:function_range}. With probability at least $1-\delta$, for all $n, h, s,a$ and for all $f\in \mathcal{V}$, 
 \begin{align*}
 \left\lvert (\widehat{P}^n_h(\cdot | s,a) - P(\cdot | s,a))\cdot f\right\rvert & \leq H \left\|\phi(s,a)\right\|_{(\Lambda_h^n)^{-1}} \left( \sqrt{\ln \frac{H}{\delta}} + \sqrt{d \ln(1+ 6 (W+HN) \sqrt{N})} + d \sqrt{\ln(1 + 18 B^2 \sqrt{d} N)}  \right)\\
 &  \lesssim H d \left\|\phi(s,a)\right\|_{(\Lambda_h^n)^{-1}} \left( \sqrt{\ln \frac{H}{\delta}} +  \sqrt{ \ln(WN+HN^2) } +\sqrt{\ln( B^2 dN )} \right) \\
@@ -439,10 +439,10 @@ Now we use Lemma~\ref{lem:general_regret_bound} together with the above inequali
 
 We split the expected regret based on the event $\mathcal{E}_{model}$.
 \begin{align*}
- \EE\left[ N V^\star - \sum_{n=1}^N V^{\pi_n} \right] & = \EE\left[  \one\{\Ecal_{model} \text{ holds} \} \left(N V^\star - \sum_{n=1}^N V^{\pi_n} \right)\right] \\
- & \qquad + \EE\left[  \one\{\Ecal_{model} \text{ doesn't hold} \} \left(N V^\star - \sum_{n=1}^N V^{\pi_n} \right)\right] \\
-& \leq   \EE\left[  \one\{\Ecal_{model} \text{ holds} \} \left(N V^\star - \sum_{n=1}^N V^{\pi_n} \right)\right] + \delta NH \\
-& \lesssim \EE  \left[    \sum_{n=1}^N \sum_{h=0}^{H-1} b_h^n(s_h^n,a_h^n)    \right] + \delta NH.
+ \E\left[ N V^\star - \sum_{n=1}^N V^{\pi_n} \right] & = \E\left[  \one\{\Ecal_{model} \text{ holds} \} \left(N V^\star - \sum_{n=1}^N V^{\pi_n} \right)\right] \\
+ & \qquad + \E\left[  \one\{\Ecal_{model} \text{ doesn't hold} \} \left(N V^\star - \sum_{n=1}^N V^{\pi_n} \right)\right] \\
+& \leq   \E\left[  \one\{\Ecal_{model} \text{ holds} \} \left(N V^\star - \sum_{n=1}^N V^{\pi_n} \right)\right] + \delta NH \\
+& \lesssim \E  \left[    \sum_{n=1}^N \sum_{h=0}^{H-1} b_h^n(s_h^n,a_h^n)    \right] + \delta NH.
 \end{align*}
 Note that:
 \begin{align*}

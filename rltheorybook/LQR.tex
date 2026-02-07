@@ -210,7 +210,7 @@ Q_{H-1}(x,u) &=  \E\big[(A_{H-1}x+B_{H-1}u +w_{H-1})^\top Q (A_{H-1}x+B_{H-1}u +
  &=  (A_{H-1}x+B_{H-1}u)^\top Q (A_{H-1}x+B_{H-1}u) + \sigma^2\textrm{Trace}(Q)+x^\top Q x
 + u^\top R u
 \end{align*}
-due to that $x_H = A_{H-1}x+B_{H-1}u+w_{H-1}$, and $\EE[ w_{H-1}^{\top} Q w_{H-1} ] = \textrm{Trace}(\sigma^2 Q)$.
+due to that $x_H = A_{H-1}x+B_{H-1}u+w_{H-1}$, and $\E[ w_{H-1}^{\top} Q w_{H-1} ] = \textrm{Trace}(\sigma^2 Q)$.
 Due to that this is a quadratic function of
 $u$, we can immediately derive that the optimal control is given by:
 \[
@@ -237,7 +237,7 @@ $K=K^\star_{H-1}$. This proves our claim for $t=H-1$.
 
 This implies that:
 \begin{align*}
-Q^\star_{H-2}(x,u) &=  \EE[V^\star_{H-1}(A_{H-2}x+B_{H-2}u+w_{H-2})]
+Q^\star_{H-2}(x,u) &=  \E[V^\star_{H-1}(A_{H-2}x+B_{H-2}u+w_{H-2})]
 +x^\top Q x+u^\top R u\\
 &=  (A_{H-2}x+B_{H-2}u)^\top P_{H-1} (A_{H-2}x+B_{H-2}u)+
 \sigma^2\textrm{Trace}(P_{H-1})+\sigma^2\textrm{Trace}(Q)
@@ -802,7 +802,7 @@ We demonstrate another parameterization of controllers which admits convexity.  
 \end{align*}
 Instead of focusing on quadratic cost function, we consider general convex cost function $c(x_t,u_t)$, and the goal is to optimize:
 \begin{align*}
-\EE_{\pi} \left[ \sum_{t=0}^{H-1} c_t(x_t, u_t)   \right],
+\E_{\pi} \left[ \sum_{t=0}^{H-1} c_t(x_t, u_t)   \right],
 \end{align*}  where $\pi$ is a time-dependent policy. 
 
 While we relax the assumption on the cost function from quadratic cost to general convex cost, we still focus on linearly parameterized policy, i.e.,  we are still interested in searching for a sequence of time-dependent linear controllers $\{-K^\star_t\}_{t=0}^{H-1}$ with $u_t = -K^\star_t x_t$, such that it minimizes the above objective function.  We again assume the system is controllable, i.e., the expected total cost under $\{-K^\star_t\}_{t=0}^{H-1}$ is finite. 

@@ -49,7 +49,7 @@ mapping $\phi_{s,a} \in \R^d$. Let us
 consider the policy class
 \[
   \pi_\theta(a| s) = \frac{\exp(\theta \cdot \phi_{s,a})}
-  {\sum_{a' \in \Aset} \exp(\theta \cdot \phi_{s,a'})}\]
+  {\sum_{a' \in \Acal} \exp(\theta \cdot \phi_{s,a'})}\]
 with $\theta \in
 \R^d$. 
 \end{example}
@@ -58,7 +58,7 @@ with $\theta \in
 Here we may be interested in working with the policy class
 \[
   \pi_\theta(a| s) = \frac{\exp\big(f_\theta (s,a)\big)}
-  {\sum_{a' \in \Aset} \exp\big(f_\theta (s,a')\big)}\]
+  {\sum_{a' \in \Acal} \exp\big(f_\theta (s,a')\big)}\]
 where the scalar function $f_\theta (s,a)$ may be parameterized by a
 neural network, with $\theta \in
 \R^d$. 

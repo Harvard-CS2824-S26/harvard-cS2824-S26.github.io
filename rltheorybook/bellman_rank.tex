@@ -101,7 +101,7 @@ Importantly, the functions $W_h$ and $X_h$ need not be known to the learner.
 Instead, of assuming this parametric assumption on the Bellman residual error of the state-action value, we consider a variant which is stated in terms of the values.
 Note that we can write the Bellman optimality equations (see Equation~\ref {eqn:Beq_finite}) in terms of the value functions as follows:
 \begin{equation}\label{eq:bell_residual_V}
-V_h(s) -\max_a\left( r_h(s,a) + \EE_{s' \sim P_h(\cdot|s, a)}\left[ V_{h+1} (s') \right] \right) =0.
+V_h(s) -\max_a\left( r_h(s,a) + \E_{s' \sim P_h(\cdot|s, a)}\left[ V_{h+1} (s') \right] \right) =0.
 \end{equation}
 This motivates the following definition:
 
@@ -143,15 +143,15 @@ Let us start with the $H=1$ case and return to the linear bandit model
 from Chapter~\ref{chap:bandits}. Let us consider a contextual model
 where there is a distribution over states $s_0 \sim \mu$ and where we assume:
 \[
-\EE[r(s,a) ] = w^\star\cdot \phi(s,a).
+\E[r(s,a) ] = w^\star\cdot \phi(s,a).
 \]
 Here, our hypothesis of state-action values is
 $\mathcal{H} = \{ \theta^{\top} \phi(s,a): \| \theta\|_2 \leq W \}$.
 
 %Consider any function pair $f, g\in\Hcal$, note that since $H = 1$, the state distribution at $h=0$ is independent of the policy $\pi_{f}$. Thus we have:
 %\begin{align*}
-%\EE_{s\sim \mu} \left[  V_{0,g}(s) - r(s, \pi_{0,g}(s))   \right] =  \sum_{a\in\Acal}  \EE_{s\sim \mu} \left[ \one\{ \pi_g(s) = a \} \left[ Q_{0,g}(s,a) - r(s,a) \right]\right]. 
-%\end{align*} This means that we can write the Bellman error of $g$ averaged over $\mu$ as an inner product between two vectors --- a all one vector, and a vector whose $a$-th entry is $\EE_{s\sim \mu}\left[  \one\{ \pi_g(s) = a \} \left[ Q_{0,g}(s,a) - r(s,a) \right]\right]$.
+%\E_{s\sim \mu} \left[  V_{0,g}(s) - r(s, \pi_{0,g}(s))   \right] =  \sum_{a\in\Acal}  \E_{s\sim \mu} \left[ \one\{ \pi_g(s) = a \} \left[ Q_{0,g}(s,a) - r(s,a) \right]\right]. 
+%\end{align*} This means that we can write the Bellman error of $g$ averaged over $\mu$ as an inner product between two vectors --- a all one vector, and a vector whose $a$-th entry is $\E_{s\sim \mu}\left[  \one\{ \pi_g(s) = a \} \left[ Q_{0,g}(s,a) - r(s,a) \right]\right]$.
 
 Take two hypothesis $f,g$ where we denote $Q_{0,f}(s,a) :=
 \theta^{\top} \phi(s,a), Q_{0,g}(s,a) = w^{\top} \phi(s,a)$
@@ -160,7 +160,7 @@ Take two hypothesis $f,g$ where we denote $Q_{0,f}(s,a) :=
  \mathbb{E}_{a\sim d^{\pi_f}_0} \left[  w^{\top} \phi(s,a)   - r(s,a) \right] 
   &  = \mathbb{E}_{s\sim\mu, a=\pi_f(s)} \left[  (w-w^\star)^{\top} \phi(s,a) \right] \\
   & = \left\langle  w - w^\star,\mathbb{E}_{s\sim\mu, a=\pi_f(s)}  [\phi(s,a) ]   \right\rangle.
-\end{align*}  Namely, we can set $W_0(g) = w$, and $X_0(f) = \EE_{s\sim \mu, a=\pi_f(s)}[ \phi(s,a)]$.
+\end{align*}  Namely, we can set $W_0(g) = w$, and $X_0(f) = \E_{s\sim \mu, a=\pi_f(s)}[ \phi(s,a)]$.
 Thus, we have the following:
 
 \begin{proposition}
@@ -182,7 +182,7 @@ functions.
 
 Recall from Definition~\ref{def:linear_bellman_complete}, given $\theta$, we use $\mathcal{T}_h(\theta)\in\mathbb{R}^d$ to represent the linear function resulting from the Bellman backup, i.e.,
 \begin{align*}
-\forall s,a: \Tcal_h(\theta)^{\top} \phi(s,a)  = r(s,a ) + \EE_{s'\sim P_h(\cdot | s,a)} [ \max_{a'} \theta^{\top}\phi(s',a')].
+\forall s,a: \Tcal_h(\theta)^{\top} \phi(s,a)  = r(s,a ) + \E_{s'\sim P_h(\cdot | s,a)} [ \max_{a'} \theta^{\top}\phi(s',a')].
 \end{align*} We further assume feature is normalized, i.e., $\sup_{s,a} \| \phi(s,a) \|_2 \leq 1$, and $\sup_{h, \theta\in \Hcal_h}\| \Tcal_h(\theta) \|_2 \leq W$. Note that this condition holds in linear MDP with $W = 2H\sqrt{d}$.
 
 %Here, our hypothesis are parameterized by vectors in $\R^{H \times d}$.
@@ -192,10 +192,10 @@ Take two hypothesis $f,g$ where we denote $Q_{h,f}(s,a) := \theta_h^{\top} \phi(
 &  \quad = \mathbb{E}_{s_h,a_h\sim d^{\pi_f}_h} \left[  w_h^{\top} \phi(s_h,a_h) 
  \mathcal{T}_h(w_{h+1})^{\top} \phi(s_h,a_h)  \right] \\
 & \quad = \left\langle  w_h - \mathcal{T}_h(w_{h+1}),  
-\EE_{s_h,a_h\sim d^{\pi_f}_h} [\phi(s_h,a_h) ]   \right\rangle.
+\E_{s_h,a_h\sim d^{\pi_f}_h} [\phi(s_h,a_h) ]   \right\rangle.
 \end{align*} 
 Taking $W_h(g):= w_h -
-\mathcal{T}_h (w_{h+1})$ (and note that $W_h(f^\star) = 0$ due to the Bellman optimality condition) and $X_h(f) := \EE_{s_h,a_h\sim
+\mathcal{T}_h (w_{h+1})$ (and note that $W_h(f^\star) = 0$ due to the Bellman optimality condition) and $X_h(f) := \E_{s_h,a_h\sim
   d^{\pi_f}_h} [\phi(s_h,a_h)]$, we have shown the following:
 
 \begin{proposition}
@@ -228,15 +228,15 @@ Our hypothesis class class $\Hcal_h$ is defined as $\Hcal_h =
 where we denote $Q_{h,g}(s,a) = \theta_h^{\top} \phi(s,a), V_{h,g}(s)
 = w_h^{\top} \psi(s)$, we have that:
 \begin{align*}
-&\EE_{s,a\sim d^{\pi_f}_h} \left[ \theta_h^{\top} \phi(s,a) - r(s,a) - \mathbb{E}_{s'\sim P_h(\cdot | s,a)}[ w_h^{\top} \psi(s')  ]  \right] \\
-& = \EE_{s,a\sim d^{\pi_f}_h} \left[ \theta_h^{\top} \phi(s,a) - Q^\star_h(s,a) + \EE_{s'\sim P_h(\cdot | s,a)}[V_h^\star(s') ]- \mathbb{E}_{s'\sim P_h(\cdot | s,a)} [ w_h^{\top} \psi(s')  ]  \right] \\
-& = \EE_{s,a\sim d^{\pi_f}_h} \left[ (\theta_h - \theta^\star_h)^{\top} \phi(s,a) + ( w_h - w_h^{\star} )^{\top} \EE_{s'\sim P_h(\cdot | s,a)}[ \psi(s') ]\right] \\
-& = \left\langle \begin{bmatrix} \theta_h - \theta_h^\star \\ w_h - w_h^\star  \end{bmatrix},   \EE_{s,a\sim d^{\pi_f}_h} \begin{bmatrix} \phi(s,a) \\ \EE_{s'\sim P_h(\cdot | s,a)} [ \psi(s')] \end{bmatrix}  \right\rangle.
+&\E_{s,a\sim d^{\pi_f}_h} \left[ \theta_h^{\top} \phi(s,a) - r(s,a) - \mathbb{E}_{s'\sim P_h(\cdot | s,a)}[ w_h^{\top} \psi(s')  ]  \right] \\
+& = \E_{s,a\sim d^{\pi_f}_h} \left[ \theta_h^{\top} \phi(s,a) - Q^\star_h(s,a) + \E_{s'\sim P_h(\cdot | s,a)}[V_h^\star(s') ]- \mathbb{E}_{s'\sim P_h(\cdot | s,a)} [ w_h^{\top} \psi(s')  ]  \right] \\
+& = \E_{s,a\sim d^{\pi_f}_h} \left[ (\theta_h - \theta^\star_h)^{\top} \phi(s,a) + ( w_h - w_h^{\star} )^{\top} \E_{s'\sim P_h(\cdot | s,a)}[ \psi(s') ]\right] \\
+& = \left\langle \begin{bmatrix} \theta_h - \theta_h^\star \\ w_h - w_h^\star  \end{bmatrix},   \E_{s,a\sim d^{\pi_f}_h} \begin{bmatrix} \phi(s,a) \\ \E_{s'\sim P_h(\cdot | s,a)} [ \psi(s')] \end{bmatrix}  \right\rangle.
 \end{align*} 
 
 Taking $W_h(g) :=  \begin{bmatrix} \theta_h  \\
   w_h  \end{bmatrix}$, and $X_h(f) := \begin{bmatrix}
-  \phi(s,a) \\ \EE_{s'\sim P_h(\cdot | s,a)} [\psi(s')] \end{bmatrix}$,
+  \phi(s,a) \\ \E_{s'\sim P_h(\cdot | s,a)} [\psi(s')] \end{bmatrix}$,
 we have shown that:
 %and the $Q$-Bellman rank is at most $2d$. 
 
@@ -301,9 +301,9 @@ d^{\pi_f}_h(s,a) = \left\langle \beta_h(f), \phi_h(s,a)  \right\rangle.
 \end{align*}
 We show that this model has $Q$-Bellman rank at most $d$. Consider any $f,g$ and $h$, we have:
 \begin{align*}
-&\EE_{s,a \sim d^{\pi_f}_h} \left[ Q_{h,g}(s) - r(s, a) - \EE_{s'\sim P_h(\cdot | s, a} [V_{h+1,g}(s')  ] \right] \\
-& =   \beta_h(f)^{\top} \left(  \sum_{s,a} \phi_h(s,a) \left[ Q_{h,g}(s,a) - r(s, a) - \EE_{s'\sim P_h(\cdot | s,a)} [V_{h+1,g}(s')]   \right]\right),
-\end{align*} which shows that $W_h(g) := \sum_{s,a} \phi_h(s,a) \left[ Q_{h,g}(s,a) - r(s, a) - \EE_{s'\sim P_h(\cdot | s,a)} [V_{h+1,g}(s')]\right]$ (note that $W_h(f^\star) =0$ due to the Bellman optimality condition), and $X_h(f) := \beta_h(f)$. Note that in this model we can use any hypothesis class $\Hcal$ as long as it contains $f^\star$.
+&\E_{s,a \sim d^{\pi_f}_h} \left[ Q_{h,g}(s) - r(s, a) - \E_{s'\sim P_h(\cdot | s, a} [V_{h+1,g}(s')  ] \right] \\
+& =   \beta_h(f)^{\top} \left(  \sum_{s,a} \phi_h(s,a) \left[ Q_{h,g}(s,a) - r(s, a) - \E_{s'\sim P_h(\cdot | s,a)} [V_{h+1,g}(s')]   \right]\right),
+\end{align*} which shows that $W_h(g) := \sum_{s,a} \phi_h(s,a) \left[ Q_{h,g}(s,a) - r(s, a) - \E_{s'\sim P_h(\cdot | s,a)} [V_{h+1,g}(s')]\right]$ (note that $W_h(f^\star) =0$ due to the Bellman optimality condition), and $X_h(f) := \beta_h(f)$. Note that in this model we can use any hypothesis class $\Hcal$ as long as it contains $f^\star$.
 
 \begin{proposition}
 Any hypothesis class $\Hcal$, together with the MDP that has a low-occupancy measure, has $Q$-Bellman rank $d$.
@@ -334,8 +334,8 @@ again). Consider any function pair $f, g\in\Hcal$, note that since $H
 = 1$, the state distribution at $h=0$ is independent of the policy
 $\pi_{f}$. Thus we have: 
 \begin{align*}
-\EE_{s\sim \mu} \left[  V_{0,g}(s) - r(s, \pi_{0,g}(s))   \right] =  \sum_{a\in\Acal}  \EE_{s\sim \mu} \left[ \one\{ \pi_g(s) = a \} \left[ Q_{0,g}(s,a) - r(s,a) \right]\right]. 
-\end{align*} This means that we can write the Bellman error of $g$ averaged over $\mu$ as an inner product between two vectors --- an all one vector, and a vector whose $a$-th entry is $\EE_{s\sim \mu}\left[  \one\{ \pi_g(s) = a \} \left[ Q_{0,g}(s,a) - r(s,a) \right]\right]$, i.e., we have $X_0(f) = \one_{A}$ where $\one_{A}$ represents a A-dim vector will all one , and $W_0(g) \in \mathbb{R}^A$ where the $a$-th entry of $W_0(g)$ is $\EE_{s\sim \nu} \one\{\pi_g(s) = a\} [Q_{0,g}(s,a) - r(s,a)]$. Note that $W_0(f^\star) = 0$ where $f^\star$ is the ground truth reward function here.
+\E_{s\sim \mu} \left[  V_{0,g}(s) - r(s, \pi_{0,g}(s))   \right] =  \sum_{a\in\Acal}  \E_{s\sim \mu} \left[ \one\{ \pi_g(s) = a \} \left[ Q_{0,g}(s,a) - r(s,a) \right]\right]. 
+\end{align*} This means that we can write the Bellman error of $g$ averaged over $\mu$ as an inner product between two vectors --- an all one vector, and a vector whose $a$-th entry is $\E_{s\sim \mu}\left[  \one\{ \pi_g(s) = a \} \left[ Q_{0,g}(s,a) - r(s,a) \right]\right]$, i.e., we have $X_0(f) = \one_{A}$ where $\one_{A}$ represents a A-dim vector will all one , and $W_0(g) \in \mathbb{R}^A$ where the $a$-th entry of $W_0(g)$ is $\E_{s\sim \nu} \one\{\pi_g(s) = a\} [Q_{0,g}(s,a) - r(s,a)]$. Note that $W_0(f^\star) = 0$ where $f^\star$ is the ground truth reward function here.
 %\sk{Can you be a little more explicit above saying what $X$ and $W$ are?}
 
 \begin{proposition}
@@ -359,15 +359,15 @@ $(f,g)$ where we denote $Q_{h,g} :=  w_h^{\top} \phi$, and recall
 $V_{h,g}(\cdot ) = \max_{a} Q_{h,g}(\cdot, a)$,   and $\pi_{h,g}(s) :=
 \argmax_{a} Q_{h,g}(s,a)$. 
 \begin{align}
-&\EE_{s \sim d^{\pi_f}_h} \left[  V_{h,g}(s) - r(s, \pi_{h,g}(s) ) - \EE_{s'\sim P_h(\cdot | s, \pi_{h,g}(s))}[ V_{h+1,g}(s') ] \right] \label{eq:berror_low_rank_mdp}\\
-& =  \EE_{\tilde{s},\tilde{a} \sim d^{\pi_f}_{h-1}} \EE_{s\sim P_{h-1}(\cdot | \tilde{s},\tilde{a})}  \left[  V_{h,g}(s) - r(s, \pi_{h,g}(s) ) - \EE_{s'\sim P_h(\cdot | s, \pi_{h,g}(s))} [V_{h+1,g}(s')]  \right]  \nonumber\\
-& =  \EE_{\tilde{s},\tilde{a} \sim d^{\pi_f}_{h-1}}\int_{s} \mu^\star(s)^{\top} \phi^\star(\tilde{s},\tilde{a}) \left[  V_{h,g}(s) - r(s, \pi_{h,g}(s) ) - \EE_{s'\sim P_h(\cdot | s, \pi_{h,g}(s))} [V_{h+1,g}(s') ] \right] d(s) \nonumber \\
-& = \left\langle \int_{s} \mu^\star(s)\left[  V_{h,g}(s) - r(s, \pi_{h,g}(s) ) - \EE_{s'\sim P_h(\cdot | s, \pi_{h,g}(s))} [V_{h+1,g}(s')]  \right] , \quad  \EE_{\tilde{s},\tilde{a}\sim d^{\pi_f}} [\phi^\star(\tilde{s},\tilde{a})  ]   \right\rangle.
+&\E_{s \sim d^{\pi_f}_h} \left[  V_{h,g}(s) - r(s, \pi_{h,g}(s) ) - \E_{s'\sim P_h(\cdot | s, \pi_{h,g}(s))}[ V_{h+1,g}(s') ] \right] \label{eq:berror_low_rank_mdp}\\
+& =  \E_{\tilde{s},\tilde{a} \sim d^{\pi_f}_{h-1}} \E_{s\sim P_{h-1}(\cdot | \tilde{s},\tilde{a})}  \left[  V_{h,g}(s) - r(s, \pi_{h,g}(s) ) - \E_{s'\sim P_h(\cdot | s, \pi_{h,g}(s))} [V_{h+1,g}(s')]  \right]  \nonumber\\
+& =  \E_{\tilde{s},\tilde{a} \sim d^{\pi_f}_{h-1}}\int_{s} \mu^\star(s)^{\top} \phi^\star(\tilde{s},\tilde{a}) \left[  V_{h,g}(s) - r(s, \pi_{h,g}(s) ) - \E_{s'\sim P_h(\cdot | s, \pi_{h,g}(s))} [V_{h+1,g}(s') ] \right] d(s) \nonumber \\
+& = \left\langle \int_{s} \mu^\star(s)\left[  V_{h,g}(s) - r(s, \pi_{h,g}(s) ) - \E_{s'\sim P_h(\cdot | s, \pi_{h,g}(s))} [V_{h+1,g}(s')]  \right] , \quad  \E_{\tilde{s},\tilde{a}\sim d^{\pi_f}} [\phi^\star(\tilde{s},\tilde{a})  ]   \right\rangle.
 \end{align} 
 Taking $W_h(g) := \int_{s} \mu^\star(s)\left[  V_{h,g}(s) - r(s,
-  \pi_{h,g}(s) ) - \EE_{s'\sim P_h(\cdot | s, \pi_{h,g}(s))}
+  \pi_{h,g}(s) ) - \E_{s'\sim P_h(\cdot | s, \pi_{h,g}(s))}
   [V_{h+1,g}(s') ] \right] $ (note that $W_h(f^\star) = 0$ due to the Bellman optimality condition) and $X_h(f) :=
-\EE_{\tilde{s},\tilde{a}\sim d^{\pi_f}_{h-1}}
+\E_{\tilde{s},\tilde{a}\sim d^{\pi_f}_{h-1}}
 [\phi^\star(\tilde{s},\tilde{a})] $, we have shown that:
 
 \begin{proposition}
@@ -389,9 +389,9 @@ We consider the following hypothesis class. Define a representation class $\Phi$
 
 %Following the similar derivation we had for Eq.~\ref{eq:berror_low_rank_mdp}, we can show that:
 %\begin{align*}
-%&\EE_{s \sim d^{\pi_f}_h} \left[  V_{h,g}(s) - r(s, \pi_{h,g}(s) ) - \EE_{s'\sim P_h(\cdot | s, \pi_{h,g}(s))}[ V_{h+1,g}(s') ] \right] \\
-%& = \left\langle \int_{s} \mu^\star_{h-1}(s)\left[  V_{h,g}(s) - r(s, \pi_{h,g}(s) ) - \EE_{s'\sim P_h(\cdot | s, \pi_{h,g}(s))} [V_{h+1,g}(s')]  \right] , \quad  \EE_{\tilde{s},\tilde{a}\sim d^{\pi_f}_{h-1}} [\phi_{h-1}^\star(\tilde{s},\tilde{a})  ]   \right\rangle \\
-%& = \sum_{i\in\mathcal{K}^\star} \EE_{\tilde{s},\tilde{a}\sim d^{\pi_f}_{h-1}} [\phi_{h-1, i }^\star(\tilde{s},\tilde{a})  ]  \int_{s} \mu^\star_{h-1,i}(s)\left[  V_{h,g}(s) - r(s, \pi_{h,g}(s) ) - \EE_{s'\sim P_h(\cdot | s, \pi_{h,g}(s))} [V_{h+1,g}(s')]  \right], 
+%&\E_{s \sim d^{\pi_f}_h} \left[  V_{h,g}(s) - r(s, \pi_{h,g}(s) ) - \E_{s'\sim P_h(\cdot | s, \pi_{h,g}(s))}[ V_{h+1,g}(s') ] \right] \\
+%& = \left\langle \int_{s} \mu^\star_{h-1}(s)\left[  V_{h,g}(s) - r(s, \pi_{h,g}(s) ) - \E_{s'\sim P_h(\cdot | s, \pi_{h,g}(s))} [V_{h+1,g}(s')]  \right] , \quad  \E_{\tilde{s},\tilde{a}\sim d^{\pi_f}_{h-1}} [\phi_{h-1}^\star(\tilde{s},\tilde{a})  ]   \right\rangle \\
+%& = \sum_{i\in\mathcal{K}^\star} \E_{\tilde{s},\tilde{a}\sim d^{\pi_f}_{h-1}} [\phi_{h-1, i }^\star(\tilde{s},\tilde{a})  ]  \int_{s} \mu^\star_{h-1,i}(s)\left[  V_{h,g}(s) - r(s, \pi_{h,g}(s) ) - \E_{s'\sim P_h(\cdot | s, \pi_{h,g}(s))} [V_{h+1,g}(s')]  \right], 
 %\end{align*} namely, the inner product only needs to use entries whose index is in $\mathcal{K}^\star$. Thus we have demonstrated that the $V$-Bellman rank is $s$. 
 
 \section{Bilinear Classes}
@@ -414,18 +414,18 @@ $V$-Bellman rank. We define the Bilinear class model as follows.
 \item We have \begin{align}\left\lvert \mathbb{E}_{s,a\sim d^{\pi_f}_h, s'\sim P_h(\cdot | s,a)} \left[ Q_{h,f}(s,a) - r(s,a) - V_{h+1,f}(s') \right]  \right\rvert \leq \left\lvert \langle W_h(f) - W_h(f^\star), X_h(f) \rangle \right\rvert,\label{eq:bilinear_condition_1}\end{align}
 \item The policy $\pi_{est}(f)$ and the discrepancy $\ell_f$ can be used for estimation in the following sense: for any $g\in\Hcal$, we have:
 \begin{align}
-\left\lvert \EE_{s\sim d^{\pi_f}_h, a\sim \pi_{est,h}(s;f), s'\sim P_h(\cdot | s,a)} [\ell_f(s,a,s', h, g)]  \right\rvert = \left\lvert \langle W_h(g) - W_h(f^\star), X_h(f) \rangle \right\rvert,\label{eq:bilinear_condition_2}
+\left\lvert \E_{s\sim d^{\pi_f}_h, a\sim \pi_{est,h}(s;f), s'\sim P_h(\cdot | s,a)} [\ell_f(s,a,s', h, g)]  \right\rvert = \left\lvert \langle W_h(g) - W_h(f^\star), X_h(f) \rangle \right\rvert,\label{eq:bilinear_condition_2}
 \end{align} We suppress the $h$ dependence on $\pi_{est,h}$ when clear from context. 
 Typically $\pi_{est}(f)$ will be either the uniform distribution over $\Acal$ or $\pi_f$ itself.
 In the latter case, we refer to the estimation strategy as being on-policy.  
 %\item for any $f,h$, we have:
 %\begin{align}
-%\EE_{s\sim d^{\pi_f}_h, a\sim \pi_{est,h}(s;f), s'\sim P_h(\cdot | s,a)} [ \ell_f(s,a,s', h, f^\star)  ] = 0.\label{eq:bilinear_condition_3}
+%\E_{s\sim d^{\pi_f}_h, a\sim \pi_{est,h}(s;f), s'\sim P_h(\cdot | s,a)} [ \ell_f(s,a,s', h, f^\star)  ] = 0.\label{eq:bilinear_condition_3}
 %\end{align}
 \end{enumerate}
 \end{definition}
 
-The first condition in the above definition assumes that the average Bellman error of $f$ under $\pi_f$'s state-action distribution can be upper bounded by the value from the bilinear formulation. The second condition assumes that we have a discrepancy function that allows us to evaluate the value of the bilinear formulation. Note that the second condition permits data reuse, i.e., given a set of samples where $s \sim d^{\pi_{f}}_h, a\sim \pi_{est,h}(s;f),s'\sim P_h(\cdot|s,a)$, we can use the dataset to evaluate the loss for all $g\in \Hcal$ simultaneously.  This data reuse is the key to generalization. Also the second condition ensures that for all $f$, we must have $\EE_{s\sim d^{\pi_f}_h, a\sim \pi_{est,h}(s;f), s'\sim P_h(\cdot | s,a)} [\ell_f(s,a,s', h, f^\star)] = 0$.
+The first condition in the above definition assumes that the average Bellman error of $f$ under $\pi_f$'s state-action distribution can be upper bounded by the value from the bilinear formulation. The second condition assumes that we have a discrepancy function that allows us to evaluate the value of the bilinear formulation. Note that the second condition permits data reuse, i.e., given a set of samples where $s \sim d^{\pi_{f}}_h, a\sim \pi_{est,h}(s;f),s'\sim P_h(\cdot|s,a)$, we can use the dataset to evaluate the loss for all $g\in \Hcal$ simultaneously.  This data reuse is the key to generalization. Also the second condition ensures that for all $f$, we must have $\E_{s\sim d^{\pi_f}_h, a\sim \pi_{est,h}(s;f), s'\sim P_h(\cdot | s,a)} [\ell_f(s,a,s', h, f^\star)] = 0$.
 
 
 %\wen{I added the third condition}
@@ -452,9 +452,9 @@ In the
 $V$-Bellman rank case, the importance weighting factor $\one\{a =
 \pi_{h,g}(s)\} / (1/A)$ ensures that given any $s,g$, 
 \[
-\EE_{a\sim
+\E_{a\sim
   \textrm{Unif}_{\Acal} ,s'\sim P_h(\cdot | s,a)} \ell(s,a,s',g) = V_{h,g}(s) - r(s,
-\pi_{h,g}(s)) - \EE_{s'\sim P_h(\cdot | s,
+\pi_{h,g}(s)) - \E_{s'\sim P_h(\cdot | s,
   \pi_{h,g}(s))}V_{h+1,g}(s'),
 \]
 i.e., $\ell(s,a,s',g)$ is an unbiased
@@ -513,9 +513,9 @@ $g = \{\theta_h^{\top} \psi(\cdot,\cdot,\cdot)\}_{h=0}^{H-1}$,
 Below we  show that it is a Bilinear class model. For any
 $f,g\in\Hcal$, set $\pi_{est}(f) = \pi_f$ (i.e., on-policy), we have: 
 \begin{align*}
-\EE_{s,a \sim d^{\pi_f}_h,s'\sim P_h(\cdot | s,a)} \ell_f(s,a,s', h,g) & = \EE_{s,a\sim d^{\pi_f}_h} \left[\sum_{\tilde{s}} \theta_h^{\top} \phi(s,a,\tilde{s})   V_{h+1,f}(\tilde{s})  - \sum_{\tilde{s}} (\theta^\star_h)^{\top} \phi(s,a,\tilde{s})V_{h+1,f}(s') \right] \\
-& = \left(\theta_h - \theta_h^\star  \right)^{\top} \left( \EE_{s,a\sim d^{\pi_f}_h} \left[ \sum_{s'} \phi(s,a,s')\right] \right).
-\end{align*}  Thus we have shown that $W_h(g) = \theta_h $, and $X_h(f) = \EE_{s,a\sim d^{\pi_f}_h} \left[ \sum_{s'} \phi(s,a,s')\right]$.
+\E_{s,a \sim d^{\pi_f}_h,s'\sim P_h(\cdot | s,a)} \ell_f(s,a,s', h,g) & = \E_{s,a\sim d^{\pi_f}_h} \left[\sum_{\tilde{s}} \theta_h^{\top} \phi(s,a,\tilde{s})   V_{h+1,f}(\tilde{s})  - \sum_{\tilde{s}} (\theta^\star_h)^{\top} \phi(s,a,\tilde{s})V_{h+1,f}(s') \right] \\
+& = \left(\theta_h - \theta_h^\star  \right)^{\top} \left( \E_{s,a\sim d^{\pi_f}_h} \left[ \sum_{s'} \phi(s,a,s')\right] \right).
+\end{align*}  Thus we have shown that $W_h(g) = \theta_h $, and $X_h(f) = \E_{s,a\sim d^{\pi_f}_h} \left[ \sum_{s'} \phi(s,a,s')\right]$.
 
 \begin{proposition}
 The hypothesis class $\Hcal$ together with the linear mixture model is a Bilinear class.  
@@ -545,7 +545,7 @@ obtain trajectories under some fixed initial state $s_0$ (i.e., $\mu:= \delta(s_
 	\State Set $f_t$ as the solution of the following program:
 		\begin{align*}
 			&f_t = \argmax_{g\in\Hcal} V_{0,g}(s_0), \\
-			& \sum_{i=0}^{t-1} \left( \EE_{\Dcal_{i,h}} \ell_{f_i}( s,a,s', g ) \right)^2 \leq R^2, \forall h\in [0,\dots, H-1]
+			& \sum_{i=0}^{t-1} \left( \E_{\Dcal_{i,h}} \ell_{f_i}( s,a,s', g ) \right)^2 \leq R^2, \forall h\in [0,\dots, H-1]
 		\end{align*}
     	\State $\forall h$, create batch data $\Dcal_{t,h} = \{s^i,
         a^i, (s')^i\}_{i=1}^m$, 
@@ -591,7 +591,7 @@ We begin by stating the following assumption about the uniform convergence prope
 
 \begin{assumption}[Uniform Convergence]  \label{assum:generalization_brank}We assume that there exists a function $\varepsilon_{gen}(m, \Hcal, \delta)$ such that for any distribution $\nu \in\Delta(\Scal\times\Acal\times\Scal)$ and $f\in\Hcal$, and any $\delta\in(0,1)$, with probability at least $1-\delta$ over the $m$ i.i.d samples $\Dcal := \{s_i,a_i,s'_i\}_{i=1}^m \sim \nu$, we have:
 \begin{align*}
-\sup_{g\in\Hcal} \left\lvert   \EE_{\Dcal} [\ell_f(s,a,s', h, g)] - \EE_{\nu}[ \ell_f(s,a,s', h, g)]    \right\rvert \leq \varepsilon_{gen}(m, \Hcal, \delta). %\cdot conf(\delta).
+\sup_{g\in\Hcal} \left\lvert   \E_{\Dcal} [\ell_f(s,a,s', h, g)] - \E_{\nu}[ \ell_f(s,a,s', h, g)]    \right\rvert \leq \varepsilon_{gen}(m, \Hcal, \delta). %\cdot conf(\delta).
 \end{align*} 
 \end{assumption}
 
@@ -602,30 +602,30 @@ standard uniform convergence result and typically we have $\varepsilon_{gen}(m, 
 \begin{example}[ Finite hypothesis class case] \label{example:finite_hypothesis}  Let us consider the example where
 $\Hcal$ is a discrete hypothesis class.  In this case, for $Q$-Bellman
 rank loss, via Hoeffding's inequality and a union bound over $\Hcal$, we have that with probability at least $1-\delta$,  
-$$\sup_{g\in\Hcal} \big\lvert   \EE_{\Dcal} [ \ell_f(s,a,s', h,g)] -
-  \EE_{\nu}[ \ell_f(s,a,s', h, g)]    \big\rvert  \leq  2H \sqrt{ \ln(
+$$\sup_{g\in\Hcal} \big\lvert   \E_{\Dcal} [ \ell_f(s,a,s', h,g)] -
+  \E_{\nu}[ \ell_f(s,a,s', h, g)]    \big\rvert  \leq  2H \sqrt{ \ln(
   |\Hcal| /\delta ) / m },$$ 
 which means we can set 
 $$\varepsilon_{gen}(m,\Hcal,\delta) := 2H \sqrt{ \ln(|\Hcal |/\delta)
   / m }.$$ 
 For $V$-Bellman rank loss, due to the importance weighting, we 
 have an additional $A$ term, i.e., with probability at least $1-\delta$,
-$$\sup_{g\in\Hcal} \big\lvert   \EE_{\Dcal}[ \ell_f(s,a,s', h, g)] - \EE_{\nu} [\ell_f(s,a,s', h, g)]    \big\rvert  \leq  2HA \sqrt{ \ln( |\Hcal| /\delta ) / m }.$$
+$$\sup_{g\in\Hcal} \big\lvert   \E_{\Dcal}[ \ell_f(s,a,s', h, g)] - \E_{\nu} [\ell_f(s,a,s', h, g)]    \big\rvert  \leq  2HA \sqrt{ \ln( |\Hcal| /\delta ) / m }.$$
 \end{example}
 
 \begin{example}[Linear Bellman completion] \label{example:linear_bc} In the linear Bellman completion model, our hypothesis class $\Hcal_h = \{ w^{\top} \phi(s,a): \|w\|_2 \leq W,  \|w^{\top} \phi(\cdot,\cdot)\|_{\infty} \leq H \}$ is not discrete. However, with the loss function associated with $Q$-Bellman rank, via a standard uniform convergence analysis using $\epsilon$-net for linear functions in $\Hcal$, we can show (details in Lemma~\ref{lem:b_error_linear_uniform_conv}): 
 \begin{align*}
- \sup_{g\in\Hcal} \big\lvert   \EE_{\Dcal}[ \ell_f(s,a,s', h, g)] - \EE_{\nu} [\ell_f(s,a,s', h, g)]    \big\rvert  \leq  3 H  \sqrt{ ( 2d  \ln(1 +  4  W m) +  \ln(1 /\delta ) ) / m }.
+ \sup_{g\in\Hcal} \big\lvert   \E_{\Dcal}[ \ell_f(s,a,s', h, g)] - \E_{\nu} [\ell_f(s,a,s', h, g)]    \big\rvert  \leq  3 H  \sqrt{ ( 2d  \ln(1 +  4  W m) +  \ln(1 /\delta ) ) / m }.
 \end{align*} Thus, we have $$\varepsilon_{gen}(m, \Hcal,\delta) :=  3 H  \sqrt{ \frac{  2d  \ln(1 +  4  W m) +  \ln(1 /\delta ) } { m} }.$$
 \end{example}
 
 
 \begin{example}[Feature selection for sparse linear MDP] \label{example:feature_select} To give another example of infinite hypothesis class case, we consider the following $\Hcal$ with $\Hcal_h = \{w^{\top} \phi: \|w\|_2 \leq 2H\sqrt{d}, w\in\mathbb{R}^s, \phi\in \Phi_h, \|w^{\top} \phi \|_{\infty} \leq H \}$ from the example of feature selection in sparse linear MDP. Recall $\Phi$ is discrete and $|\Phi| =$ $d\choose s$. We focus on the loss function associated with $V$-Bellman rank. Denote $\Hcal_{h, \phi} = \{w^{\top} \phi: \|w\|_2 \leq 2H\sqrt{d}, w\in\mathbb{R}^s, \|w^{\top} \phi \|_{\infty} \leq H \}$ for a $\phi\in\Phi$. Via a standard uniform convergence analysis using $\epsilon$-net for linear functions in $\Hcal_{h, \phi}$, we can show (details in Lemma~\ref{lem:b_error_linear_uniform_conv}):
 \begin{align*}
-\text{P}\left(  \sup_{g\in\Hcal_{\phi}} \big\lvert   \EE_{\Dcal}[ \ell_f(s,a,s', h, g)] - \EE_{\nu} [\ell_f(s,a,s', h, g)]    \big\rvert  \geq  3 HA \sqrt{ ( 2s \ln(1 + 8 A  H\sqrt{d} m ) + \ln(1/\delta)  ) / m } \right) \leq 1-\delta.
+\text{P}\left(  \sup_{g\in\Hcal_{\phi}} \big\lvert   \E_{\Dcal}[ \ell_f(s,a,s', h, g)] - \E_{\nu} [\ell_f(s,a,s', h, g)]    \big\rvert  \geq  3 HA \sqrt{ ( 2s \ln(1 + 8 A  H\sqrt{d} m ) + \ln(1/\delta)  ) / m } \right) \leq 1-\delta.
 \end{align*} Applying a union bound over all $\phi\in\Phi$ and use the fact that $|\Phi| \leq s^{d}$, we have:
 \begin{align*}
- \sup_{g\in\Hcal} \big\lvert   \EE_{\Dcal}[ \ell_f(s,a,s', h, g)] - \EE_{\nu} [\ell_f(s,a,s', h, g)]    \big\rvert  \leq  3 HA \sqrt{ ( 2s \ln(1 +  8A H\sqrt{d} m) + s \ln( d/\delta ) ) / m },
+ \sup_{g\in\Hcal} \big\lvert   \E_{\Dcal}[ \ell_f(s,a,s', h, g)] - \E_{\nu} [\ell_f(s,a,s', h, g)]    \big\rvert  \leq  3 HA \sqrt{ ( 2s \ln(1 +  8A H\sqrt{d} m) + s \ln( d/\delta ) ) / m },
 \end{align*} with probability at least $1-\delta$. %Further applying a union bound over all $h\in [H]$, 
 Thus we have $$\varepsilon_{gen}(m, \Hcal, \delta ) := 3 HA \sqrt{ \frac{ 2s \ln(1 + 8 A H\sqrt{d} m) + s \ln( d/\delta ) } { m} }.$$ Note the polynomial dependence on $s$ and the poly-log dependence on $d$.
 \end{example}
@@ -650,7 +650,7 @@ by the Bilinear-UCB algorithm
 (Algorithm~\ref{alg:bilinear_class}). With probability at least
 $1-\delta$, we have:
 \begin{align*}
-%\EE_{s_0\sim\mu}[V^\star_0(s_0)] - \EE_{s_0\sim\mu} [V^{\pi}_{0}(s_0)] \leq   6 \varepsilon_{gen}\sqrt{ d H^3\ln\left(4Hd\left(\frac{B^2_X B_W^2
+%\E_{s_0\sim\mu}[V^\star_0(s_0)] - \E_{s_0\sim\mu} [V^{\pi}_{0}(s_0)] \leq   6 \varepsilon_{gen}\sqrt{ d H^3\ln\left(4Hd\left(\frac{B^2_X B_W^2
 %    }{\varepsilon^2_{gen}}+1\right)\right) }.
 V^\star_0(s_0) - V^{\pi}_{0}(s_0) \leq   5 \varepsilon_{gen}
 \sqrt{ d H^3\ln\left(4Hd\left(\frac{B^2_X B_W^2}{\varepsilon^2_{gen}}+1\right)\right) }.
@@ -758,7 +758,7 @@ $\varepsilon_{gen} := \varepsilon_{gen}(m, \Hcal, \delta / TH)$.
 
 \begin{lemma}\label{lemma:high_prob_event_brank}For all $h\in [0,\dots,H-1]$ and $t \in [0, \dots, T-1]$, with probability at least $1-\delta$, we have:
 \begin{align*}
-\sup_{g\in\Hcal}\left\lvert \EE_{\Dcal_{t,h}}[ \ell_{f_t}(s,a,s', g)]  - \EE_{s\sim d_h^{\pi_{f_t}}, a\sim \pi_{est}(s), s'\sim P_h(\cdot|s,a)}\left[ \ell_{f_t}(s,a,s', g)\right] \right\rvert \leq \varepsilon_{gen}.
+\sup_{g\in\Hcal}\left\lvert \E_{\Dcal_{t,h}}[ \ell_{f_t}(s,a,s', g)]  - \E_{s\sim d_h^{\pi_{f_t}}, a\sim \pi_{est}(s), s'\sim P_h(\cdot|s,a)}\left[ \ell_{f_t}(s,a,s', g)\right] \right\rvert \leq \varepsilon_{gen}.
 \end{align*}
 \end{lemma}
 \begin{proof} Note that the $(s,a,s')$ triple from $\Dcal_{i,h}$ is sampled as $s\sim d^{\pi_{f_t}}_h, a\sim \pi_{est}(s), s'\sim P_h(\cdot | s,a)$, in an i.i.d fashion.
@@ -777,22 +777,22 @@ property holds.
 Furthermore, we have $ V_{0,f_t}(s_0) \geq    V^\star_0(s_0)$, for all $t\in [T]$. 
 \end{lemma}
 \begin{proof}
-  Based on the second condition in the Bilinear class (Eq.~\ref{eq:bilinear_condition_2}), we have that for $f^\star$:$$| \EE_{s\sim d_h^{\pi_{f_t}}, a\sim \pi_{est}(s), s'\sim P_h(\cdot|s,a)}\left[ \ell_{f_t}(s,a,s', f^\star)\right] |  =   | \langle W_h(f^\star ) - W_h(f^\star), X_h(f_t)  \rangle |  = 0,  \forall t.$$
+  Based on the second condition in the Bilinear class (Eq.~\ref{eq:bilinear_condition_2}), we have that for $f^\star$:$$| \E_{s\sim d_h^{\pi_{f_t}}, a\sim \pi_{est}(s), s'\sim P_h(\cdot|s,a)}\left[ \ell_{f_t}(s,a,s', f^\star)\right] |  =   | \langle W_h(f^\star ) - W_h(f^\star), X_h(f_t)  \rangle |  = 0,  \forall t.$$
   %  has satisfies the Bellman optimality equations,
-%  $\EE_{s'\sim P_h(\cdot | s,a)} \ell_f(s,a,s',f^\star) = 0$ for all
+%  $\E_{s'\sim P_h(\cdot | s,a)} \ell_f(s,a,s',f^\star) = 0$ for all
   %$s,a$ and $f$.  
   This and our assumption that the event in
   Lemma~\ref{lemma:high_prob_event_brank} holds imply that:
 \begin{align*}
-\big|\EE_{\Dcal_{t,h}} [\ell_{f_t}(s,a,s', f^\star)]\big| & = 
-\big|\EE_{\Dcal_{t,h}} [\ell_{f_t}(s,a,s', f^\star)]
--\EE_{s\sim d_h^{\pi_{f_t}}, a\sim \pi_{est}(s), s'\sim P_h(\cdot|s,a)}\left[ \ell_{f_t}(s,a,s', f^\star)\right] \big| \\
+\big|\E_{\Dcal_{t,h}} [\ell_{f_t}(s,a,s', f^\star)]\big| & = 
+\big|\E_{\Dcal_{t,h}} [\ell_{f_t}(s,a,s', f^\star)]
+-\E_{s\sim d_h^{\pi_{f_t}}, a\sim \pi_{est}(s), s'\sim P_h(\cdot|s,a)}\left[ \ell_{f_t}(s,a,s', f^\star)\right] \big| \\
 \quad & \leq
-\sup_{g\in\Hcal}\left\lvert \EE_{\Dcal_{t,h}} [ \ell_{f_t}(s,a,s', g)]  
-- \EE_{s\sim d_h^{\pi_{f_t}}, a\sim \pi_{est}(s), s'\sim P_h(\cdot|s,a)}\left[ \ell_{f_t}(s,a,s', g)\right] \right\rvert \\
+\sup_{g\in\Hcal}\left\lvert \E_{\Dcal_{t,h}} [ \ell_{f_t}(s,a,s', g)]  
+- \E_{s\sim d_h^{\pi_{f_t}}, a\sim \pi_{est}(s), s'\sim P_h(\cdot|s,a)}\left[ \ell_{f_t}(s,a,s', g)\right] \right\rvert \\
 &\leq \varepsilon_{gen}
 \end{align*} 
-This implies $\sum_{i=0}^{t-1} \left( \EE_{\Dcal_{i,h}} \ell_{f_i}( s,a,s',
+This implies $\sum_{i=0}^{t-1} \left( \E_{\Dcal_{i,h}} \ell_{f_i}( s,a,s',
   f^\star ) \right)^2 \leq T \varepsilon_{gen}^2$, which completes the
 proof of the first claim.
 
@@ -803,12 +803,12 @@ the lemma.
 
 \iffalse
 \begin{proof}
-The event in Lemma~\ref{lemma:high_prob_event_brank} implies that for all $t$, $$\sup_{g\in\Hcal}\left\lvert \EE_{\Dcal_{t,h}} [ \ell(s,a,s', g)]  - \EE_{s\sim d_h^{\pi_{f_t}}, a\sim \pi_{est}(s), s'\sim P_h(\cdot|s,a)}\left[ \ell(s,a,s', g)\right] \right\rvert \leq \varepsilon_{gen}.$$
+The event in Lemma~\ref{lemma:high_prob_event_brank} implies that for all $t$, $$\sup_{g\in\Hcal}\left\lvert \E_{\Dcal_{t,h}} [ \ell(s,a,s', g)]  - \E_{s\sim d_h^{\pi_{f_t}}, a\sim \pi_{est}(s), s'\sim P_h(\cdot|s,a)}\left[ \ell(s,a,s', g)\right] \right\rvert \leq \varepsilon_{gen}.$$
 
 Thus, for $f^\star \in \Hcal$, we have:
 \begin{align*}
-\EE_{\Dcal_{t,h}} [\ell(s,a,s', f^\star)] \leq \varepsilon_{gen} +  \EE_{s\sim d_h^{\pi_{f_t}}, a\sim \pi_{est}(s), s'\sim P_h(\cdot|s,a)}\left[ \ell(s,a,s', f^\star)\right] = \varepsilon_{gen},
-\end{align*} where in the last equality we use the fact that $\EE_{s'\sim P_h(\cdot | s,a)} \ell(s,a,s',f^\star) = 0$ for all $s,a$, since $f^\star$ has zero Bellman error at any $s,a$.
+\E_{\Dcal_{t,h}} [\ell(s,a,s', f^\star)] \leq \varepsilon_{gen} +  \E_{s\sim d_h^{\pi_{f_t}}, a\sim \pi_{est}(s), s'\sim P_h(\cdot|s,a)}\left[ \ell(s,a,s', f^\star)\right] = \varepsilon_{gen},
+\end{align*} where in the last equality we use the fact that $\E_{s'\sim P_h(\cdot | s,a)} \ell(s,a,s',f^\star) = 0$ for all $s,a$, since $f^\star$ has zero Bellman error at any $s,a$.
 Summing over $i = 0$ to $t-1$ concludes the proof.
 \end{proof}
 \fi
@@ -831,10 +831,10 @@ Now we are ready to bound the per-episode regret.
 \begin{proof}
 We upper bound the regret as follows. Using optimism, we have
 \begin{align*}
-&  V_0^\star(s_0)   -  V^{\pi_{f_t}}_0(s_0)   \leq  V_{0,f_t}(s_0)  - \EE_{s_0\sim \mu} [  V^{\pi_{f_t}}_0(s_0) ]  \\
-& = Q_{0,f_t}(s_0,a_0)   - \EE\left[ \sum_{h=0}^{H-1} r(s_h,a_h) | \pi_{f_t} \right]\\
-& =  \EE\left[ \sum_{h=0}^{H-1} Q_{h, f_t}(s_h,a_h) - r(s_h,a_h) + Q_{h+1,f_t}(s_{h+1}, a_{h+1})  \vert \pi_{f_t}   \right]\\
-& \leq \sum_{h=0}^{H-1} \left\lvert \EE_{s_h,a_h\sim d_h^{\pi_{f_t}} } \left[ Q_{h,f_t}(s_h,a_h) - r(s_h,a_h) - \EE_{s_{h+1}\sim P_h(\cdot | s,a)} \left[ V_{h+1,f_t}(s_{h+1}) \right] \right]\right\rvert \\
+&  V_0^\star(s_0)   -  V^{\pi_{f_t}}_0(s_0)   \leq  V_{0,f_t}(s_0)  - \E_{s_0\sim \mu} [  V^{\pi_{f_t}}_0(s_0) ]  \\
+& = Q_{0,f_t}(s_0,a_0)   - \E\left[ \sum_{h=0}^{H-1} r(s_h,a_h) | \pi_{f_t} \right]\\
+& =  \E\left[ \sum_{h=0}^{H-1} Q_{h, f_t}(s_h,a_h) - r(s_h,a_h) + Q_{h+1,f_t}(s_{h+1}, a_{h+1})  \vert \pi_{f_t}   \right]\\
+& \leq \sum_{h=0}^{H-1} \left\lvert \E_{s_h,a_h\sim d_h^{\pi_{f_t}} } \left[ Q_{h,f_t}(s_h,a_h) - r(s_h,a_h) - \E_{s_{h+1}\sim P_h(\cdot | s,a)} \left[ V_{h+1,f_t}(s_{h+1}) \right] \right]\right\rvert \\
 &  \leq  \sum_{h=0}^{H-1} \left\lvert \left\langle W_h(f_t) - W_h(f^\star), X_h(f_t)   \right\rangle \right\rvert,
 \end{align*} 
 where the first equality uses that $a_0 = \pi_{0,f_t}(s_0)$, and the fact that $\pi_{0,f_t}(s) = \argmax_{a}
@@ -894,10 +894,10 @@ Now let us prove our claim on the second term.
 Using the definition of $\pi_{est}(s)$ and that $f_t$ is a feasible
 solution, we have that
 \begin{align*}
-& \sum_{i=0}^{t-1 } \left(  \EE_{s\sim d_h^{\pi_{f_i}},a\sim \pi_{est}(s), s'\sim P_h(\cdot | s,a)} [\ell_{f_i}(s,a,s', f_t)  ] \right)^2   \leq 2 \sum_{i=0}^{t-1 } \left(  \EE_{\Dcal_{i,h}} [ \ell_{f_i}(s,a,s', f_t) ]  \right)^2 \\
-& \quad + 2 \sum_{i=0}^{t-1} \left(  \EE_{s\sim d_h^{\pi_{f_t}},a\sim
+& \sum_{i=0}^{t-1 } \left(  \E_{s\sim d_h^{\pi_{f_i}},a\sim \pi_{est}(s), s'\sim P_h(\cdot | s,a)} [\ell_{f_i}(s,a,s', f_t)  ] \right)^2   \leq 2 \sum_{i=0}^{t-1 } \left(  \E_{\Dcal_{i,h}} [ \ell_{f_i}(s,a,s', f_t) ]  \right)^2 \\
+& \quad + 2 \sum_{i=0}^{t-1} \left(  \E_{s\sim d_h^{\pi_{f_t}},a\sim
   \pi_{est}(s), s'\sim P_h(\cdot | s,a)} [ \ell_{f_i}(s,a,s', f_t) ]
-  -\EE_{\Dcal_{i,h}} [\ell_{f_i}(s,a,s', f_t)  ]  \right)^2 
+  -\E_{\Dcal_{i,h}} [\ell_{f_i}(s,a,s', f_t)  ]  \right)^2 
 \leq 2 T \varepsilon_{gen}^2 + 2 T \varepsilon^2_{gen} = 4 T \varepsilon_{gen}^2,
 \end{align*} 
 Using this and the second condition in the definition of Bilinear class (Eq.~\ref{eq:bilinear_condition_2}), we have:
@@ -905,7 +905,7 @@ Using this and the second condition in the definition of Bilinear class (Eq.~\re
 &\left\| W_h(f_t)  - W_h(f^\star)\right\|^2_{\Sigma_{t, h}} =
 \sum_{i=0}^{t-1} \left( (W_h(f_t) - W_h(f^\star))^\top X_h(f_i) \right)^2+
  \lambda \| W_h(f_t)  - W_h(f^\star) \|_2^2\\
-&= \sum_{i=0}^{t-1 } \left(  \EE_{s\sim d_h^{\pi_{f_i}},a\sim \pi_{est}(s), s'\sim P_h(\cdot | s,a)} [ \ell_{f_i}(s,a,s', f_t) ]  \right)^2 
+&= \sum_{i=0}^{t-1 } \left(  \E_{s\sim d_h^{\pi_{f_i}},a\sim \pi_{est}(s), s'\sim P_h(\cdot | s,a)} [ \ell_{f_i}(s,a,s', f_t) ]  \right)^2 
 + \lambda \| W_h(f_t) - W_h(f^\star) \|_2^2
 \leq 4 T\varepsilon^2_{gen} + 4\lambda B_W^2,
 \end{align*}
@@ -915,7 +915,7 @@ which proves our claimed bound on the second term.
 %where for notation simplicity, we wrote $s'\sim P_h$ in short of $s'\sim P_h(\cdot | s,a)$.
 This implies that at iteration $i$, we have $\pi_{est} = \pi_{f_i}$. Together with the definition of $Q$-Bellman rank, we have:
 \begin{align*}
-\sum_{i=0}^{t-1 } \left(  \EE_{s\sim d_h^{\pi_{f_i}},a\sim \pi_{f_i}(s), s'\sim P_h} [ \ell(s,a,s', f_t) ]  \right)^2 & = \sum_{i=0}^{t-1} \left( W_h(f_t)^\top X_h(f_i) \right)^2 \\
+\sum_{i=0}^{t-1 } \left(  \E_{s\sim d_h^{\pi_{f_i}},a\sim \pi_{f_i}(s), s'\sim P_h} [ \ell(s,a,s', f_t) ]  \right)^2 & = \sum_{i=0}^{t-1} \left( W_h(f_t)^\top X_h(f_i) \right)^2 \\
 &  = \left\| W_h(f_t) \right\|^2_{\Sigma_{t, h}} - \lambda \| W_h(f_t) \|_2^2 \leq 4 T\varepsilon^2_{gen}. 
 \end{align*} Rearrange terms, we have:
 \begin{align*}
@@ -930,11 +930,11 @@ For any $h$ and $t$, via Cauchy Schwartz, we have:
 \end{align}
 To bound $\left\| W_h(f_t)  \right\|_{\Sigma_{t,h}}$, we note that $f_t$ is a feasible solution, i.e., 
 \begin{align*}
-\sum_{i=0}^{t-1 } \left(  \EE_{\Dcal_{i,h}} [ \ell(s,a,s', f_t) ]  \right)^2 \leq R^2 = T \varepsilon^2_{gen}, 
+\sum_{i=0}^{t-1 } \left(  \E_{\Dcal_{i,h}} [ \ell(s,a,s', f_t) ]  \right)^2 \leq R^2 = T \varepsilon^2_{gen}, 
 \end{align*} which also implies that:
 \begin{align*}
-& \sum_{i=0}^{t-1 } \left(  \EE_{s\sim d_h^{\pi_{f_i}},a\sim \pi_{est}(s), s'\sim P_h} [\ell(s,a,s', f_t)  ] \right)^2   \leq 2 \sum_{i=0}^{t-1 } \left(  \EE_{\Dcal_{i,h}} [ \ell(s,a,s', f_t) ]  \right)^2 \\
-& \quad + 2 \sum_{i=0}^{t-1} \left(  \EE_{s\sim d_h^{\pi_{f_t}},a\sim \pi_{est}(s), s'\sim P_h} [ \ell(s,a,s', f_t) ] -\EE_{\Dcal_{i,h}} [\ell(s,a,s', f_t)  ]  \right)^2 \leq 2 T \varepsilon_{gen}^2 + 2 T \varepsilon^2_{gen} = 4 T \varepsilon_{gen}^2,
+& \sum_{i=0}^{t-1 } \left(  \E_{s\sim d_h^{\pi_{f_i}},a\sim \pi_{est}(s), s'\sim P_h} [\ell(s,a,s', f_t)  ] \right)^2   \leq 2 \sum_{i=0}^{t-1 } \left(  \E_{\Dcal_{i,h}} [ \ell(s,a,s', f_t) ]  \right)^2 \\
+& \quad + 2 \sum_{i=0}^{t-1} \left(  \E_{s\sim d_h^{\pi_{f_t}},a\sim \pi_{est}(s), s'\sim P_h} [ \ell(s,a,s', f_t) ] -\E_{\Dcal_{i,h}} [\ell(s,a,s', f_t)  ]  \right)^2 \leq 2 T \varepsilon_{gen}^2 + 2 T \varepsilon^2_{gen} = 4 T \varepsilon_{gen}^2,
 \end{align*} where for notation simplicity, we wrote $s'\sim P_h$ in
 short of $s'\sim P_h(\cdot | s,a)$. 
 
@@ -942,7 +942,7 @@ Now we discuss two case: $Q$-bellman rank and $V$-Bellman rank.
 
 For $Q$-Bellman rank, at iteration $i$, we have $\pi_{est} = \pi_{f_i}$. Together with the definition of $Q$-Bellman rank, we have:
 \begin{align*}
-\sum_{i=0}^{t-1 } \left(  \EE_{s\sim d_h^{\pi_{f_i}},a\sim \pi_{f_i}(s), s'\sim P_h} [ \ell(s,a,s', f_t) ]  \right)^2 & = \sum_{i=0}^{t-1} \left( W_h(f_t)^\top X_h(f_i) \right)^2 \\
+\sum_{i=0}^{t-1 } \left(  \E_{s\sim d_h^{\pi_{f_i}},a\sim \pi_{f_i}(s), s'\sim P_h} [ \ell(s,a,s', f_t) ]  \right)^2 & = \sum_{i=0}^{t-1} \left( W_h(f_t)^\top X_h(f_i) \right)^2 \\
 &  = \left\| W_h(f_t) \right\|^2_{\Sigma_{t, h}} - \lambda \| W_h(f_t) \|_2^2 \leq 4 T\varepsilon^2_{gen}. 
 \end{align*} Rearrange terms, we have:
 \begin{align*}
@@ -951,8 +951,8 @@ For $Q$-Bellman rank, at iteration $i$, we have $\pi_{est} = \pi_{f_i}$. Togethe
 
 For $V$-Bellman rank case, we have $\pi_{est}(s) = \textrm{Unif}_{\Acal} $, since the loss function has an importance weighting term, we have:
 \begin{align*}
-  &\sum_{i=0}^{t-1 } \left(  \EE_{s\sim d_h^{\pi_{f_i}},a\sim \textrm{Unif}_{\Acal} , s'\sim P_h} [ A \one\{a = \pi_{f_t}(s)\} \ell(s,a,s', f_t)  ] \right)^2 \\
-&=  \sum_{i=0}^{t-1 } \left(  \EE_{s\sim d_h^{\pi_{f_i}},a\sim \pi_{f_t}(s), s'\sim P_h} [ \ell(s,a,s', f_t)]   \right)^2 = \sum_{i=0}^{t-1} \left( W_h(f_t)^\top X_h(f_i) \right)^2 = \left\| W_h(f_t) \right\|^2_{\Sigma_{t, h}} - \lambda \| W_h(f_t) \|_2^2 \leq 4 T\varepsilon^2_{gen}.
+  &\sum_{i=0}^{t-1 } \left(  \E_{s\sim d_h^{\pi_{f_i}},a\sim \textrm{Unif}_{\Acal} , s'\sim P_h} [ A \one\{a = \pi_{f_t}(s)\} \ell(s,a,s', f_t)  ] \right)^2 \\
+&=  \sum_{i=0}^{t-1 } \left(  \E_{s\sim d_h^{\pi_{f_i}},a\sim \pi_{f_t}(s), s'\sim P_h} [ \ell(s,a,s', f_t)]   \right)^2 = \sum_{i=0}^{t-1} \left( W_h(f_t)^\top X_h(f_i) \right)^2 = \left\| W_h(f_t) \right\|^2_{\Sigma_{t, h}} - \lambda \| W_h(f_t) \|_2^2 \leq 4 T\varepsilon^2_{gen}.
 \end{align*}
 Rearrange terms, we have:
 \begin{align*}

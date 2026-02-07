@@ -4,13 +4,9 @@
 \usepackage{rl_packages}
 \input{template}
 \input{macros}
-%------------
-%LEGACY MACROS
-%SK: I am cleaning up macros, chapter by chapter. As of now,
-%everything up to and including the samp_comp chapter is fine with
-%only macros.tex. 
-%--------
-\input{legacy_macros}
+
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,calc}
 
 
 \title{Reinforcement Learning: \\ Theory and Algorithms}
@@ -56,8 +52,7 @@
 \part{Fundamentals}
 \include{mdp_preliminaries}
 \include{sample_complexity}
-
-\include{bellman_complete}
+\include{linear_realizability}
 \include{fitted_DP}
 
 % --- Strategic Exploration ---
@@ -67,8 +62,8 @@
 \include{ucbvi}
 \include{linear_MDPs}
 \include{bellman_rank}
-\include{deterministic_Q_star}
-\include{lower_bounds}
+
+
 
 % --- Policy Optimization ---
 \part{Policy Optimization}
@@ -85,7 +80,8 @@
 
 
 \appendix
-\include{appendix}
+\include{appendix_concentration}
+\include{appendix_linQstar}
 
 \backmatter
 \bibliographystyle{plainnat}

@@ -1,705 +1,581 @@
-\newcommand{\vmax}{V_{\max}}
-\chapter{Fitted Dynamic Programming Methods}
-\label{chap:api}
-
-Let us again consider the question of learning in large MDPs, when the
-underlying MDPs is unknown. In the previous chapter, we relied on the
-linear Bellman completeness assumption to provide strong guarantees
-with only polynomial dependence on the dimension of the feature
-space and the horizon $H$. This chapter considers the approach of
-using \emph{function approximation} methods with iterative dynamic programming
-approaches.
-
-In particular, we now consider approaches
-which rely on (average-case) supervised learning methods (namely regression), where we use
-regression to approximate the target functions in both the value
-iteration and policy iteration algorithms. We refer to these
-algorithms as \emph{fitted $Q$-iteration} (FQI) and \emph{fitted
-  policy iteration} (FPI). The FQI algorithm can be implemented in
-an offline RL sampling model while the FPI algorithm requires the
-sampling access to an episodic model (see 
-Chapter~\ref{chap:prelims} for review of these sampling models).
-
-\iffalse
-Here, we will consider the episodic setting, where we do not have a
-generative model and instead can only reset the state under our
-initial state distribution. This chapter will consider a simple
-approach where we learn an approximate Q function and then update our
-policy greedily with respect to the estimated Q function. 
-
-We consider infinite discounted MDPs in this chapter. Here the MDP might have large or even continuous state space.  We assume action space is discrete and we denote $A = |\Acal|$ as the number of actions. 
-We are given a policy class $\Pi = \{\pi: \Scal\mapsto \Acal\} \subset \Scal\mapsto \Acal$.  Note that the policy class is a restricted policy class which is a subset of the class of all mappings from $\Scal$ to $\Acal$. 
-
-%\sk{this doesn't matter, right?}
-We denote the best policy in policy class as $\pi^\star$, which is the policy that maximizes the expected total reward with $\mu$ as the initial state distribution:
-\begin{align*}
-\pi^\star \in \argmax_{\pi\in \Pi} \EE\left[ \sum_{h=0}^{\infty} \gamma^h r(s_h,a_h) | a_h = \pi(s_h) \right].
-\end{align*} 
-Note that $\pi^\star$ is the best policy in policy class that maximizes the objective function and it is not necessarily true that $\pi^\star$ will be the optimal policy of the MDP $M$ which maximizes total reward starting from any state simultaneously (i.e., the policy class might not be rich enough to contain the optimal policy of $M$).
-\fi
-
-
-This chapter focuses on obtaining of \emph{average case function
-  approximation error} bounds, provided we have a somewhat stringent
-condition on how the underlying MDP behaves, quantified by the
-\emph{concentrability coefficient}. This notion was introduced
-in~\cite{munos2003error,munos2005error}. While the notion is somewhat
-stringent, we will see that it is not
-avoidable without further assumptions. The next chapter more
-explicitly considers lower bounds, while Chapters~\ref{chap:pg_approx} and~\ref{chap:cpi} seek to
-relax the concentrability notion.
-
-
-\section{Fitted $Q$-Iteration (FQI) and Offline RL}
-
-%\sk{maybe give the guarantee with $\eps_{\textrm{stat}}$-stat and
-%  $\eps_{\textrm{approx}}$? for $\eps_{\textrm{stat}}$, this will just
-%be the inherent $\nu$-Bellman error or the inherent $\nu$-policy
-%error, where the error are average case under $\nu$. or something like
-%that.}
-
-We consider infinite horizon discounted MDP $\mathcal{M} = \{ \Scal,\Acal, \gamma, P, r,  \mu\}$ where $\mu$ is the initial state distribution. We assume reward is bounded, i.e., $\sup_{s,a} r(s,a) \in [0,1]$. For notation simplicity, we denote $\vmax : = 1/(1-\gamma)$. 
-
-Given any $f: \Scal\times\Acal\mapsto \mathbb{R}$, we denote the Bellman operator $\Tcal f : \Scal\times\Acal\mapsto \mathbb{R}$ as follows. For all $s,a\in \Scal\times\Acal$,
-\begin{align*}
-\Tcal f(s,a)  := r(s,a) + \gamma \mathbb{E}_{s'\sim P(\cdot | s,a)} \max_{a'\in \Acal} f(s',a').
-\end{align*}  
-
-We assume that we have a distribution $\nu\in\Delta(\Scal\times\Acal)$. We collect a  dataset $\mathcal{D} := \{(s_i,a_i,r_i,s_i')\}_{i=1}^n$ where $s_i,a_i \sim \nu, r_i = r(s_i,a_i), s_i' \sim P(\cdot |s_i,a_i)$. Given $\Dcal$, our
-goal is to output a near optimal policy for the MDP, that is we would
-like our algorithm to produce a policy $\hat{\pi}$ such that, with
-probability at least $1-\delta$, $V(\hat{\pi}) \geq V^\star -
-\epsilon$, for some $(\epsilon,\delta)$ pair. As usual, the number of
-samples $n$ will depend on the accuracy parameters $(\epsilon,\delta)$
-and we would like $n$ to scale favorably with these. Given any distribution $\nu \in \Scal\times\Acal$, and any function $f:\Scal\times\Acal\mapsto\mathbb{R}$, we write $\|f \|_{2,\nu}^2 := \EE_{s,a\sim \nu} f^2(s,a)$
-
-Denote a function class $\mathcal{F} = \{ f: \Scal\times\Acal \mapsto [0, \vmax]\}$. %We assume $\mathcal{F}$ is discrete and also contains $Q^\star$. 
-%\begin{assumption}[Realizability]
-%We assume $\mathcal{F}$ is rich enough such that $Q^\star\in\mathcal{F}$.
-%\end{assumption}
-%We require the sample complexity of the learning algorithm scales polynomially with respect to $\ln\left(\lvert\mathcal{F} \rvert\right)$.
-
-We require the data distribution $\nu$ is exploratory enough. 
-%following assumption on the data distribution $\nu$. 
-\begin{assumption}[Concentrability]
-\label{assum:concentrability}
-There exists a constant $C$ such that for any policy $\pi$ (including non-stationary policies), we have:
-\begin{align*}
-\forall \pi, s,a: \frac{d^\pi(s,a)}{\nu(s,a)} \leq C.
-\end{align*}\label{assum:concentrability_fqi}
-\end{assumption}
-Note that concentrability does not require that the state space is
-finite, but it does place some constraints on the system dynamics.  Note that the above assumption requires that $\nu$ to cover all possible policies's state-action distribution, even including non-stationary policies.  %Recall the concentrability assumptions in Approximate Policy Iteration (Chapter~\ref{chap:api}) and Conservative Policy Iteration (Chapter~\ref{chap:cpi}). The concentrability assumption here is the strongest as it requires $\mu$ to cover even non-stationary policies' state-action distributions. 
-
-In additional to the above two assumptions, we need an assumption on the representational condition of class $\mathcal{F}$. 
-%\begin{assumption}[Bellman Completion]\label{assump:complete}
-%We assume that for any $f\in\Fcal$, $\Tcal f \in \Fcal$.
-%\end{assumption}
-\begin{assumption}[Inherent Bellman Error] We assume the following
-  error bound holds:
-\begin{align*}
-\epsilon_{approx,\nu} := \max_{f\in \Fcal} \min_{f'\in\Fcal} \|  f' - \Tcal f   \|^2_{2,\nu}.
-\end{align*}
-We refer to $\epsilon_{approx,\nu}$ as the \emph{inherent Bellman error}
-with respect to the distribution $\nu$.
-\end{assumption} 
-%The assumption depends both on the representation of $\Fcal$ and also the transition $P$. Recall the linear MDP model, there we have that for any linear function $f(s,a) := \theta\cdot \phi(s,a)$, we always have $\Tcal f(s,a) = (\theta')^{\top} \phi(s,a)$ for some $\theta'$. Such %assumption does not always hold. For instance, if $\Fcal = \{ \theta\cdot  \}$
-%Note that this implies that $Q^\star \in \Fcal$ (as $Q^\star$ is the convergence point of Value Iteration), which is the weaker
-%assumption we would hope is sufficient.  However, as we discuss in Section~\ref{bib:offline}, the Bellman completion assumption is necessary in order to learn in polynomial sample complexity. 
-
-\subsection{The FQI Algorithm}
-Fitted Q Iteration (FQI) simply performs the following iteration. Start with some $f_0 \in \Fcal$, FQI iterates:
-\begin{align}
-\label{eq:FQI}
-\text{FQI: } \quad f_{t} \in \argmin_{f\in\Fcal} \sum_{i=1}^n \left( f(s'_i,a_i) - r_i - \gamma \max_{a'\in\Acal} f_{t-1}(s_i,a_i)  \right)^2.
-\end{align}
-After $k$ many iterations, we output a policy $\pi^k(s) := \argmax_{a} f_k(s,a),\forall s$.
-
-To get an intuition why this  approach can work, let us assume the inherent Bellman error $\epsilon_{approx} = 0$ which is saying that for any $f\in\Fcal$, we have $\Tcal f\in\Fcal$ (i.e., Bellman completion). Note that the Bayes optimal solution is $\Tcal f_{t-1}$. Due to the Bellman completion assumption, the Bayes optimal solution $\Tcal f_{t-1} \in \Fcal$. Thus, we should expect that $f_t$ is close to the Bayes optimal $\Tcal f_{t-1}$ under the distribution $\nu$, i.e., with a uniform convergence argument, for the generalization bound, we should expect that:
-\begin{align*}
-\EE_{s,a\sim \nu} \left( f_t(s,a) - \Tcal f_{t-1}(s,a) \right)^2 \approx  \sqrt{1/ n}. 
-\end{align*} 
-%Indeed, as we demonstrate in Lemma~\ref{lem:generalization_least_square}, for square loss, under the realizability assumption, i.e., the Bayes optimal belongs to $\Fcal$ ($\Tcal f_{t-1} \in \Fcal$), we can have a sharper generalization error scaling in the order of $1/ n$.  
-Thus in high level, $f_t \approx \Tcal f_{t-1}$ as our data distribution $\nu$ is exploratory, and we know that based on value iteration, $\Tcal f_{k-1}$ is a better approximation of $Q^\star$ than $f_k$, i.e., $\| \Tcal f_{t-1} - Q^\star \|_{\infty} \leq \gamma \| f_{t-1} - Q^\star \|_{\infty}$, we can expect FQI to converge to the optimal solution when $n\to \infty, t\to\infty$. We formalize the above intuition below. 
-
-\subsection{Performance Guarantees of FQI}
-
-We first state the performance guarantee of FQI. 
-\begin{theorem}[FQI guarantee]\label{thm:fqi_main}
-Fix $K \in \mathbb{N}^+$. Fitted $Q$ Iteration guarantees that with probability $1-\delta$,
-\begin{align*}
-V^\star - V^{\pi^K} \leq \frac{1}{(1-\gamma)^2} \left(   \sqrt{ \frac{22 C \vmax^2 \ln(|\Fcal|^2 K / \delta)}{n}} + \sqrt{ 20  C\epsilon_{approx,\nu}  }   \right)  + \frac{\gamma^K \vmax}{(1-\gamma) }
-%\mathcal{O}\left(\frac{1}{(1-\gamma)^3}\sqrt{\frac{C\log(|\Fcal|/\delta)}{n}}\right) + \frac{2\gamma^K }{(1-\gamma)^2}.
-\end{align*}
-\end{theorem}
-
-
-We start from the following lemma which shows that if for all $t$, $\| f_{t+1} - \Tcal f_t \|^2_{2, \nu} \leq \varepsilon$, then the greedy policy with respect to $f_t$ is approaching to $\pi^\star$.
-\begin{lemma}\label{lem:approximate_be_fqi}Assume that for all $t$, we have $\|f_{t+1} - \Tcal f_{t}\|_{2,\nu} \leq \varepsilon$, then for any $k$, we have:
-\begin{align*}
-V^{\pi^k} - V^\star \leq  \frac{\sqrt{C}\varepsilon}{(1-\gamma)^2} + \frac{ \gamma^k \vmax}{1-\gamma}.
-\end{align*}
-\end{lemma}
-\begin{proof}
-We start from the Performance Difference Lemma:
-\begin{align*}
-(1-\gamma) \left( V^\star - V^{\pi_k}\right)   & =  \EE_{s \sim d^{\pi_k}} \left[ - A^{\star}(s, \pi_k(s)) \right]\\
-& = \EE_{s \sim d^{\pi_k}} \left[  Q^\star(s, \pi^\star(s)) - Q^\star(s, \pi_k(s))\right]\\
-&\leq \EE_{s \sim d^{\pi_k}} \left[  Q^\star(s, \pi^\star(s)) - f_k(s, \pi^\star(s)) + f_k(s, \pi_k(s)) -  Q^\star(s, \pi_k(s))\right]\\
-& \leq  \|Q^\star - f_k\|_{1, d^{\pi_k} \circ \pi^\star} + \|Q^\star - f_k\|_{1, d^{\pi_k} \circ \pi_k}       \\
-& \leq   \|Q^\star - f_k\|_{2, d^{\pi_k} \circ \pi^\star} + \|Q^\star - f_k\|_{2, d^{\pi_k} \circ \pi_k}      ,
-\end{align*} where the first inequality comes from the fact that $\pi_k$ is a greedy policy of $f_k$, i.e., $f_k(s, \pi_k(s)) \geq f_k(s, a)$ for any other $a$ including $\pi^\star(s)$.
-Now we bound each term on the RHS of the above inequality. We do this by consider a state-action distribution $\beta$ that is induced by some policy. We have:
-\begin{align*}
-\| Q^\star - f_k \|_{2, \beta} &\leq \| Q^\star - \Tcal f_{k-1} \|_{2, \beta} + \| f_k - \Tcal f_{k-1} \|_{2, \beta}\\
-& \leq \gamma \sqrt{ \EE_{s,a\sim \beta} \left[ \left( \EE_{s'\sim P(\cdot | s,a)} \max_{a} Q^\star(s',a) - \max_{a} f_{k-1}(s',a)   \right)^2  \right]  } + \| f_k - \Tcal f_{k-1} \|_{2,\beta} \\
-&  \leq \gamma \sqrt{ \EE_{s,a\sim \beta, s'\sim P(\cdot | s,a)}  \max_{a} \left( Q^\star(s',a) - f_{k-1}(s',a) \right)^2 } + \sqrt{C} \| f_k - \Tcal f_{k-1} \|_{2, \nu},
-\end{align*} where in the last inequality, we use the fact that $(\EE[x])^2 \leq \EE[x^2]$,  $(\max_{x} f(x) - \max_{x} g(x))^2 \leq \max_{x} (f(x) - g(x))^2$ for any two functions $f$ and $g$,  and assumption~\ref{assum:concentrability_fqi}.
-
-Denote $\beta'(s',a') = \sum_{s,a} \beta(s,a) P(s'|s,a) \mathbf{1}\{a' = \argmax_{a}\left( Q^\star(s',a) - f_{k-1}(s',a) \right)^2  \}  $, the above inequality becomes:
-\begin{align*}
-\| Q^\star - f_k \|_{2, \beta} &\leq \gamma \| Q^\star - f_{k-1} \|_{2, \beta'} +  \sqrt{C} \| f_k - \Tcal f_{k-1} \|_{2, \nu}.
-\end{align*} We can recursively repeat the same process for $\| Q^\star - f_{k-1} \|_{2, \nu'}$ till step $k = 0$:
-\begin{align*}
-\| Q^\star - f_k \|_{2, \beta}  \leq  \sqrt{C} \sum_{t=0}^{k-1} \gamma^t \| f_{k-t} - \Tcal f_{k-t-1}  \|_{2,\nu} + \gamma^k \| Q^\star - f_0 \|_{2,\widetilde\nu},
-\end{align*} where $\widetilde\nu$ is some valid state-action distribution.  
-
-Note that for the first term on the RHS of the above inequality, we can bound it as follow:
-\begin{align*}
-\sqrt{C} \sum_{t=0}^{k-1} \gamma^t \| f_{k-t} - \Tcal f_{k-t-1}  \|_{2,\mu}  \leq \sqrt{C} \sum_{t=0}^{k-1} \gamma^k \varepsilon  \leq  \sqrt{C} \varepsilon \frac{1}{1-\gamma}. 
-% \mathcal{O}\left( \frac{\vmax \sqrt{C \ln (|\Fcal|/\delta)}}{(1-\gamma) \sqrt{n}} \right)
-\end{align*}
-For the second term, we have:
-\begin{align*}
-\gamma \| Q^\star - f_0 \|_{2,\widetilde\nu} \leq \gamma^k \vmax. 
-\end{align*}
-Thus, we have:
-\begin{align*}
-\| Q^\star - f_k \|_{2, \beta}  = \frac{\sqrt{C}\varepsilon}{1-\gamma} + \gamma^k \vmax,
-\end{align*} for all $\beta$, including $\beta = d^{\pi_k}\circ \pi^\star$, and $\beta = d^{\pi_k}\circ \pi_k$.  This concludes the proof.
-\end{proof}
-
-What left is to show that least squares control the error $\varepsilon$. We will use the generalization bound for least squares shown in Lemma~\ref{lem:least_square_gen}.
-%Below we first state a general result for least square regression. 
-
-%\begin{lemma}[Least Squares Generalization Bound] \label{lem:least_square_gen}Given a dataset $\Dcal = \{x_i, y_i\}_{i=1}^n$ where $x_i\in\Xcal$ and $x_i,y_i \sim \nu$, $y_i = f^\star(x_i) + \epsilon_i$, where $|y_i| \leq Y, \max_x |f^\star(x) |\leq Y$ and $ |\epsilon_i | \leq \sigma$ for all $i$, and $\{\epsilon_i\}$ are independent from each other. Given a function class $\Fcal: \Xcal\mapsto [0, Y]$, we assume approximate realizable, i.e., $\min_{f\in\Fcal} \EE_{x\sim \nu} \lvert f^\star(x)- f(x) \rvert^2 \leq \epsilon_{approx}$. Denote $\hat{f}$ as the least square solution, i.e., $\hat{f} = \argmin_{f\in\Fcal} \sum_{i=1}^n \left( f(x_i) - y_i \right)^2$. With probability at least $1-\delta$, we have:
-%\begin{align*}
-%\EE_{x\sim \nu}\left( \hat{f}(x) - f^\star(x) \right)^2 \leq  \frac{144 Y^2 \ln(|\Fcal |/\delta)}{ n } + 8 \epsilon_{approx}.
-%\end{align*}
-%\end{lemma}
-%We defer the proof of the above lemma to the end of this section. Below we first show that by leveraging this lemma, $\varepsilon$ from Lemma~\ref{lem:approximate_be_fqi} scales in the order of $\sqrt{\epsilon_{approx,\nu} + 1/n}$.
-
-
-%\begin{lemma}[Least Squares Generalization Error]
-\begin{lemma}[Bellman error]
-\label{lem:generalization_least_square}
-With probability at least $1-\delta$, for all $t = 0, \dots, K$, we have:
-\begin{align*}
-\| f_{t+1} - \Tcal f_{t}  \|_{2,\nu}^2 \leq \frac{22 \vmax^2 \ln(|\Fcal|^2 K / \delta)}{n} + 20 \epsilon_{approx,\nu}.
-\end{align*}
-%Given $g \in \Fcal$, denote $\hat{f}_{g} := \argmin_{f\in \Fcal} \sum_{i=1}^n (f(s_i,a_i) - r_i - \gamma \max_{a'} f(s_i', a'))^2$. With probability at least $1-\delta$, for all $g\in \Fcal$, we have:
-%\begin{align*}
-%\EE_{s,a\sim \nu}  \left( \hat{f}_{g}(s,a) - \Tcal g(s,a)    \right)^2  =  \frac{144 \vmax^2 \ln(|\Fcal|^2 / \delta)}{n} + 8 \epsilon_{approx}.
-%\mathcal{O}\left( \frac{ \vmax^2 \ln\left( \frac{ |\Fcal| }{\delta} \right) }{n} \right).
-%\end{align*}
-\end{lemma}
-%\paragraph{Remark} The above lemma together with a union bound over all $t = 0, 1,2, \dots, K$, we can show that for all $t \in \mathbb{N}$, we have $\| f_{t+1} - \Tcal f_{t}  \|_{2,\nu}^2 \leq \frac{144 \vmax^2 \ln(|\Fcal|^2 K / \delta)}{n} + 8 \epsilon_{approx}$, with probability at least $1-\delta$.
-
-
-\begin{proof}
-
-Let us fix a function $g\in \Fcal$, and consider the regression problem on dataset $\{ \phi(s,a), r(s,a) + \gamma \max_{a'}  g(s',a') \}$. Denote $\hat{f}_g  = \argmin_{f\in\Fcal} \sum_{i=1}^n (  f(s_i,a_i) - r_i - \gamma \max_{a'} g(s',a')   )$, as the least square solution. 
-
-Note that in this regression problem, we have $ | r_i + \gamma \max_{a'} g(s',a') | \leq 1 + \gamma \vmax \leq 2 \vmax$, and for our Bayes optimal solution, we have $|\Tcal g(s,a)| =  | r(s,a) + \gamma \EE_{s'\sim P(\cdot | s,a)}\max_{a'} g(s',a') | \leq 1 + \gamma \vmax \leq 2\vmax$. Also note that our inherent Bellman error condition implies that $\min_{f\in\Fcal}\EE_{s,a\sim \nu}( f(s,a) - \Tcal g(s,a) )^2 \leq \epsilon_{approx,\nu}$.  Thus, we can apply Lemma~\ref{lem:least_square_gen} directly here. With probability at least $1-\delta$, we get:
-\begin{align*}
-\| \hat{f}_g - \Tcal g \|_{2,\nu}^2 \leq \frac{22 \vmax^2 \ln(|\Fcal|/\delta)}{n} + 20 \epsilon_{approx,\nu}.
-\end{align*}
-Note that the above inequality holds for the fixed $g$. We apply a union bound over all possible $g\in\Fcal$, we get that with probability at least $1-\delta$:
-\begin{align}
-\label{eq:uniform_bound_regression_fqi}
-\forall g\in\Fcal: \| \hat{f}_g - \Tcal g \|_{2,\nu}^2 \leq \frac{22 \vmax^2 \ln(|\Fcal|^2/\delta)}{n} + 20 \epsilon_{approx,\nu}.
-\end{align}
-
-\iffalse
-Let us consider a fixed iteration $t$. In time step, we perform regression on the dataset $\{ \phi(s,a), r(s,a) + \gamma \max_{a'}  f_{t+1}(s') \}$.
-
-
-
-Let us consider a fixed function $g \in \Fcal$ first, and denote $\hat{f} = \argmin_{{f}\in\Fcal} \sum_{i=1}^n ( {f}(s_i,a_i) - r_i - \gamma \max_{a'\in\Acal} g(s'_i, a')  )^2$ as the corresponding least squares solution. Note that $\hat{f}$ is fully determined by $g$. At the end of this proof, we will apply a union bound over all $g\in\Fcal$. 
-
-For any fixed $f\in \Fcal$, let us denote the random variable $z^f_i$:
-\begin{align*}
-z^f_i := \left( {f}(s_i,a_i) - r_i - \gamma \max_{a'\in\Acal} g(s'_i, a') \right)^2 - \left( \Tcal {g}(s_i,a_i) - r_i - \gamma \max_{a'\in\Acal} g(s_i', a') \right)^2.
-\end{align*}  
-First note that $z^f_i$ is bounded:
-\begin{align*}
-| z^f_i | \leq  \vmax^2,
-\end{align*} which comes from the assumption that $f(s,a) \in [ 0, \vmax]$ for all $s,a, f$.
-
-Now we compute $\EE[ z_i^f ]$ and the upper bound of the second moment $\EE[ (z_i^f)^2]$, where the expectation is taken with respect to $s_i,a_i, s'_{i}$. First we show that $z_i^f$ is an unbiased estimate of $\| f - \Tcal g \|^2_{2,\nu}$:
-\begin{align*}
-& \EE_{s_i,a_i \sim \nu, s_i' \sim P(\cdot | s_i,a_i)}\left [  z^f_i  \right] \\
-& = \EE_{s_i,a_i \sim \nu, s_i' \sim P(\cdot | s_i,a_i)} \left( f(s_i,a_i) - \Tcal g(s_i,a_i) \right) \left( f(s_i,a_i) + \Tcal g(s_i,a_i) - 2 (r_i + \gamma \max_{a'\in \Acal} g(s_i', a') )  \right)\\
-& =  \EE_{s_i,a_i \sim \nu} ( f(s_i,a_i) - \Tcal g(s_i,a_i) ) \left( f(s_i,a_i) + \Tcal g(s_i,a_i) - 2\left( r_i + \EE_{ s_i' \sim P(\cdot | s_i,a_i)}\max_{a'} g(s_i', a') \right)\right) \\
-& = \EE_{s_i,a_i\sim \nu} \left( f(s_i,a_i) - \Tcal g(s_i,a_i) \right)^2  =  \EE_{s,a\sim \nu} \left( f(s,a) - \Tcal g(s,a) \right)^2 = \|f-\Tcal g\|_{2,\nu}^2,
-\end{align*} where the third equality uses the definition of Bellman operator, i.e., that $r_i + \EE_{ s_i' \sim P(\cdot | s_i,a_i)}\max_{a'} g(s_i', a')  = \Tcal g(s_i,a_i)$.
-
-Now we calculate the second moment of $z^f_i$.  We show that $\EE[ (z_i^f)^2 ] \leq 4\vmax^2 \| f - \Tcal g \|_{2,\nu}^2$:
-\begin{align*}
-& \EE_{s_i,a_i \sim \nu, s_i' \sim P(\cdot | s_i,a_i)}\left [  (z^f_i)^2  \right] \\
- & =  \EE_{s_i,a_i \sim \nu, s_i' \sim P(\cdot | s_i,a_i)} \left[ (f(s_i,a_i) - \Tcal g(s_i,a_i))^2 \left( f(s_i,a_i) + \Tcal g(s_i,a_i) - 2(r_i + \gamma \max_{a'} g(s'_i, a') )  \right)^2   \right]\\
- &  \leq   4 \vmax^2 \EE_{s_i,a_i \sim \nu} \left[ (f(s_i,a_i) - \Tcal g(s_i,a_i))^2 \right] \\
- & =  4 \vmax^2 \EE_{s,a \sim \nu} \left[ (f(s,a) - \Tcal g(s,a))^2 \right]  = 4 \vmax^2 \| f - \Tcal g  \|^2_{2,\nu}
-\end{align*} where in the inequality, we again use the assumption that $f(s,a) \in [0, \vmax]$ for all $s,a,f$.
-
-Now we can use Bernstein's inequality to bound the deviation between the empirical mean $\frac{1}{n} \sum_{i=1}^n z^f_i $ and the expectation $\| f - \Tcal g(s,a) \|_{2,\nu}^2$. Together with a union bound over all $f\in \Fcal$, we have that with probability at least $1-\delta$, for any $f\in \Fcal$:
-\begin{align}
-\| f - \Tcal g  \|^2_{2,\nu} - \frac{1}{n} \sum_{i=1}^n z^f_i \leq \sqrt{ \frac{ 8\vmax^2  \| f - \Tcal g  \|^2_{2,\nu}   \ln(|\Fcal|/\delta) }{n}  } + \frac{ 4  \vmax^2 \ln(|\Fcal|/\delta) }{3n}.\label{eq:error_for_all_f_fqi}
-\end{align}
-
-Recall $\hat{f} = \argmin_{f\in\Fcal}z_i^f$. Below we show that $\sum_{i=1}^n z_i^{\hat{f}} / n$ is upper bound by $\frac{\epsilon_{approx}}{2} + \frac{10\vmax^2 \ln(1/\delta)}{3n}$.
-
-Let us denote $g'  = \argmin_{f\in \Fcal} \|f - \Tcal g\|_{2,\nu}^2$. Note that for $z_i^{g'}$, our previous calculation implies that we have $\EE[ z_i^{g'}] = \|  g' - \Tcal g \|^2_{2,\nu}$, and $\EE[(z_i^g)^2] \leq 4V_{\max}^2 \| g' - \Tcal g \|_{2,\nu}^2$.
-
-Thus via a Bernstein's inequality, with probability at least $1-\delta$, we have:
-\begin{align*}
-\sum_{i=1}^n z_i^{g'} / n - \EE[z_i^{g'}] \leq  \sqrt{\frac{8 \vmax^2 \EE[z_i^{g'}] \ln(1/\delta)}{n}} + \frac{4\vmax^2\ln(1/\delta)}{3n}.
-\end{align*}
-When $\sum_{i=1}^n z_i^{g'} / n \geq 4\vmax^2 \ln(1/\delta)/n$, we can show that the above inequality implies that:
-\begin{align*}
-\sum_{i=1}^n z_i^{g'} / n  \leq \frac{\EE[z_i^{g'}]}{2} + \frac{10\vmax^2 \ln(1/\delta)}{3n}. 
-\end{align*} Since $\EE[z_i^{g'}] \leq \epsilon_{approx}$ by the definition of inherent Bellman error, we can conclude that:
-\begin{align*}
-\sum_{i=1}^n z_i^{g'} / n \leq \frac{\epsilon_{approx}}{2} + \frac{10\vmax^2 \ln(1/\delta)}{3n}. 
-\end{align*}  
-
-Note that $\hat{f}$ is the least square minimizer, i.e., $\hat{f} = \argmin_{f\in\Fcal}\sum_{i} z_i^{f}$, so, we have $$\sum_{i=1}^n z_i^{\hat{f}} / n \leq \sum_{i=1}^n z_i^{g'} / n \leq \frac{\epsilon_{approx}}{2} + \frac{10\vmax^2 \ln(1/\delta)}{3n}.$$ This concludes the upper bound on $\sum_{i=1}^n z_i^{\hat{f}} / n$.
-
-Going back to Eq.~\ref{eq:error_for_all_f_fqi}, set $f$ there to be $\hat{f}$, and use the upper bound on $\sum_{i=1}^n z_i^{\hat{f}}/n$ from the above inequality, we have:
-\begin{align*}
-&\| \hat f - \Tcal g  \|^2_{2,\nu}  \leq \sqrt{ \frac{ 8\vmax^2  \| \hat f - \Tcal g  \|^2_{2,\nu}   \ln(|\Fcal|/\delta) }{n}  } + \frac{ 14  \vmax^2 \ln(|\Fcal|/\delta) }{3n} + \epsilon_{approx}.
-\end{align*}
-
-%Set $f = \hat{f}$, and use the fact that $\hat{f}$ is the minimizer of the least square, i.e.,  $\frac{1}{n}\sum_{i=1}^n z_i^{\hat{f}} \leq \frac{1}{n} \sum_{i=1}^n z_i^{\Tcal f'} = 0$, we have:
-%\begin{align*}
-%\EE_{s,a\sim \mu} \left( \hat{f}(s,a) - \Tcal f'(s,a) \right)^2 \leq \sqrt{ \frac{ 8\vmax^2 \EE_{s,a \sim \mu} \left[ (\hat{f}(s,a) - \Tcal f'(s,a))^2 \right]   \ln(|\Fcal|/\delta) }{n}  } + \frac{ 4  \vmax^2 \ln(|\Fcal|/\delta) }{3n}.
-%\end{align*}
-Solve for $\| \hat{f} - \Tcal g  \|^2_{2,\nu}$ from the above inequality, we get:
-\begin{align*}
-\| \hat f - \Tcal g  \|^2_{2,\nu}\leq  \frac{144 \vmax^2 \ln(|\Fcal| / \delta)}{n} + 8 \epsilon_{approx}.
-%\left( \sqrt{2} + \sqrt{10/3} \right)^2 \frac{\vmax^2 \ln (|\Fcal| / \delta)}{n}.
-\end{align*}
-
-Note that the above result holds for a fixed $g \in \Fcal$. With a union bound over all $g\in \Fcal$, we have that with probability at least $1-\delta$:
-\begin{align}
-\label{eq:uniform_bound_regression_fqi}
-\forall g\in \Fcal: \quad \| \hat{f} - \Tcal g  \|^2_{2,\nu} \leq  \frac{144 \vmax^2 \ln(|\Fcal|^2 / \delta)}{n} + 8 \epsilon_{approx},
-%\left( \sqrt{2} + \sqrt{10/3} \right)^2 \frac{\vmax^2 \ln (|\Fcal| / \delta)}{n}. 
-\end{align} where $\hat{f}:= \argmin_{f\in\Fcal} \sum_{i=1}^n \left( f(s_i,a_i) - r_i - \max_{a'} g(s'_i, a') \right)^2$.
-\fi
-
-Consider iteration $t$, set $g = f_{t+1}$ in Eq.~\ref{eq:uniform_bound_regression_fqi}, and by the definition of $f_t$, we have $\hat{f}_{g} = f_t$ in this case, which means that above inequality in Eq.~\ref{eq:uniform_bound_regression_fqi} holds for the pair $(\hat{f}_g, g) = (f_t, f_{t+1})$. Now apply a union bound over all $t = 0, \dots, K$, we conclude the proof. 
-\end{proof}
-
-
-
-Now we are ready to prove the main theorem. 
-
-\begin{proof}[Proof of Theorem~\ref{thm:fqi_main}]
-
-From Lemma~\ref{lem:generalization_least_square}, we see that with probability at least $1-\delta$, we have for all $t \leq K$: $$\| f_{t+1} - \Tcal f_t  \|_{2,\nu} \leq \sqrt{ \frac{22 \vmax^2 \ln(|\Fcal|^2 K / \delta)}{n}} + \sqrt{ 20 \epsilon_{approx,\nu}  }.$$ Set $\varepsilon$ in Lemma~\ref{lem:approximate_be_fqi} to be $ \sqrt{ \frac{22 \vmax^2 \ln(|\Fcal|^2 K / \delta)}{n}} + \sqrt{ 20 \epsilon_{approx,\nu}  }$, we conclude the proof. 
-\end{proof}
-
-%\subsubsection{Proof of Lemma~\ref{lem:least_square_gen} (Least Squares Generalization Bound)}
-%Finally, for completeness, we prove the least square generalization bound presented in Lemma~\ref{lem:least_square_gen}. 
-
-
-
-
-\section{Fitted Policy-Iteration (FPI)}
-
-to be added..
-
-\iffalse
-In this section, we consider fitted policy iteration. We start with a function class $\Fcal = \{f: \Scal\times\Acal\mapsto [0,1/(1-\gamma)]\}$. We assume the following inherent policy value fitting error is small:
-\begin{assumption}[Inherent Policy Value Fitting Error]
-$\max_{\pi} \min_{f\in\Fcal} \left\|  f - Q^{\pi} \right\|^2_{2,\nu} \leq \epsilon_{approx, \nu}$.
-\end{assumption}
-
-\subsection{The FPI Algorithm}
-
-FPI iteratively updates the policy as follows. Starting with $\pi^0$, we iterate:
-\begin{itemize}
-\item Sample $s,a\sim \nu$, rollout policy $\pi^n$ to get an unbiased estimate of $Q^{\pi^n}(s,a)$, denoted as $y$. Repeat $N$ times, and denote the N triples as dataset $\Dcal$ 
-\item $f_{n} = \argmin_{f \in\Fcal} \sum_{s,a,y \in \Dcal} \left( f(s_i,a_i) - y_i  \right)^2$
-\item set $\pi^{n+1}(s) = \argmax_{a} f_n(s,a), \forall s$.
-\end{itemize}
-\fi
-
-
-
-
-\section{Failure Cases Without Assumption~\ref{assum:concentrability}}
-%\sk{of just FPI?}
-
-\section{FQI for Policy Evaluation}
-
-%\sk{We should point out that the same ideas hold for policy
-%  evaluation. Perhaps we should even give a policy eval statement
-%  without proof? we can add that later.}
-
-
-\iffalse
-\newpage
-\sk{old stuff}
-
-\section{Approximate Policy Iteration (API)}
-
-Given a policy $\pi$,  the policy iteration algorithm (in a known tabular MDP), will update this policy to be the greedy policy $\pi'$, where:
-\[
-\pi'(s)= \argmax_a Q^\pi(s,a)
-\]
-With only sampling access (and when the state space is large), we are
-not be able to estimate $Q^{\pi}(s,a)$ at every state-action pair.
-Instead, let us consider an approximate update rule, based on an
-average case cost function:
-\begin{align*}
-\widehat\pi \in \argmax_{\pi\in \Pi} \mathbb{E}_{s\sim \mu} \left[ Q^{\pi}(s, \pi(s)) \right].
-\end{align*}
-Note that this is equivalent to:
-\[
-\widehat\pi \in \argmax_{\pi\in \Pi} \mathbb{E}_{s\sim \mu} \left[ A^{\pi}(s, \pi(s)) \right].
-\]
-by the definition of $A^\pi(s,a)$.
-
-%\sk{you had this before. can we do the above instead of what you hade?
-%  this is because the sampling is much easier. see the commented out text.}
-%\begin{align*}
-%\widehat\pi \in \argmax_{\pi\in \Pi} \mathbb{E}_{s\sim d_{\mu}^{\pi^0}} \left[ A^{\pi^0}(s, \pi(s)) \right].
-%\end{align*}
-
-%\iffalse
-%Given a policy $\pi^0$, one intuitive approach we attempt to do is to act greedily with respect $\pi^0$ at every state (recall Policy Iteration in a known tabular MDP). However due to the unknown MDP and large state space, we will not be able to have $A^{\pi^0}(s,a)$ at every state-action pair. Instead, we can act greedily in the average sense:
-%\begin{align*}
-%\widehat\pi \in \argmax_{\pi\in \Pi} \mathbb{E}_{s\sim d_{\mu}^{\pi^0}} \left[ A^{\pi^0}(s, \pi(s)) \right].
-%\end{align*}
-%\fi
-
-We will refer to the above as an \emph{greedy policy selector}
-procedure. We aim to pick a policy that acts greedily with respect to
-$\pi$ under the state distribution $\mu$.  Implementing the exact
-greedy policy selector is not possible due to the fact that we do not
-know the exact $A^{\pi}$. Instead, it is not difficult to see how can
-achieve an $\varepsilon$-approximate greedy policy selector, using
-samples in the episodic setting. Let us define an
-$\varepsilon$-\emph{greedy policy selector} as follows:
-
-\begin{definition}[$\varepsilon$-approximate Greedy Policy Selector ]
-Given a policy $\pi$, we denote  $\mathcal{G}_{\varepsilon}(\pi, \Pi, \mu)$ as the oracle that returns a policy $\widehat{\pi}\in \Pi$, such that:
-\begin{align*}
-\EE_{s\sim \mu} A^{\pi}(s, \widehat\pi(s)) \geq \max_{\pi'\in\Pi} 
-\EE_{s\sim \mu} A^{\pi}(s,\pi'(s)) - \varepsilon. 
-\end{align*}\label{def:approximate_gps}
-%\sk{I changed the above.}
-\end{definition}
-Below we study two approaches to implement the above selector: one is
-via a reduction to classification with the policy class $\Pi$ and the
-other one is via a reduction to regression using value function
-approximation. 
-%\sk{see my comments on regression}
-
-\subsection{Approximating the Greedy Policy Selector using (Weighted) Classification}
-
-Below we explain that we can implement such approximate Greedy Policy Selector via reduction to a standard supervised learning oracle---weighted multi-class classification. 
-
-Given a policy $\pi$, since we will not be able to compute $Q^{\pi}(s,a)$ exactly, we will need to estimate it via samples. Below we first describe an unbiased estimator of $Q^{\pi}(s,a)$ constructed from a simple rollout trajectory from $s,a$. 
-
-Given $(s,a)$ and $\pi$,  the following procedure returns an unbiased estimate of $Q^{\pi}(s,a)$:
+\chapter{Approximate Dynamic Programming in Large MDPs: Offline Learning and Coverage}
+\label{chap:approx_dp_offline}
+
+This chapter studies a complementary regime to Chapter~\ref{chap:linear_features}.
+In Chapter~\ref{chap:linear_features} we obtained strong (worst-case) sample
+complexity guarantees in large MDPs by imposing a \emph{structural closure}
+assumption: the relevant Bellman updates remain within a prescribed (typically
+low-dimensional) function class (e.g., linear Bellman completeness / linear MDP
+structure). Under such closure, one can propagate estimation error cleanly and
+avoid explicit dependence on the size of the state space.
+
+Here, we consider a more classical approach based on \emph{approximate dynamic
+programming}, but with using \emph{supervised regression} subroutines. Concretely, we will
+study \emph{fitted} methods that repeatedly regress to Bellman targets and then
+act greedily with respect to the resulting approximations. This style of
+algorithm is attractive because it is modular --- it reduces reinforcement
+learning to a sequence of standard prediction problems --- and it allows
+substantial flexibility in the choice of function class.  We study this question in the discounted MDP framework in this chapter. Again, we seek guarantees which do not depend on the size of the state and action spaces. 
+
+However, this flexibility comes at a price. In the offline setting, the learner
+does not control data collection: it is restricted to a fixed dataset drawn
+from some behavior distribution. In such settings, purely worst-case guarantees
+cannot hold without additional assumptions: the data distribution must provide
+\emph{coverage} of the state-action pairs that matter for planning. Moreover,
+even with good coverage, the function class need not be closed under Bellman
+updates, leading to an irreducible approximation term.
+
+The main message of this chapter is that fitted methods yield meaningful
+guarantees under two explicit requirements:
 \begin{enumerate}
-\item we reset the system to $(s,a)$, i.e., $(s_0,a_0) = (s,a)$, 
-\item At time step $h$, after observe reward $r_h$, we terminate with probability $1-\gamma$, 
-\item If terminated, we return $\widehat{Q}^{\pi}(s,a) : = \sum_{\tau = 0}^h r_\tau$
-\item else, we proceed to $h+1$ by sampling $s_{h+1} \sim P(\cdot | s_h,a_h)$, repeat step 2.
+\item \textbf{Distributional coverage (concentrability).} The offline data
+  distribution must dominate the state-action distributions induced by policies
+  the algorithm might implicitly reason about. This is quantified by a
+  \emph{concentrability coefficient}.
+\item \textbf{Bellman approximation (inherent Bellman error).} The function
+  class must be able to approximate Bellman updates in an average-case sense
+  under the data distribution.
 \end{enumerate}
+Under these conditions, fitted $Q$-iteration (FQI) can be analyzed as a stable
+approximate value iteration procedure with regression error at each step,
+propagated through the MDP dynamics via concentrability.
 
-It is not hard to verify that the returned number $\widehat{Q}^{\pi}(s,a)$ is an unbiased estimate of $Q^{\pi}(s,a)$.  We create a training dataset $\Dcal = \{s_i,a_i, \widehat{Q}^{\pi}(s_i,a_i)\}_{i=1}^N$ with $s_i\sim \mu, a_i\sim U(\Acal)$, and $\widehat{Q}_i^{\pi}(s_i,a_i)$ computed from the above procedure. 
+\section{Fitted $Q$-Iteration (FQI) in Offline RL}
+\label{sec:fqi_offline}
 
-\iffalse
-We first define a weighted classification oracle as follows. 
-\begin{definition}[Weighted Classification Oracle] Given a dataset $\mathcal{D} = \{s_i, c_i\}_{i=1}^N$ where $c_i \in \mathbb{R}^{A}$, and a policy class $\Pi$, the weight classification oracle returns the best classifier:
-\begin{align*}
-\text{CO}( \mathcal{D}, \Pi) = \argmax_{\pi\in \Pi} \sum_{i=1}^N c_i[\pi(s_i)], 
-\end{align*} where $c[a]$ denotes the value in the entry in $c$ that corresponds to action $a$.
-\end{definition} 
-Weighted classification oracle is a standard oracle in supervised learning setting, and weighted classification oracle can be further reduced to a regular classification oracle or a regression oracle. We will assume the existence of $\text{CO}$. %The basic idea here is the \emph{Reduction to Supervised Learning}: we will reduce Reinforcement Learning into a sequence of supervised learning problems each of which can be solved via the \text{CO} oracle.  The idea of reduction is very powerful: any advancement we can make in supervised classification setting (e.g., through better neural network architectures, or better optimization methods), immediately leads to an advancement in RL. 
-
-\sk{I don't think we necessarily need to formally define weighted multi-class
-  classification, though I am ok with the above if you like it.
-  Regardless, I think we are better off just giving the cost function
-directly even if we define CO as in the above.}
-
-%We will use the \text{CO} oracle to greedily select a policy. Consider an arbitrary policy $\pi$. We are interested in computing the following greedy policy:
-%\begin{align*}
-%\argmax_{\widetilde{\pi}\in \Pi} \mathbb{E}_{s\sim d_{\mu}^{\pi}} A^{\pi}(s,\widetilde{\pi}(s)). 
-%\end{align*}
-%We call the above procedure as \emph{Greedy Policy Selector}. 
-%Of course implement such exact greedy policy selector is not possible (e.g., we cannot evaluate the exact expectation). 
-Now we can implement an approximate greedy policy selector via the \text{CO} oracle  using data from $d^{\pi}_\mu$ up to statistical error. We draw a dataset $\Dcal = \{s_i, a_i, \widetilde{A}_i\}$, where $s_i \sim d_{\mu}^{\pi}$, $a_i\sim U(\Acal)$ (where we denote $U(\Acal)$ as the uniform distribution over action space $\Acal$), and $\widetilde{A}_i$ is an unbiased estimate of $A^{\pi}(s_i,a_i)$ computed from a single rollout. We can perform the policy selection procedure using the \text{CO} oracle as follows:
-\begin{align}
-\label{eq:approx_greedy_selector}
-\widehat\pi := \argmax_{\pi\in \Pi}  \sum_{i=1}^N  \widetilde{c}_i [\pi(s_i)],  
-\end{align} where $\widetilde{c}_i\in\mathbb{R}^A$ is a one-hot vector with zeros everywhere, except the entry that corresponds to $a_i$ contains $\frac{  \widetilde{A}_i } {1/ A} $. Essentially we are performing importance weighting here so that an $\widetilde{c}_i$ is indeed an unbiased estimate of the vector $[ A^{\pi}(s_i, a)  ]^{\top}_{a \in \Acal} \in \mathbb{R}^A$, given $s_i$. To see that, note that for any $a\in \Acal$, we have $\EE[ \widetilde{c}_i[a] | s_i] = \EE\left[ \sum_{a_i} \frac{1}{A} \mathbf{1}\{a = a_i\}  \frac{\widetilde{A}_i(s_i,a_i)}{1/A}   \right] = \EE\left[ \frac{1}{A} \frac{\widetilde{A}_i(s_i,a)}{1/A} \right] =  A^{\pi}(s_i,a)$. 
-
-\sk{we really should spell out the sampling procedure in the episodic
-  model (maybe bullet point it?). also, using $\mu$ rather than $d^{\pi}_\mu$ makes life easier here.}
-\fi
-
-%\sk{how about we write.} 
-With $\Dcal$, we approximate the greedy policy selector via classification:
-\begin{align}
-\label{eq:approx_greedy_selector}
-\widehat\pi := \argmax_{\pi'\in \Pi}  \sum_{i=1}^N \ind(a_i=\pi(s_i))\widehat{Q}^\pi_i (s_i, a_i),  
-\end{align}
-The following theorem shows that $\widehat\pi$ is an approximate greedy policy. 
-
-
-\begin{theorem}[Approximate Greedy Policy Selector]\label{thm:gps_api}
-%Given a dataset $\Dcal = \{s_i, a_i, \widetilde{A}_i\}$, where $s_i \sim d_{\mu}^{\pi}$, $a_i\sim U(\Acal)$, and $\widetilde{A}_i$ is an unbiased estimate of $A^{\pi}(s_i,a_i)$ computed from a single rollout, 
-For $\widehat\pi$ computed based on Eq.~\ref{eq:approx_greedy_selector}, we have that with probability at least $1-\delta$:
-\begin{align*}
-\EE_{s\sim \mu} A^{\pi}(s, \widehat\pi(s)) \geq \max_{\widetilde{\pi}\in \Pi} \EE_{s\sim \mu} A^{\pi}(s, \widetilde\pi(s)) - \frac{4A}{1-\gamma} \sqrt{ \frac{\ln( | \Pi| / \delta)}{ N} }.
-\end{align*}\label{thm:stats_error_gps}
-\end{theorem} 
-
-%\sk{the proof should be short if we ignore the $c_i$'s, right?}
-\begin{proof}
-Consider a fixed policy $\pi\in \Pi$. Denote random variables $X_i := A \mathbf{1}\{a_i = \pi(s_i)\} \widehat{Q}^{\pi}_i(s_i,a_i)$. Note that $\EE_{s_i\sim \mu, a_i\sim U(\Acal)} [ X_i ] =  \EE_{s\sim \mu}[  Q^{\pi}(s, \pi(s))]$, and $\{X_i\}$ are i.i.d, and $|X_i| \leq A / (1-\gamma)$. Thus, we can apply Hoeffding's inequality: with probability at least $1-\delta$, for $\pi$ we have:
-\begin{align*}
-\left\lvert \sum_{i=1}^N X_i / N -  \mathbb{E}_{s\sim \mu}Q^{\pi}(s, \pi(s)) \right\rvert \leq \frac{2A}{1-\gamma} \sqrt{\frac{\ln(1/\delta)}{N}}.
-\end{align*}  With a union bound over all $\pi\in\Pi$, we have that with probability at least $1-\delta$:
-\begin{align*}
-\forall \pi\in \Pi: \; \left\lvert A \sum_{i=1}^N \mathbf{1}\{a_i=\pi(s_i)\}\widehat{Q}^{\pi}_i(s_i,a_i)  / N -  \mathbb{E}_{s\sim \mu}Q^{\pi}(s, \pi(s)) \right\rvert \leq \frac{2A}{1-\gamma} \sqrt{\frac{\ln(|\Pi|/\delta)}{N}} := \varepsilon_{stat}.
-\end{align*}
-
-%\begin{align*}
-%\left\lvert \sum_{i=1}^N \widetilde{c}_i[ \pi'(s_i)] / N - \mathbb{E}_{s\sim d_{\mu}^{\pi}}  A^{\pi}(s, \pi'(s))  \right\rvert \leq  \frac{2A}{1-\gamma} \sqrt{ \frac{ \ln\left(| \Pi | / \delta \right) }{ N}} := \varepsilon_{stat}
-%\end{align*} To see this, note that first of all, we have:
-%\begin{align*}
-%\mathbb{E}_{s_i}\left[ \EE\left[\widetilde{c}_i[\pi'(s_i)] \big\vert s_i\right] \right] = \mathbb{E}_{s\sim d_{\mu}^{\pi}} A^{\pi}(s, \pi'(s)),
-%\end{align*} as $\EE[ \widetilde{c}_i | s_i ] = [ A^{\pi}(s_i,a)]_{a\in\Acal}^{\top}$, due to the importance weighting in $\widetilde{c}_i$. Second, note that we have:
-%\begin{align*}
-%\left\lvert \widetilde{c}_i[a]  \right\rvert \leq \frac{A}{1-\gamma}. 
-%\end{align*}
-With the uniform convergence result, we can conclude that:
-\begin{align*}
-\EE_{s\sim \mu} Q^{\pi}\left( s, \widehat\pi(s) \right) & \geq A \sum_{i=1}^N \mathbf{1}\{a_i=\pi(s_i)\}\widehat{Q}^{\pi}_i(s_i,a_i)  / N  - \varepsilon_{stat} \\
-& \geq A \sum_{i=1}^N \mathbf{1}\{a_i=\pi'(s_i)\}\widehat{Q}^{\pi}_i(s_i,a_i)  / N  - \varepsilon_{stat} \geq  \EE_{s\sim \mu} Q^{\pi}(s, \pi'(s)) - 2\varepsilon_{stat}.
-%\EE_{s\sim \mu} Q^{\pi}\left( s, \widehat\pi(s) \right) \geq \frac{1}{N}\sum_{i=1}^N \widetilde{c}_i[\widehat\pi(s_i)] - \varepsilon_{stat} \geq  \frac{1}{N}\sum_{i=1}^N \widetilde{c}_i[\pi'(s_i)] - \varepsilon_{stat} \geq \EE_{s\sim d_{\mu}^{\pi}} A^{\pi}(s, \pi'(s)) - 2\varepsilon_{stat},
-\end{align*} for any $\pi'\in\Pi$ including $\argmax_{\widetilde{\pi}\in\Pi} \EE_{s\sim \mu} Q^{\pi}(s,\widetilde\pi(s))$. Finally, we add $\EE_{s\sim \mu} \left[ - V^{\pi}(s)\right]$ on both sizes of the above inequality, we conclude the proof. 
-\end{proof}
-
-
-Note that the above analysis shows that we can approximately optimize $\max_{\widetilde\pi\in \Pi} \EE_{s\sim \mu} A^{\pi}(s, \widetilde\pi(s))$ up to statistical error $ O( A \sqrt{ \frac{\ln(|\Pi| / \delta)}{N}}/(1-\gamma)) $.  In the rest of this chapter, we denote $\varepsilon: = 4 A \sqrt{ \frac{\ln(|\Pi| / \delta)}{N}}/(1-\gamma)$.
-%We can set $\frac{A}{1-\gamma} \sqrt{\ln(|\Pi|/\delta) / N} = \varepsilon$ and solve for $N$ which is the total number of i.i.d samples we need to draw in order to get an $\varepsilon$-approximate policy selector with probability at least $1-\delta$.
-
-%For notation simplicity, we are not going to carry the statistical error around. We simply assume that we have a $\varepsilon$-approximate greedy policy selector:
-%\subsection{Implementing Approximate Greedy Policy Selector using Regression}
-\iffalse
-Here we present an implementation based on value function approximation.
-Specifically, instead of starting directly from a restrict policy class $\Pi$ and a reduction to classification, we start from a restricted value function class $\Fcal = \{f: \Scal\times\Acal \mapsto [1,1/(1-\gamma)]\}$. In this case, one can think about the policies class $\Pi$ consisting of all greedy policies with respect to $f\in \Fcal$, i.e., $\Pi = \{\pi(s) = \argmax_{a} f(s,a): f\in \Fcal\}$.
-
-We perform a reduction to regression. Consider the following least square regression problem. Given the dataset $\{s_i,a_i, \widetilde{A}_i\}$ with $s_i\sim d^{\pi}_\mu, a_i\sim U(\Acal)$ and $\widetilde{A}_i$ is an unbiased estimate of $A^{\pi}(s_i,a_i)$,  we perform the following regression:
-\begin{align*}
-\widehat{f} \in \argmax_{f\in \Fcal} \sum_{i=1}^N \left( f(s_i,a_i) - \widetilde{A}^i \right)^2 .
-\end{align*} With $\widehat{f}$, the approximate greedy policy is set as:
-\begin{align*}
-\widehat\pi(s) = \argmax_{a\in \Acal} \widehat{f}(s,a), \forall s.
-\end{align*}
-Using a similar uniform convergence argument as in the proof of Theorem~\ref{thm:gps_api},  it is not hard to get a similar generalization bound as in Theorem~\ref{thm:gps_api}.
-
-\sk{the section is a little weird. the $\eps$ we would get here does't
-  really correspond to the guarantees in our lemmas, right? if not,
-  let's cut this section.}
-  \fi
-
-\subsection{Performance Guarantees for API} 
-With the above $\varepsilon$-approximate greedy policy selector, now we introduce
-the Approximate Policy Iteration (API) algorithm, which is described
-in the following iteration:  
-\begin{align}
-\label{eq:api}
-\pi^{t+1} := \Gcal_{\varepsilon}( \pi^t, \Pi, \mu), 
-\end{align} where we terminate when $\EE_{s\sim \mu} \left[ A^{\pi^t}(s, \pi^{t+1}(s)) \right] \leq \epsilon$ where $\epsilon$ is the pre-defined termination threshold, i.e., we terminate when there is not that much advantage one can make against the current policy $\pi^t$. Note that $\EE_{s\sim \mu} \left[ A^{\pi^t}(s, \pi^{t+1}(s)) \right]$ can be easily estimated by finite number of samples using states sampled  from $\mu$ and unbiased estimate of $A^{\pi^t}(s,a)$.
-
-Note that API does not guarantee policy improvement nor convergence without additional assumption. We will give an example in the next section where we show that even with the exact approximate greedy policy selection, i.e., $\varepsilon = 0$, API cannot make any policy improvement and could oscillate  between two suboptimal policies forever. 
-
-To have meaningful guarantees of policy improvement and convergence for API, we introduce the following concentrability assumption on the initial distribution $\mu$:
-\begin{assumption}[Bounded Concentrability Coefficient]\label{ass:concentrability_API}
-We assume that 
+We work with an infinite-horizon discounted MDP
+$\mathcal{M}=(\Scal,\Acal,P,r,\gamma,\mu)$ where $\gamma\in(0,1)$, the reward is
+bounded $r(s,a)\in[0,1]$, and $\mu$ is an initial-state distribution. Let
 \[
-C := \max_{\pi\in \Pi} \sup_{s \in \Scal} \frac{ d^{\pi}_\mu(s)  }{
-  \mu(s)}  < \infty.
-\] 
-\end{assumption} Note that $C \geq 1$. The above assumption says that the initial state distribution $\mu$ is exploratory such that it covers all policies' state distribution. 
+\vmax := \frac{1}{1-\gamma}.
+\]
+For any function $f:\Scal\times\Acal\to\mathbb{R}$, recall the Bellman optimality
+operator
+\[
+(\Tcal f)(s,a) := r(s,a) + \gamma \E_{s'\sim P(\cdot\mid s,a)} \max_{a'\in\Acal} f(s',a').
+\]
+We write $Q^\star$ for the unique fixed point of $\Tcal$ and $V^\star(s):=\max_a
+Q^\star(s,a)$, with overall value $V^\star := \E_{s_0\sim\mu}[V^\star(s_0)]$.
+For a policy $\pi$, we similarly denote $V^\pi(s_0)$ and $V^\pi :=
+\E_{s_0\sim\mu}[V^\pi(s_0)]$.
 
-%\sk{we should give the algo with a termination condition. it stops in
-%  $O(1/eps)$ steps? we also should give the final guarantee}
+\paragraph{Offline sampling model.}
+We are given a fixed distribution $\nu\in\Delta(\Scal\times\Acal)$ and an i.i.d.
+dataset
+\[
+\Dcal := \{(s_i,a_i,r_i,s_i')\}_{i=1}^n,
+\qquad (s_i,a_i)\sim\nu,\ \ r_i=r(s_i,a_i),\ \ s_i'\sim P(\cdot\mid s_i,a_i).
+\]
+The learner must output a policy $\hat{\pi}$ using only $\Dcal$.
+For any distribution $\rho$ over $\Scal\times\Acal$ we use
+$\|f\|_{2,\rho}^2 := \E_{(s,a)\sim\rho}[f(s,a)^2]$.
 
-%\sk{I am not sure if the below is true. I copied it from the CPI
-%  theorem with some modifications. Something like this should be true.}
+\subsection{Two explicit requirements: coverage and Bellman approximation}
 
-\wen{add $\epsilon_{approx}$ back..}
+\paragraph{Coverage via concentrability.}
+Let $d^\pi_\mu$ denote the discounted state-action occupancy measure of policy
+$\pi$, i.e.\ the distribution over $(s,a)$ obtained by starting at $s_0\sim\mu$,
+then following $\pi$, and sampling a time step according to the geometric
+weights $(1-\gamma)\gamma^t$.
+The dataset distribution $\nu$ must cover the occupancy measures of the policies
+that matter for evaluation and improvement.
 
-We now give the final eee of API. We further assume policy completeness, i.e., for any $\pi\in \Pi$, we have $\argmax_{a} A^{\pi}(s,a) \in \Pi$.
-\begin{theorem}[Optimality of API]Assume policy completeness, i.e.,  for any $\pi\in \Pi$, we have $\argmax_{a} A^{\pi}(s,a) \in \Pi$.
- Set $\epsilon,\delta \in (0, 1)$. 
-In each iteration, set N (the size of the classification dataset) to be $N := \Theta\left(  \frac{  A^2 C^2 \ln(|\Pi| (1-\gamma )^3\epsilon / \delta )  }{ \epsilon^2(1-\gamma)^4}  \right)$.
-With probability at least $1-\delta$, API will terminate in at most $T:= 2 / ((1-\gamma)^3 \epsilon)$ steps, returning a policy
-$\widehat{\pi}$ such that:%Define:
-%\[
-%\epsilon_{\textrm{approx}} := \EE_{s\sim\mu} \left[\max_{a\in\Acal } A^{\pi}(s,
-%a)\right]  - \max_{\pi\in \Pi }\EE_{s\sim \mu} \left[A^{\widehat \pi}(s, \pi(s))\right].
-%\]
-%(We can view $\epsilon_{\textrm{approx}}$ as the approximation error
-%of the algorithm when it halts). 
-%We have that:
-\begin{align*}
-  V^\star - V^{\widehat\pi} \leq \frac{ C \epsilon }{ 1-\gamma}.
-\end{align*} .
-\label{thm:api-opt}
+\begin{assumption}[Concentrability / coverage]\label{assum:concentrability_fqi}
+There exists a constant $C\ge 1$ such that for every (possibly non-stationary)
+policy $\pi$,
+\[
+\sup_{s,a}\ \frac{d^\pi_\mu(s,a)}{\nu(s,a)} \le C,
+\]
+with the convention that the ratio is $+\infty$ when $\nu(s,a)=0$ and
+$d^\pi_\mu(s,a)>0$.
+\end{assumption}
+
+This assumption ensures that average-case errors measured under $\nu$ control
+the same errors under the visitation distributions that appear in performance
+comparisons. Informally: \emph{if the data never visits a region that an
+evaluated policy might visit, then no offline method can reliably reason about
+that region.}
+
+\paragraph{Bellman approximation via inherent Bellman error.}
+Fix a bounded function class
+\[
+\Fcal \subseteq \{f:\Scal\times\Acal\to[0,\vmax]\}.
+\]
+In fitted methods, regression targets are Bellman updates $\Tcal f$ of previous
+iterates $f\in\Fcal$. Without closure of $\Fcal$ under $\Tcal$, there is an
+irreducible approximation error. We quantify this by the standard \emph{inherent
+Bellman error} under $\nu$.
+
+\begin{assumption}[Inherent Bellman error under $\nu$]\label{assum:ibe}
+Define
+\[
+\epsilon_{\mathrm{approx},\nu}
+:= \max_{f\in\Fcal}\ \min_{f'\in\Fcal}\ \|f' - \Tcal f\|_{2,\nu}^2.
+\]
+We refer to $\epsilon_{\mathrm{approx},\nu}$ as the inherent Bellman error
+(with respect to $\nu$).
+\end{assumption}
+
+When $\epsilon_{\mathrm{approx},\nu}=0$, the class is (average-case) Bellman
+complete under $\nu$; otherwise, this term will appear additively in the final
+suboptimality bound.
+
+\subsection{The FQI algorithm}
+
+Fitted $Q$-iteration (FQI) constructs a sequence $\{f_t\}_{t\ge 0}\subset\Fcal$
+by repeatedly regressing to Bellman targets computed from the previous iterate.
+Starting from an arbitrary $f_0\in\Fcal$, iterate for $t=1,2,\dots,K$:
+\begin{equation}\label{eq:fqi_update}
+f_t \in \argmin_{f\in\Fcal}\ \sum_{i=1}^n
+\Big( f(s_i,a_i) - \big[r_i + \gamma \max_{a'\in\Acal} f_{t-1}(s_i',a')\big]\Big)^2.
+\end{equation}
+After $K$ iterations, output the greedy policy
+\[
+\pi^K(s) \in \argmax_{a\in\Acal} f_K(s,a).
+\]
+
+\paragraph{Interpretation.}
+At each iteration, the regression problem in \eqref{eq:fqi_update} has a
+well-defined conditional expectation target:
+\[
+\E\!\left[r + \gamma \max_{a'} f_{t-1}(s',a') \mid s,a\right] = (\Tcal f_{t-1})(s,a).
+\]
+Moreover, since $r\in[0,1]$ and $f_{t-1}\in[0,\vmax]$,
+\[
+0 \le r + \gamma \max_{a'} f_{t-1}(s',a') \le 1+\gamma\vmax = \vmax,
+\qquad\text{and}\qquad
+0\le (\Tcal f_{t-1})(s,a)\le \vmax.
+\]
+Thus, if the regression step returns $f_t$ close to $\Tcal f_{t-1}$ in
+$\|\cdot\|_{2,\nu}$, and if $\nu$ provides coverage so that
+$\|\cdot\|_{2,\nu}$ controls errors under relevant visitation distributions,
+then the iterates behave like an approximate value iteration procedure.
+
+\subsection{Main guarantee: what you get, and what you pay}
+
+The following theorem states that the performance loss decomposes into three
+terms:
+(i) a \emph{statistical error} term scaling as $1/\sqrt{n}$,
+(ii) an \emph{approximation error} term governed by
+$\epsilon_{\mathrm{approx},\nu}$, and
+(iii) a \emph{finite-iteration} error that decays geometrically in $K$.
+
+\begin{theorem}[Performance guarantee for FQI]\label{thm:fqi_main_ch4}
+Fix $K\in\mathbb{N}^+$. Under Assumptions~\ref{assum:concentrability_fqi}
+and~\ref{assum:ibe}, and for a finite function class $\Fcal$, FQI
+\eqref{eq:fqi_update} satisfies the following: with probability at least $1-\delta$,
+\[
+V^\star - V^{\pi^K}
+\le
+\frac{2}{(1-\gamma)^2}
+\left(
+\sqrt{\frac{22\,C\,\vmax^2\,\ln\!\big(|\Fcal|^2 K/\delta\big)}{n}}
+\;+\;
+\sqrt{20\,C\,\epsilon_{\mathrm{approx},\nu}}
+\right)
+\;+\;
+\frac{2\gamma^K \vmax}{1-\gamma}.
+\]
 \end{theorem}
+
+Let us now interpret the theorem, which makes the two ``prices'' explicit:
+The \emph{coverage price} is the multiplicative factor $\sqrt{C}$ (and
+  hence $C$ inside the square roots). If $C$ is large, average-case regression
+  error under $\nu$ can amplify dramatically when translated to the
+  distributions induced by greedy policies.
+The \emph{Bellman approximation price} is the term
+  $\sqrt{\epsilon_{\mathrm{approx},\nu}}$. Even with infinite data, if the class
+  cannot approximate Bellman updates under $\nu$, the method converges only up
+  to this floor.
+Finally, the last term $2\gamma^K\vmax/(1-\gamma)$ is purely algorithmic: it is
+the error from running only $K$ fitted iterations.
+
+
+
+\subsection*{Proofs for Theorem~\ref{thm:fqi_main_ch4}}
+
+The proof roadmap can be decomposed into two reusable lemmas:
+First, we have a \emph{one-step regression lemma} showing that each fitted regression
+  step controls the Bellman residual $\|f_t - \Tcal f_{t-1}\|_{2,\nu}$ in terms
+  of (i) a statistical error term and (ii) the inherent Bellman error
+  $\epsilon_{\mathrm{approx},\nu}$.
+Second, we have a \emph{propagation lemma} showing that if every step has small Bellman
+  residual in $\|\cdot\|_{2,\nu}$, then the greedy policies $\pi^t$ become
+  near-optimal, with concentrability translating $\|\cdot\|_{2,\nu}$ control
+  into control under the relevant occupancy measures.
+
+  
+We now develop these lemmas and then combine them to prove
+Theorem~\ref{thm:fqi_main_ch4}.
+
+
+We first record the two key ingredients: (i) how Bellman error along the
+iteration translates into performance loss, and (ii) a uniform
+generalization bound for the regression step defining $f_{t+1}$.
+
+\begin{lemma}[Bellman residual $\Rightarrow$ performance loss]\label{lem:approximate_be_fqi}
+Assume that for all $t=0,1,\dots,K-1$ we have
+\[
+\|f_{t+1}-\Tcal f_t\|_{2,\nu}\le \varepsilon.
+\]
+Let $\pi^t$ be greedy w.r.t.\ $f_t$ (i.e.\ $\pi^t(s)\in\arg\max_a f_t(s,a)$).
+Then for every $k\in\{0,1,\dots,K\}$,
+\[
+V^\star - V^{\pi^k}
+\;\le\;
+\frac{2\sqrt{C}\,\varepsilon}{(1-\gamma)^2}
+\;+\;
+\frac{2\gamma^k\,\vmax}{1-\gamma}.
+\]
+\end{lemma}
+
 \begin{proof}
-Based on our setting of $N$, we can show that across $T$ many iterations, we must have $\varepsilon \leq (1-\gamma) \epsilon / (2C)$ with probability at least $1-\delta$. Below we condition on this event being true. 
-
- If we do not terminate at iteration $t$, we have $\EE_{s\sim\mu} A^{\pi^t}(s, \pi^{t+1}(s))\geq \epsilon$, which means that:
- \begin{align*}
- \max_{\pi\in\Pi} \EE_{s\sim \mu}A^{\pi^t}(s, \pi(s))  = \EE_{s\sim \mu} \max_{a} A^{\pi^t}(s,a) \geq \EE_{s\sim\mu} A^{\pi^t}(s, \pi^{t+1}(s)) \geq \epsilon.
- \end{align*}
-We start with Performance Difference Lemma.
+Fix $k$. Using the performance difference lemma with $\pi=\pi^k$ and $\pi'=\pi^\star$,
+\[
+(1-\gamma)\big(V^\star - V^{\pi^k}\big)
+=
+\E_{s\sim d^{\pi^k}_\mu}\!\left[V^\star(s)-Q^\star\big(s,\pi^k(s)\big)\right]
+=
+\E_{s\sim d^{\pi^k}_\mu}\!\left[Q^\star\big(s,\pi^\star(s)\big)-Q^\star\big(s,\pi^k(s)\big)\right].
+\]
+Since $\pi^k$ is greedy w.r.t.\ $f_k$,
 \begin{align*}
-(1-\gamma)\left( V^{\pi^{t+1}} - V^{\pi^t} \right) & =  \EE_{s\sim d^{\pi^{t+1}}_\mu} \left[ A^{\pi^t}(s, \pi^{t+1}(s))\right] \\
-& =  \EE_{s\sim d^{\pi^{t+1}}_\mu} \left[ A^{\pi^t}(s, \pi^{t+1}(s))\right] - \max_{\pi\in\Pi} \EE_{s\sim d^{\pi^{t+1}}_\mu} \left[ A^{\pi^t}(s,\pi(s))\right] + \max_{\pi\in\Pi}\EE_{s\sim d^{\pi^{t+1}}_\mu} \left[  A^{\pi^t}(s,\pi(s))\right] \\
-& = \EE_{s\sim \mu} \frac{ d^{\pi^{t+1}}_\mu(s)}{\mu(s)} \left[A^{\pi^t}(s, \pi^{t+1}(s)) - \max_a A^{\pi^t}(s,a)  \right] + \EE_{s\sim d^{\pi^{t+1}}_\mu} \left[ \max_a A^{\pi^t}(s,a)\right]  \\
-& \geq C \EE_{s\sim \mu}  \left[A^{\pi^t}(s, \pi^{t+1}(s)) - \max_a A^{\pi^t}(s,a)  \right] + (1-\gamma) \EE_{s\sim \mu} \left[ \max_a A^{\pi^t}(s,a)\right] \\
-& \geq - C \varepsilon + (1-\gamma) \epsilon.
-%&  =  \EE_{s\sim \mu} \frac{ d^{\pi^{t+1}}_\mu(s) }{ \mu }\left[ A^{\pi^t}(s, \pi^{t+1}(s))\right]  \geq \EE_{s\sim d^{\pi^t}_\mu} \frac{ (1-\gamma) \mu(s) }{ d^{\pi^t}_\mu(s) }\left[ A^{\pi^t}(s, \pi^{t+1}(s))\right] \\
-%& \geq (1-\gamma) \EE_{s\sim d^{\pi^t}_\mu} \inf_{s} \frac{ \mu(s) }{ d^{\pi^t}_\mu(s) } \left[ A^{\pi^t}(s, \pi^{t+1}(s))\right]  \geq \frac{1-\gamma}{C} \EE_{s\sim d^{\pi^t}_\mu} \left[ A^{\pi^t}(s, \pi^{t+1}(s))\right],
-\end{align*} where the first inequality inequality uses the definition of $C$ in Assumption~\ref{ass:concentrability_API}, and the last inequality uses the $\varepsilon$-greedy policy selector's guarantee. Note that based on our set of $N$, we have $\varepsilon \leq \frac{(1-\gamma) \epsilon}{2 C }$, which implies that:
-\begin{align*}
-(1-\gamma) \left( V^{\pi^{t+1}} - V^{\pi^t} \right) \geq (1-\gamma) \epsilon - \frac{(1-\gamma)\epsilon}{2 } = (1-\gamma) \epsilon / 2.
-\end{align*} Since we know that $V^{\pi^\star} \leq 1/(1-\gamma)$, the total number of iterations of API before termination must be upper bounded by:
-\begin{align*}
-T \leq  \frac{2}{ (1-\gamma)^3 \epsilon  }.
+Q^\star\big(s,\pi^\star(s)\big)-Q^\star\big(s,\pi^k(s)\big)
+&\le
+\Big(Q^\star\big(s,\pi^\star(s)\big)-f_k\big(s,\pi^\star(s)\big)\Big)
++
+\Big(f_k\big(s,\pi^k(s)\big)-Q^\star\big(s,\pi^k(s)\big)\Big).
 \end{align*}
+Taking expectation and applying Cauchy--Schwarz yields
+\begin{align}
+(1-\gamma)\big(V^\star - V^{\pi^k}\big)
+&\le
+\|Q^\star-f_k\|_{1,d^{\pi^k}_\mu\circ\pi^\star}
++
+\|Q^\star-f_k\|_{1,d^{\pi^k}_\mu\circ\pi^k}\notag\\
+&\le
+\|Q^\star-f_k\|_{2,d^{\pi^k}_\mu\circ\pi^\star}
++
+\|Q^\star-f_k\|_{2,d^{\pi^k}_\mu\circ\pi^k}.
+\label{eq:pdl_split}
+\end{align}
+Thus it suffices to control $\|Q^\star-f_k\|_{2,\beta}$ for distributions
+$\beta$ of the form $d^{\pi^k}_\mu\circ\pi$.
 
-To show its final performance, recall that we terminate when $\EE_{s\sim \mu} \max_{a}A^{\pi^t}(s,a) \leq \epsilon$. 
-Again, start from performance difference lemma:
+Fix any such $\beta$. Decompose
+\[
+Q^\star - f_k = (Q^\star - \Tcal f_{k-1}) + (\Tcal f_{k-1} - f_k),
+\]
+so by the triangle inequality,
+\begin{equation}\label{eq:triangle_Qstar_fk}
+\|Q^\star-f_k\|_{2,\beta}
+\le
+\|Q^\star-\Tcal f_{k-1}\|_{2,\beta}
++
+\|f_k-\Tcal f_{k-1}\|_{2,\beta}.
+\end{equation}
+For the second term, Assumption~\ref{assum:concentrability_fqi} implies
+$\beta(s,a)\le C\,\nu(s,a)$ pointwise, hence
+\begin{equation}\label{eq:conc_l2}
+\|f_k-\Tcal f_{k-1}\|_{2,\beta}\le \sqrt{C}\,\|f_k-\Tcal f_{k-1}\|_{2,\nu}.
+\end{equation}
+For the first term, note that for every $(s,a)$,
+\[
+\big(Q^\star-\Tcal f_{k-1}\big)(s,a)
+=
+\gamma\,\E_{s'\sim P(\cdot\mid s,a)}\!\left[
+\max_{a'} Q^\star(s',a') - \max_{a'} f_{k-1}(s',a')
+\right].
+\]
+Using $(\E[X])^2\le \E[X^2]$ and
+$\big(\max_x u_x - \max_x v_x\big)^2 \le \max_x (u_x-v_x)^2$ gives
 \begin{align*}
-(1-\gamma) \left( V^{\star} - V^{\pi^t} \right) &= \EE_{s\sim d_\mu^{\pi^\star}} A^{\pi^t}(s, \pi^\star(s)) \leq \EE_{s\sim d_\mu^{\pi^\star}} \max_{a} A^{\pi^t}(s,a) = \EE_{s\sim \mu} \frac{d_\mu^{\pi^\star}(s)}{\mu(s)} \max_{a} A^{\pi^t}(s,a) \\
-& \leq C \EE_{s\sim \mu} \max_{a} A^{\pi^t}(s,a) \leq  C \left( \EE_{s\sim \mu} A^{\pi^t}(s, \pi^{t+1}) + \varepsilon  \right) \leq C \left( \epsilon + \varepsilon \right) \leq C( \epsilon + (1-\gamma) \epsilon / C ) \leq 2 C \epsilon.
-\end{align*}This concludes the proof.
-
-\iffalse
-From the greedy policy selector, we know that:
-\begin{align*}
-\EE_{s\sim \mu} \max_{a\in\Acal} A^{\pi^t}(s,a)  - \epsilon_{approx} = \max_{\pi\in\Pi }\EE_{s\sim \mu} A^{\pi^t}(s, \pi(s)) \leq \EE_{s\sim \mu} A^{\pi}(s, \pi^{t+1}) + \varepsilon.
-\end{align*} This implies that:
-\begin{align*}
-\EE_{s\sim \mu} \max_{a\in\Acal} A^{\pi^t}(s,a) \leq \EE_{s\sim \mu} A^{\pi}(s, \pi^{t+1}) + \varepsilon + \epsilon_{approx}.
+\|Q^\star-\Tcal f_{k-1}\|_{2,\beta}^2
+&\le
+\gamma^2\,\E_{\substack{(s,a)\sim\beta\\ s'\sim P(\cdot\mid s,a)}}\!
+\left[
+\max_{a'}\big(Q^\star(s',a')-f_{k-1}(s',a')\big)^2
+\right].
 \end{align*}
-
-
-We start with Performance Difference Lemma.
-\begin{align*}
-(1-\gamma)\left( V^{\pi^{t+1}} - V^{\pi^t} \right) & =  \EE_{s\sim d^{\pi^{t+1}}_\mu} \left[ A^{\pi^t}(s, \pi^{t+1}(s))\right] \\
-&  =  \EE_{s\sim \mu} \frac{ d^{\pi^{t+1}}_\mu(s) }{ \mu }\left[ A^{\pi^t}(s, \pi^{t+1}(s))\right]  \geq \EE_{s\sim d^{\pi^t}_\mu} \frac{ (1-\gamma) \mu(s) }{ d^{\pi^t}_\mu(s) }\left[ A^{\pi^t}(s, \pi^{t+1}(s))\right] \\
-& \geq (1-\gamma) \EE_{s\sim d^{\pi^t}_\mu} \inf_{s} \frac{ \mu(s) }{ d^{\pi^t}_\mu(s) } \left[ A^{\pi^t}(s, \pi^{t+1}(s))\right]  \geq \frac{1-\gamma}{C} \EE_{s\sim d^{\pi^t}_\mu} \left[ A^{\pi^t}(s, \pi^{t+1}(s))\right],
-\end{align*} where the last inequality uses the definition of $C$ in Assumption~\ref{ass:concentrability_API}.
-\fi
+Define a distribution $\beta'$ over $(s',a')$ by sampling
+$(s,a)\sim\beta$, then $s'\sim P(\cdot\mid s,a)$, and finally choosing
+\[
+a' \in \arg\max_{a\in\Acal}\ \big(Q^\star(s',a)-f_{k-1}(s',a)\big)^2.
+\]
+With this definition,
+\[
+\E_{\substack{(s,a)\sim\beta\\ s'\sim P(\cdot\mid s,a)}}\!
+\left[
+\max_{a'}\big(Q^\star(s',a')-f_{k-1}(s',a')\big)^2
+\right]
+=
+\E_{(s',a')\sim\beta'}\!\left[\big(Q^\star(s',a')-f_{k-1}(s',a')\big)^2\right]
+=
+\|Q^\star-f_{k-1}\|_{2,\beta'}^2,
+\]
+and therefore
+\begin{equation}\label{eq:bellman_to_next_dist}
+\|Q^\star-\Tcal f_{k-1}\|_{2,\beta} \le \gamma\,\|Q^\star-f_{k-1}\|_{2,\beta'}.
+\end{equation}
+Combining \eqref{eq:triangle_Qstar_fk}, \eqref{eq:conc_l2}, and \eqref{eq:bellman_to_next_dist} gives
+\begin{equation}\label{eq:one_step_recursion}
+\|Q^\star-f_k\|_{2,\beta}
+\le
+\gamma\,\|Q^\star-f_{k-1}\|_{2,\beta'}
++
+\sqrt{C}\,\|f_k-\Tcal f_{k-1}\|_{2,\nu}.
+\end{equation}
+Iterating \eqref{eq:one_step_recursion} for $k$ steps yields
+\[
+\|Q^\star-f_k\|_{2,\beta}
+\le
+\sqrt{C}\sum_{t=0}^{k-1}\gamma^t\,\|f_{k-t}-\Tcal f_{k-t-1}\|_{2,\nu}
++
+\gamma^k\,\|Q^\star-f_0\|_{2,\widetilde\beta},
+\]
+for some distribution $\widetilde\beta$ over $\Scal\times\Acal$.
+Under the hypothesis $\|f_{t+1}-\Tcal f_t\|_{2,\nu}\le \varepsilon$ and since
+$Q^\star,f_0\in[0,\vmax]$ pointwise, we obtain
+\[
+\|Q^\star-f_k\|_{2,\beta}
+\le
+\frac{\sqrt{C}\,\varepsilon}{1-\gamma} + \gamma^k\vmax.
+\]
+Applying this bound to both distributions in \eqref{eq:pdl_split} gives
+\[
+(1-\gamma)\big(V^\star - V^{\pi^k}\big)
+\le
+2\left(\frac{\sqrt{C}\,\varepsilon}{1-\gamma} + \gamma^k\vmax\right),
+\]
+and dividing by $(1-\gamma)$ yields the claim.
 \end{proof}
 
+\begin{lemma}[Uniform regression (Bellman error) bound]\label{lem:generalization_least_square}
+With probability at least $1-\delta$, for all $t=0,1,\dots,K-1$,
+\[
+\| f_{t+1} - \Tcal f_t \|_{2,\nu}^2
+\;\le\;
+\frac{22 \vmax^2 \ln(|\Fcal|^2 K/\delta)}{n}
+\;+\;
+20\,\epsilon_{\mathrm{approx},\nu}.
+\]
+\end{lemma}
 
-\iffalse
-\sk{The below should be part of the proof.}
-
-With this assumption, we can show that API has monotonic improvement as long as there is local improvement, i.e., $\max_{\pi\in \Pi} \EE_{s\sim d^{\pi^t}_\mu} A^{\pi^t}(s, \pi(s))$ is reasonably big.
-\begin{theorem}[Monotonic Policy Improvement]
-For any $t$, we have:
-\begin{align*}
-V^{\pi^{t+1}} - V^{\pi^t} \geq \frac{1}{C} \left[  \max_{\pi\in\Pi} \EE_{s\sim d^{\pi^t}_\mu} \left[ A^{\pi^t}(s, \pi(s))\right]  - \varepsilon  \right].
-\end{align*}
-\end{theorem}
 \begin{proof}
-We start with Performance Difference Lemma.
-\begin{align*}
-(1-\gamma)\left( V^{\pi^{t+1}} - V^{\pi^t} \right) & =  \EE_{s\sim d^{\pi^{t+1}}_\mu} \left[ A^{\pi^t}(s, \pi^{t+1}(s))\right] \\
-&  =  \EE_{s\sim d^{\pi^t}_\mu} \frac{ d^{\pi^{t+1}}_\mu(s) }{ d^{\pi^t}_\mu(s) }\left[ A^{\pi^t}(s, \pi^{t+1}(s))\right]  \geq \EE_{s\sim d^{\pi^t}_\mu} \frac{ (1-\gamma) \mu(s) }{ d^{\pi^t}_\mu(s) }\left[ A^{\pi^t}(s, \pi^{t+1}(s))\right] \\
-& \geq (1-\gamma) \EE_{s\sim d^{\pi^t}_\mu} \inf_{s} \frac{ \mu(s) }{ d^{\pi^t}_\mu(s) } \left[ A^{\pi^t}(s, \pi^{t+1}(s))\right]  \geq \frac{1-\gamma}{C} \EE_{s\sim d^{\pi^t}_\mu} \left[ A^{\pi^t}(s, \pi^{t+1}(s))\right],
-\end{align*} where the last inequality uses the definition of $C$ in Assumption~\ref{ass:concentrability_API}.
+Fix $g\in\Fcal$ and consider the regression problem with inputs $(s_i,a_i)$ and targets
+\[
+y_i := r_i + \gamma \max_{a'} g(s_i',a').
+\]
+Then $\E[y_i\mid s_i,a_i] = (\Tcal g)(s_i,a_i)$, and, as noted above,
+$0\le y_i \le \vmax$ and $0\le (\Tcal g)(s,a)\le \vmax$.
+By Assumption~\ref{assum:ibe},
+\[
+\min_{f\in\Fcal}\ \|f-\Tcal g\|_{2,\nu}^2 \le \epsilon_{\mathrm{approx},\nu}.
+\]
+Applying the least-squares generalization bound from Lemma~\ref{lem:least_square_gen}
+(square loss, bounded responses, finite $\Fcal$) yields that, with probability at least
+$1-\delta$, for this fixed $g$,
+\[
+\|\hat f_g - \Tcal g\|_{2,\nu}^2
+\le
+\frac{22 \vmax^2 \ln(|\Fcal|/\delta)}{n}
++ 20\,\epsilon_{\mathrm{approx},\nu},
+\]
+where $\hat f_g$ is the ERM over $\Fcal$ for targets $y_i$.
 
-This implies that:
-\begin{align*}
-V^{\pi^{t+1}} - V^{\pi^t} \geq \frac{1}{C} \EE_{s\sim d^{\pi^t}_\mu} \left[ A^{\pi^t}(s, \pi^{t+1}(s))\right] \geq \frac{1}{C} \max_{\pi\in\Pi} \EE_{s\sim d^{\pi^t}_\mu} \left[ A^{\pi^t}(s, \pi(s))\right] - \frac{\varepsilon}{C}.
-\end{align*}
+Now take a union bound over all $g\in\Fcal$ (replacing $\delta$ by $\delta/|\Fcal|$),
+and then a union bound over $t=0,\dots,K-1$ (replacing $\delta$ by $\delta/K$).
+Since $f_{t+1}=\hat f_{f_t}$ by construction, this yields the stated bound
+simultaneously for all $t$.
 \end{proof}
 
-
-The above theorem implies that when $\max_{\pi\in \Pi} \EE_{s\sim d^{\pi^t}_\mu} A^{\pi^t}(s, \pi(s)) > \varepsilon$ and $C < \infty$, then we make monotonic improvement every iteration. 
-
-\fi
-\section{Failure Case of API Without Assumption~\ref{ass:concentrability_API}}
-\begin{figure}[t]
-\includegraphics[width=6cm]{Figures/api_example}
-\centering
-\caption{The example MDP. The MDP has deterministic transition and $\mu$ has probability mass on $s_1$. We have reward zero every where except $r(s_2, a_1) = r(s_3,a_1) = 1$.}
-\label{fig:api_example}
-\end{figure}
-
-In this section, we show that API indeed will fail to provide policy improvement if $C = \infty$. To illustrate this phenomena, we simply consider the exact greedy policy selector, i.e., we assume that for $\Gcal_{\varepsilon}(\pi, \Pi, \mu)$, we have $\varepsilon = 0$. 
-
-\begin{claim}
-There exists a policy class $\Pi$, an MDP, a $\mu$ restart distribution where $C = \infty$, and two policies $\pi'$ and $\pi''$, such that if one start API with $\pi^0 \in \{\pi', \pi''\}$,  $\pi^t$ and $\pi^{t+1}$ will oscillate  between $\pi'$ and $\pi''$ which are both $\gamma$ away from the optimal policy. Namely API with $\pi^{t+1} = \Gcal_0(\pi^t, \Pi, \mu)$ will not be able to make any policy improvement nor will it converge.
-\end{claim}
-\begin{proof}
-The MDP is shown in Fig.~\ref{fig:api_example} where the transition is deterministic and $\mu(s_1) = 1$. We consider $\Pi$ that contains all stationary policies.   We consider the two policies $\pi'$ and $\pi''$ as follows:
-\begin{align*}
-\pi'(s_1) = a_1, \pi'(s_2) = a_2, \pi'(s_3) = a_1; \quad  \pi''(s_1) = a_2, \pi''(s_2) = a_1, \pi''(s_3) = a_2.
-\end{align*}
-Hence for $\pi'$, $d^{\pi'}_{\mu}(s_3) = 0$ and $d^{\pi'}_\mu(s) >0$ for $s\neq s_3$. Similarly for $\pi''$, we have $d^{\pi''}_\mu(s_2) =0$ and $d^{\pi''}_\mu(s) > 0$ for $s\neq s_2$.
-
-Consider the greedy policy selection under $\pi'$:
-\begin{align*}
-\pi \in \argmax_{\pi\in \Pi} \EE_{s\sim d^{\pi'}_\mu} A^{\pi'}(s, \pi(s)).
-\end{align*}
-We claim that $\pi''$ is one of the maximizers of the above procedure.  This is because $d_\mu^{\pi'}(s_3) =0$ and thus $\pi(s_3)$ does not affect the objective function at all.   For $s_1$, note that $Q^{\pi'}(s_1, a_1) = 0$ while $Q^{\pi'}(s_1, a_2) > 0$.  Thus a greedy policy will pick $a_2$ which is consistent to the choice of $\pi''$. For $s_2$, we have $Q^{\pi'}(s_2, a_1) > 0$ while $Q^{\pi'}(s_2, a_2) = 0$. Thus a greedy policy will pick $a_1$ at $s_2$ which again is consistent with the choice of $\pi''$ at $s_2$. This concludes that $\pi''$ is one of the greedy policies under $\pi'$. 
-
-Similarly, one can argue that $\pi' \in \argmax_{\pi \in \Pi} \EE_{s \sim d^{\pi''}_h}A^{\pi''}(s,\pi(s))$, i.e., at $\pi''$, API will switch back to $\pi'$ in the next iteration. 
-
-Thus, we have proven that when running API with either $\pi'$ or $\pi''$ as initialization, API can oscillate between $\pi'$ and $\pi''$ forever. Note that $\pi'$ and $\pi''$ have the same value and are $\gamma$ away from the optimal policy's value. 
+\begin{proof}[Proof of Theorem~\ref{thm:fqi_main_ch4}]
+By Lemma~\ref{lem:generalization_least_square}, with probability at least $1-\delta$,
+for all $t\le K-1$,
+\[
+\| f_{t+1} - \Tcal f_t \|_{2,\nu}
+\le
+\sqrt{\frac{22 \vmax^2 \ln(|\Fcal|^2 K/\delta)}{n}}
++
+\sqrt{20\,\epsilon_{\mathrm{approx},\nu}}.
+\]
+Set
+\[
+\varepsilon :=
+\sqrt{\frac{22 \vmax^2 \ln(|\Fcal|^2 K/\delta)}{n}}
++
+\sqrt{20\,\epsilon_{\mathrm{approx},\nu}}.
+\]
+Applying Lemma~\ref{lem:approximate_be_fqi} with this $\varepsilon$ and $k=K$ gives
+\[
+V^\star - V^{\pi^K}
+\le
+\frac{2\sqrt{C}}{(1-\gamma)^2}\left(
+\sqrt{\frac{22 \vmax^2 \ln(|\Fcal|^2 K/\delta)}{n}}
++
+\sqrt{20\,\epsilon_{\mathrm{approx},\nu}}
+\right)
++
+\frac{2\gamma^K \vmax}{1-\gamma},
+\]
+which is exactly the theorem statement.
 \end{proof}
 
-The above phenomena really comes from the fact that API is making abrupt policy update, i.e., there is no way we can guarantee $\pi^{t+1}$ is close to $\pi^t$, for instance, in terms of their resulting state distribution. Thus, for states $s$ that have really small probability under $d^{\pi^t}_\mu$, $\pi^{t+1}(\cdot | s)$ and $\pi^t(\cdot | s)$ could be different. Intuitively, if we look at the Performance Difference between $\pi^{t+1}$ and $\pi^t$, we see that:
-\begin{align*}
- V^{\pi^{t+1}} - V^{\pi^t}  & =  \frac{1}{1-\gamma} \EE_{s\sim d^{\pi^{t+1}}_\mu} \left[ A^{\pi^t}(s, \pi^{t+1}(s))\right], 
-\end{align*} which says that in order to make policy improvement, we need the new policy $\pi^{t+1}$ to be greedy with respect to $\pi^t$ under $d^{\pi^{t+1}}_\mu$---the state distribution of the new policy. However, the greedy policy selector only selects a policy that is greedy with respect to $\pi^t$ under $d^{\pi^t}_\mu$.  Hence, unless $d^{\pi^t}_\mu$ and $d^{\pi^{t+1}}_\mu$ are close, we will not be able to directly transfer the potential local one-step improvement $\EE_{s\sim d^{\pi^t}} A^{\pi^t}(s, \pi^{t+1}(s))$ to policy improvement $V^{\pi^{t+1}} - V^{\pi^t}$. 
+\subsection{What breaks without coverage: a minimal impossibility}
+\label{sec:no_concentrability}
 
-\section{Can we relax the concentrability notion?}
+Assumption~\ref{assum:concentrability_fqi} is not a technical artifact of the
+analysis: without some form of \emph{coverage} (overlap between the data
+distribution $\nu$ and the occupancy measures of relevant policies), offline RL
+is information-theoretically impossible. The simplest obstruction is
+\emph{support mismatch}: if $\nu$ assigns zero probability to a state--action
+pair that an optimal (or even just a competitive) policy may visit, then the
+offline dataset contains \emph{no information} about what would happen there.
 
-There is another family of policy optimization algorithm which use incremental policy updates, i.e., when we perform policy update, we ensure that $d^{\pi^{t+1}}_\mu$ is not all that different from $d^{\pi^t}_\mu$. Incremental policy update will the core of Part~\ref{part:opt}.  
-For instance, the algorithm Conservative Policy Iteration, which we study in Chapter~\ref{chap:cpi}, uses a conservative policy update  $\pi^{t+1}(\cdot | s) := (1-\alpha) \pi^t(\cdot | s) + \alpha \Gcal_{\varepsilon}(\pi^t, \Pi, \mu)$ for all $s$, which, for small $\alpha$, ensures that $d^{\pi^{t+1}}_\mu$ and $d^{\pi^t}_\mu$ are not too far apart.  Properly setting the step size $\alpha$, we can show that CPI makes monotonic policy improvement and converges to a local optimal policy with a more relaxed condition over Assumption~\ref{ass:concentrability_API}. We will explain the benefit of incremental policy updating in more detail in Part III. %and Chapter~\ref{chp:cpi}.
+We give a crisp two-action counterexample showing that without concentrability,
+even the most basic offline learning goal can fail.
 
-\fi
+\begin{proposition}[No coverage $\Rightarrow$ offline RL is impossible]
+\label{prop:no_coverage_impossible}
+There exists an offline data distribution $\nu$ and two discounted MDPs
+$\mathcal{M}_+$ and $\mathcal{M}_-$ such that:
+\begin{enumerate}
+\item $\mathcal{M}_+$ and $\mathcal{M}_-$ induce \emph{exactly the same}
+distribution over datasets $\Dcal$ drawn i.i.d.\ from $\nu$ (hence no offline
+algorithm can distinguish them from $\Dcal$), but
+\item the optimal policies (and optimal values) differ substantially, so any
+offline algorithm must incur nontrivial suboptimality on at least one of the two
+MDPs.
+\end{enumerate}
+In particular, for any (possibly randomized) offline algorithm $\Acal$ that maps
+$\Dcal$ to a policy $\hat\pi$, we have
+\[
+\max\Big\{\E_{\Dcal\sim \mathcal{M}_+}\big[V^\star - V^{\hat\pi}\big],\;
+         \E_{\Dcal\sim \mathcal{M}_-}\big[V^\star - V^{\hat\pi}\big]\Big\}
+\;\ge\; \frac{1}{4}\vmax.
+\]
+\end{proposition}
+
+\begin{proof}
+Consider the one-state MDP with $\Scal=\{s\}$, two actions $\Acal=\{a_0,a_1\}$,
+deterministic self-loop dynamics $P(s\mid s,a)=1$, and initial distribution
+$\mu(s)=1$. Define the offline data distribution $\nu$ to put all of its mass on
+the single pair $(s,a_0)$, i.e.\ $\nu(s,a_0)=1$ and $\nu(s,a_1)=0$. Hence every
+offline dataset $\Dcal$ consists only of samples of $(s,a_0)$.
+
+Now define two reward functions (keeping the same dynamics):
+\[
+\mathcal{M}_+: \quad r(s,a_0)=\tfrac12,\ \ r(s,a_1)=1,
+\qquad\qquad
+\mathcal{M}_-: \quad r(s,a_0)=\tfrac12,\ \ r(s,a_1)=0.
+\]
+Under $\nu$, the algorithm only ever observes rewards for $(s,a_0)$, which are
+identically $\tfrac12$ in both MDPs. Therefore the distribution of $\Dcal$ is
+\emph{exactly the same} under $\mathcal{M}_+$ and $\mathcal{M}_-$, and any
+algorithm $\Acal$ induces the same distribution over outputs $\hat\pi$ under both
+MDPs.
+
+Since $\Dcal$ has the same distribution under $\mathcal{M}_+$ and $\mathcal{M}_-$,
+no offline algorithm can reliably tell which MDP it is in, and therefore it
+cannot reliably choose between $a_0$ and $a_1$. In $\mathcal{M}_+$, choosing
+$a_0$ is suboptimal by $\vmax/2$ (since $V^\star=\vmax$ but $V^{a_0}=\vmax/2$),
+while in $\mathcal{M}_-$, choosing $a_1$ is suboptimal by $\vmax/2$ (since
+$V^\star=\vmax/2$ but $V^{a_1}=0$). Consequently, any decision rule that outputs
+some action (possibly randomized) must incur expected suboptimality at least
+$\vmax/4$ on at least one of the two MDPs (the minimax choice is to randomize
+$50$--$50$, yielding $\vmax/4$ in either case).
+\end{proof}
+
+Let us connect this proposition back to concentrability.
+In Proposition~\ref{prop:no_coverage_impossible}, the policy that plays $a_1$
+induces occupancy $d^\pi_\mu(s,a_1)=1$, yet $\nu(s,a_1)=0$, so the ratio
+$d^\pi_\mu(s,a_1)/\nu(s,a_1)$ is infinite. This is exactly the failure mode that
+Assumption~\ref{assum:concentrability_fqi} rules out: it enforces that whenever a
+policy can place mass on $(s,a)$, the dataset distribution must also place mass
+there (with a bounded density ratio).
+
+\section{Optional: Agnostic policy search and the horizon barrier}\label{sec:agnostic_horizon}
+
+The previous sections focused on \emph{discounted} offline learning with
+concentrability.  Here we briefly switch to a \emph{finite-horizon} lens to make
+a complementary point: without additional structure, even the most basic goal
+of selecting a near-best policy from a class can require sample sizes that are
+exponential in the horizon. This ``horizon barrier'' is the finite-horizon
+analogue of what goes wrong in offline RL when coverage deteriorates.
+
+Consider a horizon-$H$ MDP with initial distribution $\mu$ and finite action set
+$\Acal$. Let $\Pi$ be a finite set of deterministic policies. The \emph{agnostic objective}
+is
+\[
+\max_{\pi\in\Pi} V^\pi_0(\mu),
+\]
+i.e.\ compete with the best policy in the class without assuming realizability
+or Bellman closure.
+
+\paragraph{Importance sampling gives an unbiased estimator, with $|\Acal|^H$ variance.}
+Collect $N$ trajectories under the behavior policy that acts uniformly at random
+at each step, denoted $\mathrm{Unif}_{\Acal}$. For any deterministic $\pi$, the
+standard importance-sampling (IS) estimator is
+\[
+\widehat V^\pi_0(\mu)
+:=
+\frac{1}{N}\sum_{n=1}^N
+w(\tau^{(n)};\pi)\,\sum_{t=0}^{H-1} r_t^{(n)},
+\qquad
+w(\tau;\pi)=|\Acal|^H\,\ind\!\big(\pi(s_t)=a_t\ \forall t\big),
+\]
+which is unbiased: $\E[\widehat V^\pi_0(\mu)]=V^\pi_0(\mu)$. The difficulty is
+that $w(\tau;\pi)$ is nonzero only when the behavior trajectory happens to match
+$\pi$'s entire length-$H$ action sequence, an event of probability $|\Acal|^{-H}$.
+Thus the estimator has variance that scales like $|\Acal|^H$ (up to polynomial
+factors in $H$), so concentration requires exponentially many samples.
+
+A simple union-bound argument yields the following representative statement:
+with probability at least $1-\delta$, simultaneously for all $\pi\in\Pi$,
+\[
+\Big|\widehat V^\pi_0(\mu) - V^\pi_0(\mu)\Big|
+\;\lesssim\;
+H|\Acal|^H\sqrt{\frac{\log(|\Pi|/\delta)}{N}}.
+\]
+In particular, selecting a near-best policy in $\Pi$ from this shared data
+requires $N$ that is exponential in $H$ in the worst case.
+
+\paragraph{A matching lower bound (needle in a haystack).}
+This exponential dependence is not an artifact of IS. There exist families of
+horizon-$H$ MDPs (e.g.\ a balanced $|\Acal|$-ary tree in which only one leaf is
+rewarding) for which any algorithm---even with access to a generative model---must
+use $\Omega(|\Acal|^H)$ samples to obtain even a constant additive optimality
+guarantee with nontrivial probability. Intuitively, unless the algorithm samples
+the rewarding path, it receives no information about where reward lies.
+
+\smallskip
+Taken together, these facts motivate why offline RL analyses must assume some
+form of overlap/coverage: without it, the effective importance weights needed to
+reason about candidate policies can be exponentially large, mirroring the
+$|\Acal|^H$ barrier in agnostic horizon-$H$ problems.
 
 \section{Bibliographic Remarks and Further Readings}\label{bib:api}
 
+The notion of \emph{concentrability} (or coverage via occupancy-measure density
+ratios) was introduced by \citet{munos2003error,munos2005error} to obtain sharp
+\emph{average-case} approximation bounds for approximate dynamic programming,
+under the assumption that the relevant concentrability coefficients are bounded.
+This line of work also supports sample-based fitted methods, with explicit
+finite-sample bounds, provided that the data-collection policy induces adequate
+coverage; see, e.g., \citet{munos2005error,szepesvari2005finite,antos2008learning,lazaric2016analysis}.
+For further discussion of concentrability-type quantities and their role in
+offline RL, see \citet{chen2019information}.
 
-The notion of concentrability was developed in
-\cite{munos2003error,munos2005error} in order to permitting sharper
-bounds in terms of average case function approximation error, provided
-that the concentrability coefficient is bounded.  These methods also
-permit sample based fitting methods, with sample size and error
-bounds, provided there is a data collection policy that induces a
-bounded concentrability coefficient~\cite{munos2005error,
-  szepesvari2005finite,antos2008learning,lazaric2016analysis}. \citet{chen2019information} provide a
-more detailed discussion on this quantity. 
-
+The reduction of reinforcement learning to supervised learning via reusing data
+across policies was developed early in \citet{NIPS1999_1664}. 
+ That work analyzed
+a related evaluation/selection scheme based on a ``trajectory tree'' view of
+policy behavior, and explicitly connected learnability to capacity measures of
+the policy class (including VC-type dimensions).
+Our optional agnostic-learning discussion in Section~\ref{sec:agnostic_horizon}
+is a stripped-down version of this theme, using importance sampling to make the
+exponential-in-$H$ barrier transparent.
+The fundamental sample
+complexity tradeoff --- avoiding explicit dependence on the size of the state space
+at the cost of exponential dependence on the horizon --- is explored further in 
+in~\citet{kakade2003sample}.
