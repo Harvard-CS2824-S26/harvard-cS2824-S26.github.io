@@ -133,7 +133,7 @@ Rearranging gives the claim.
 \end{proof}
 
 \begin{proof}(Proof of Proposition~\ref{prop:naive_model_based})
-\paragraph{Step 1: model accuracy.}
+The first part of the proof is with regards to model accuracy.
 Fix $(s,a)$. By Proposition~\ref{app:discrete} (applied with $d=|\Scal|$ and $N$ samples),
 with probability at least $1-\delta'$, 
 \[
@@ -148,7 +148,7 @@ Taking a union bound over all $|\Scal||\Acal|$ state--action pairs and setting $
 with probability at least $1-\delta$. Under the stated lower bound on $N$, the right-hand side is at most
 $(1-\gamma)^2\eps$, proving the first bullet.
 
-\paragraph{Step 2: uniform value accuracy.}
+Now we characterize the uniform value accuracy.
 Fix any stationary policy $\pi$. By Lemma~\ref{lemma:simulation} and Lemma~\ref{lemma:gamma_factor},
 \begin{align*}
 \|Q^\pi-\widehat Q^\pi\|_\infty
@@ -170,7 +170,7 @@ Since rewards lie in $[0,1]$, we have $\|V^\pi\|_\infty\le \frac{1}{1-\gamma}$. 
 \]
 which proves the second bullet (simultaneously for all $\pi$ on the event from Step 1).
 
-\paragraph{Step 3: near-optimal planning.}
+We bound the near-optimal planning accuracy.
 First, using $|\sup_x f(x)-\sup_x g(x)|\le \sup_x |f(x)-g(x)|$,
 \[
 |\widehat Q^\star(s,a)-Q^\star(s,a)|
@@ -544,7 +544,6 @@ The sharper dependence on $(1-\gamma)$ comes from replacing a worst-case
 (Hoeffding-style) deviation bound by a variance-sensitive one (Bernstein),
 and then exploiting a Bellman-type recursion for variances.
 
-\paragraph{Variance notation.}
 For a real-valued function $f$ and distribution $\mathcal{D}$, define
 \[
 \Var_{\mathcal{D}}(f) := \E_{x\sim \mathcal{D}}[f(x)^2] - \Big(\E_{x\sim \mathcal{D}}[f(x)]\Big)^2.
@@ -610,7 +609,6 @@ where $P$ is the transition model of $M$.
 \noindent The proof is left as an exercise to the reader (it follows by writing the return as
 $r(s,a)+\gamma(\text{future return})$ and applying the law of total variance).
 
-\paragraph{A weighted sum-of-deviations bound.}
 We now prove a bound that turns square-root variances into the desired $(1-\gamma)^{-3/2}$ scaling.
 
 \begin{lemma}\label{lemma:var_add}
