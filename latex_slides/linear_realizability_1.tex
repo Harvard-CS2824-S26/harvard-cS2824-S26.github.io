@@ -770,74 +770,107 @@ Message: there is always a way to sample from only $O(d^2)$ points while keeping
     Better dependence on horizon $H$ (typically $H^4$ instead of $H^6$).
 \end{frame}
 
+
 % =============================================================================
-% Part V: The Danger of Realizability (Analysis Breakdown)
+% Part V: The Danger of Realizability (Split Universe Analysis)
 % =============================================================================
 
-\section{Where Analysis Fails Without Completeness}
+\section{The Split Universe: Completeness vs. Realizability}
 
-\begin{frame}{The Critical Decomposition}
-    Recall our backward induction analysis. The total error at stage $h$ is:
-    \[
-    \|\widehat{Q}_h - Q^\star_h\|_\infty \le \underbrace{\|\widehat{Q}_h - \Tcal_h \widehat{Q}_{h+1}\|_\infty}_{\text{Bellman Residual}} + \underbrace{\|\Tcal_h \widehat{Q}_{h+1} - \Tcal_h Q^\star_{h+1}\|_\infty}_{\text{Recursive Error}}
-    \]
-    
-    The Recursive Error is bounded by the previous step's error. The analysis boils down to controlling the **Bellman Residual**.
-    
-    \vspace{0.3cm}
-    \textbf{Decomposing the Residual:}
-    Let the regression target be $y = \Tcal_h \widehat{Q}_{h+1}$. Our estimator $\widehat{Q}_h$ is the best linear fit to $y$.
-    \[
-    \text{Residual} \;\le\; \underbrace{\|\widehat{Q}_h - \Pi_\Fcal y\|_\infty}_{\text{Estimation Error (Variance)}} \;+\; \underbrace{\|\Pi_\Fcal y - y\|_\infty}_{\text{Approximation Error (Bias)}}
-    \]
-    \small
-    \emph{(Here $\Pi_\Fcal$ is the projection onto linear functions under our data distribution).}
-\end{frame}
-
-\begin{frame}{The Off-Manifold Problem}
-    \[
-    \text{Residual} \;\le\; \text{Estimation} \;+\; \text{Approximation}
-    \]
-
-    \textbf{Case 1: Bellman Completeness}
-    \begin{itemize}
-        \item By assumption, $y = \Tcal_h \widehat{Q}_{h+1} \in \Fcal$.
-        \item Therefore, $\Pi_\Fcal y = y$.
-        \item \textbf{Approximation Error = 0.} We only fight variance (solved by $N$).
-    \end{itemize}
-
-    \vspace{0.3cm}
-
-    \textbf{Case 2: Realizability Only (No Completeness)}
-    \begin{itemize}
-        \item Even if $Q^\star \in \Fcal$, the intermediate target $y = \Tcal_h \widehat{Q}_{h+1}$ may leave $\Fcal$.
-        \item \textbf{Approximation Error $> 0$.}
-        \item This is the "Off-Manifold" error. It exists even with infinite data.
-    \end{itemize}
-\end{frame}
-
-\begin{frame}{Why Approximation is Deadly ($\sqrt{d}$ Amplification)}
-    Why can't we just accept a small approximation error?
-    
-    \textbf{The Geometry of Linear Regression:}
-    We control errors in the data norm ($L_2$), but we need uniform bounds ($L_\infty$).
-    \[
-    \|f\|_\infty \le \sqrt{d} \cdot \|f\|_{L_2(\rho)} \quad \text{(for D-optimal } \rho\text{)}
-    \]
-    
-    \textbf{The Amplification Loop:}
-    \begin{enumerate}
-        \item At step $h+1$, we have error $\epsilon_{h+1}$.
-        \item The target $\Tcal_h \widehat{Q}_{h+1}$ leaves the manifold.
-        \item We project back to $\Fcal$. In the worst case, this projection aligns with the "spiky" directions of the basis.
-        \item We pay the geometry factor: $\epsilon_h \approx \sqrt{d} \cdot \epsilon_{h+1}$.
-    \end{enumerate}
+\begin{frame}{1. The Critical Decomposition}
+    To analyze error propagation, we introduce the \textbf{Infinite-Sample Target}.
     
     \vspace{0.2cm}
-    \textbf{Result:} Over $H$ steps, error grows as $(\sqrt{d})^H$.
-    \small \emph{(Lecture 3 will show this lower bound is tight!)}
+    
+    \textbf{Definition ($f^\star_h$):} The function LSVI would learn with infinite data.
+    \[
+    f^\star_h \;:=\; \argmin_{f \in \Fcal} \E_{\rho} \left[ (f(s,a) - \Tcal_h \widehat{Q}_{h+1}(s,a))^2 \right] \;=\; \Pi_{\Fcal, \rho} ( \Tcal_h \widehat{Q}_{h+1} )
+    \]
+    \emph{(Ideally, we want $f^\star_h$ to track the optimal value $Q^\star_h$)}.
+    
+    \vspace{0.3cm}
+    
+    \textbf{The Error Triangle:}
+    We split the total error into Statistical Variance and Recursive Stability.
+    \[
+    \|\widehat{Q}_h - Q^\star_h\|_\infty \le \underbrace{\|\widehat{Q}_h - f^\star_h\|_\infty}_{\text{Statistical Error}} + \underbrace{\|f^\star_h - Q^\star_h\|_\infty}_{\text{Recursive Stability}}
+    \]
+    \begin{itemize}
+        \item \textbf{Statistical Error:} Controlled by $N$ and D-Optimal Design ($\approx \sqrt{d/N}$).
+        \item \textbf{Recursive Stability:} This is where the universe splits.
+    \end{itemize}
 \end{frame}
 
+
+
+\begin{frame}{2. The Split Universe}
+    How does the Recursive Error $\|f^\star_h - Q^\star_h\|_\infty$ behave?\\
+    Recall $f^\star_h = \Pi_{\Fcal,\rho} (\Tcal_h \widehat{Q}_{h+1})$
+    and $Q^\star_h = \Pi_{\Fcal,\rho} (\Tcal_h Q^\star_{h+1})$ (by realizability).
+    
+    \vspace{0.2cm}
+    
+    \begin{columns}[t]
+        \column{0.48\textwidth}
+        \begin{block}{Universe A: Completeness}
+        \textbf{Assumption:} $\Tcal_h$ preserves linearity.
+        
+        \vspace{0.2cm}
+         Since $\widehat{Q}_{h+1} \in \Fcal$, we have:
+        $f^\star_h = \Pi_{\Fcal,\rho} (\Tcal_h \widehat{Q}_{h+1}) =
+        \Tcal_h \widehat{Q}_{h+1}$, and thus:
+
+        \vspace*{-0.3cm}
+        \begin{align*}
+        \|f^\star_h - Q^\star_h\|_\infty &=\|\Tcal_h \widehat{Q}_{h+1}
+        - \Tcal_h Q_{h+1}^\star \|_\infty\\
+          &\leq \| \widehat{Q}_{h+1} - Q_{h+1}^\star \|_\infty
+        \end{align*}
+        \textbf{Result:} Error is stable (contraction).
+        \end{block}
+
+        \column{0.48\textwidth}
+        \begin{block}{Universe B: Realizability Only}
+        \textbf{Assumption:} Only $Q^\star \in \Fcal$.
+        
+        \vspace{0.2cm}
+        The Bellman backup $\Tcal_h \widehat{Q}_{h+1}$ may be \textbf{non-linear} (off-manifold).
+        
+        \vspace{0.2cm}
+        We must project it back to $\Fcal$:
+        \[
+        f^\star_h = \Pi_{\Fcal,\rho} (\text{Non-Linear Target})
+        \]
+        \textbf{Result:} We pay for the stability of the projection operator $\Pi_{\Fcal,\rho}$.
+        \end{block}
+    \end{columns}
+\end{frame}
+
+
+
+\begin{frame}{3. The Amplification Mechanism (Universe B)}
+    Without Completeness, we must bound the stability of the projection $\Pi_{\Fcal,\rho}$.
+    Let $\Delta = \Tcal_h \widehat{Q}_{h+1} - \Tcal_h Q^\star_{h+1}$.
+    
+    \vspace{0.2cm}
+    
+    \textbf{The Chain of Inequalities:}
+    \begin{align*}
+        \|f^\star_h - Q^\star_h\|_\infty &= \|\Pi_{\Fcal,\rho} \Delta\|_\infty \\
+        &\le \sqrt{d} \cdot \|\Pi_{\Fcal,\rho} \Delta\|_{L_2(\rho)} \quad \text{(\textbf{Step 1:} Norm Equivalence)} \\
+        &\le \sqrt{d} \cdot \|\Delta\|_{L_2(\rho)} \quad \quad \quad \text{(\textbf{Step 2:} $L_2$ Stability of LS)} \\
+        &\le \sqrt{d} \cdot \|\Delta\|_\infty \quad \quad \quad \quad \quad \text{(\textbf{Step 3:} Norm Monotonicity)} \\
+        &\le \sqrt{d} \cdot \|\widehat{Q}_{h+1} - Q^\star_{h+1}\|_\infty
+    \end{align*}
+
+    \vspace{0.1cm}
+    
+    \textbf{The Verdict:}
+    The "price" of converting the $L_2$ guarantee (regression) to the $L_\infty$ guarantee (DP) is exactly $\sqrt{d}$.
+    
+    \centering
+    \alert{Total Amplification over $H$ steps $\approx (\sqrt{d})^H$.}
+\end{frame}
 
 % =============================================================================
 % Part VI: Conclusion / Tease
