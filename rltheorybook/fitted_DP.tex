@@ -66,7 +66,7 @@ dataset
 \Dcal := \{(s_i,a_i,r_i,s_i')\}_{i=1}^n,
 \qquad (s_i,a_i)\sim\nu,\ \ r_i=r(s_i,a_i),\ \ s_i'\sim P(\cdot\mid s_i,a_i).
 \]
-The learner must output a policy $\hat{\pi}$ using only $\Dcal$.
+The learner must output a policy $\widehat{\pi}$ using only $\Dcal$.
 For any distribution $\rho$ over $\Scal\times\Acal$ we use
 $\|f\|_{2,\rho}^2 := \E_{(s,a)\sim\rho}[f(s,a)^2]$.
 
@@ -134,7 +134,7 @@ After $K$ iterations, output the greedy policy
 \pi^K(s) \in \argmax_{a\in\Acal} f_K(s,a).
 \]
 
-\paragraph{Interpretation.}
+The interpretation is as follows:
 At each iteration, the regression problem in \eqref{eq:fqi_update} has a
 well-defined conditional expectation target:
 \[
@@ -153,12 +153,10 @@ then the iterates behave like an approximate value iteration procedure.
 
 \subsection{Main guarantee: what you get, and what you pay}
 
-The following theorem states that the performance loss decomposes into three
-terms:
-(i) a \emph{statistical error} term scaling as $1/\sqrt{n}$,
-(ii) an \emph{approximation error} term governed by
-$\epsilon_{\mathrm{approx},\nu}$, and
-(iii) a \emph{finite-iteration} error that decays geometrically in $K$.
+The following theorem bounds the performance loss by three terms:
+(i) a statistical term scaling as $n^{-1/2}$,
+(ii) an approximation term governed by $\epsilon_{\mathrm{approx},\nu}$, and
+(iii) a finite-iteration term that decays geometrically in $K$.
 
 \begin{theorem}[Performance guarantee for FQI]\label{thm:fqi_main_ch4}
 Fix $K\in\mathbb{N}^+$. Under Assumptions~\ref{assum:concentrability_fqi}
@@ -169,57 +167,32 @@ V^\star - V^{\pi^K}
 \le
 \frac{2}{(1-\gamma)^2}
 \left(
-\sqrt{\frac{22\,C\,\vmax^2\,\ln\!\big(|\Fcal|^2 K/\delta\big)}{n}}
+\sqrt{\frac{20\,C\,\vmax^2\,\ln\!\big(2|\Fcal|^2 K/\delta\big)}{n}}
 \;+\;
-\sqrt{20\,C\,\epsilon_{\mathrm{approx},\nu}}
+\sqrt{3\,C\,\epsilon_{\mathrm{approx},\nu}}
 \right)
 \;+\;
 \frac{2\gamma^K \vmax}{1-\gamma}.
 \]
 \end{theorem}
 
-Let us now interpret the theorem, which makes the two ``prices'' explicit:
-The \emph{coverage price} is the multiplicative factor $\sqrt{C}$ (and
-  hence $C$ inside the square roots). If $C$ is large, average-case regression
-  error under $\nu$ can amplify dramatically when translated to the
-  distributions induced by greedy policies.
-The \emph{Bellman approximation price} is the term
-  $\sqrt{\epsilon_{\mathrm{approx},\nu}}$. Even with infinite data, if the class
-  cannot approximate Bellman updates under $\nu$, the method converges only up
-  to this floor.
-Finally, the last term $2\gamma^K\vmax/(1-\gamma)$ is purely algorithmic: it is
-the error from running only $K$ fitted iterations.
-
-
+The dependence on $C$ is the explicit coverage price: regression error under $\nu$
+must transfer to the visitation distributions induced by the greedy policies.
+The term $\epsilon_{\mathrm{approx},\nu}$ is the Bellman approximation price:
+even with infinite data, lack of (average-case) Bellman closure creates an error floor.
+The final term is purely algorithmic, from running only $K$ fitted iterations.
 
 \subsection*{Proofs for Theorem~\ref{thm:fqi_main_ch4}}
 
-The proof roadmap can be decomposed into two reusable lemmas:
-First, we have a \emph{one-step regression lemma} showing that each fitted regression
-  step controls the Bellman residual $\|f_t - \Tcal f_{t-1}\|_{2,\nu}$ in terms
-  of (i) a statistical error term and (ii) the inherent Bellman error
-  $\epsilon_{\mathrm{approx},\nu}$.
-Second, we have a \emph{propagation lemma} showing that if every step has small Bellman
-  residual in $\|\cdot\|_{2,\nu}$, then the greedy policies $\pi^t$ become
-  near-optimal, with concentrability translating $\|\cdot\|_{2,\nu}$ control
-  into control under the relevant occupancy measures.
+We combine a propagation bound (Bellman residuals $\Rightarrow$ performance loss)
+with a uniform regression bound for each fitted step.
 
-  
-We now develop these lemmas and then combine them to prove
-Theorem~\ref{thm:fqi_main_ch4}.
-
-
-We first record the two key ingredients: (i) how Bellman error along the
-iteration translates into performance loss, and (ii) a uniform
-generalization bound for the regression step defining $f_{t+1}$.
-
-\begin{lemma}[Bellman residual $\Rightarrow$ performance loss]\label{lem:approximate_be_fqi}
+\begin{lemma}[Bellman residuals $\Rightarrow$ performance loss]\label{lem:approximate_be_fqi}
 Assume that for all $t=0,1,\dots,K-1$ we have
 \[
 \|f_{t+1}-\Tcal f_t\|_{2,\nu}\le \varepsilon.
 \]
-Let $\pi^t$ be greedy w.r.t.\ $f_t$ (i.e.\ $\pi^t(s)\in\arg\max_a f_t(s,a)$).
-Then for every $k\in\{0,1,\dots,K\}$,
+Let $\pi^t$ be greedy w.r.t.\ $f_t$. Then for every $k\in\{0,1,\dots,K\}$,
 \[
 V^\star - V^{\pi^k}
 \;\le\;
@@ -230,124 +203,28 @@ V^\star - V^{\pi^k}
 \end{lemma}
 
 \begin{proof}
-Fix $k$. Using the performance difference lemma with $\pi=\pi^k$ and $\pi'=\pi^\star$,
+A standard approximate value-iteration bound (see, e.g., the fitted value-iteration
+analyses in \cite{munos2005error,antos2008learning}) implies that for greedy policies
+$\{\pi^t\}$,
 \[
-(1-\gamma)\big(V^\star - V^{\pi^k}\big)
-=
-\E_{s\sim d^{\pi^k}_\mu}\!\left[V^\star(s)-Q^\star\big(s,\pi^k(s)\big)\right]
-=
-\E_{s\sim d^{\pi^k}_\mu}\!\left[Q^\star\big(s,\pi^\star(s)\big)-Q^\star\big(s,\pi^k(s)\big)\right].
+V^\star - V^{\pi^k}
+\;\le\;
+\frac{2}{1-\gamma}\sum_{t=0}^{k-1}\gamma^{k-1-t}\,
+\|f_{t+1}-\Tcal f_t\|_{1,d^{\pi^t}_\mu}
+\;+\;
+\frac{2\gamma^k\,\vmax}{1-\gamma}.
 \]
-Since $\pi^k$ is greedy w.r.t.\ $f_k$,
-\begin{align*}
-Q^\star\big(s,\pi^\star(s)\big)-Q^\star\big(s,\pi^k(s)\big)
-&\le
-\Big(Q^\star\big(s,\pi^\star(s)\big)-f_k\big(s,\pi^\star(s)\big)\Big)
-+
-\Big(f_k\big(s,\pi^k(s)\big)-Q^\star\big(s,\pi^k(s)\big)\Big).
-\end{align*}
-Taking expectation and applying Cauchy--Schwarz yields
-\begin{align}
-(1-\gamma)\big(V^\star - V^{\pi^k}\big)
-&\le
-\|Q^\star-f_k\|_{1,d^{\pi^k}_\mu\circ\pi^\star}
-+
-\|Q^\star-f_k\|_{1,d^{\pi^k}_\mu\circ\pi^k}\notag\\
-&\le
-\|Q^\star-f_k\|_{2,d^{\pi^k}_\mu\circ\pi^\star}
-+
-\|Q^\star-f_k\|_{2,d^{\pi^k}_\mu\circ\pi^k}.
-\label{eq:pdl_split}
-\end{align}
-Thus it suffices to control $\|Q^\star-f_k\|_{2,\beta}$ for distributions
-$\beta$ of the form $d^{\pi^k}_\mu\circ\pi$.
-
-Fix any such $\beta$. Decompose
+By Assumption~\ref{assum:concentrability_fqi} and Cauchy--Schwarz,
 \[
-Q^\star - f_k = (Q^\star - \Tcal f_{k-1}) + (\Tcal f_{k-1} - f_k),
-\]
-so by the triangle inequality,
-\begin{equation}\label{eq:triangle_Qstar_fk}
-\|Q^\star-f_k\|_{2,\beta}
+\|f_{t+1}-\Tcal f_t\|_{1,d^{\pi^t}_\mu}
 \le
-\|Q^\star-\Tcal f_{k-1}\|_{2,\beta}
-+
-\|f_k-\Tcal f_{k-1}\|_{2,\beta}.
-\end{equation}
-For the second term, Assumption~\ref{assum:concentrability_fqi} implies
-$\beta(s,a)\le C\,\nu(s,a)$ pointwise, hence
-\begin{equation}\label{eq:conc_l2}
-\|f_k-\Tcal f_{k-1}\|_{2,\beta}\le \sqrt{C}\,\|f_k-\Tcal f_{k-1}\|_{2,\nu}.
-\end{equation}
-For the first term, note that for every $(s,a)$,
-\[
-\big(Q^\star-\Tcal f_{k-1}\big)(s,a)
-=
-\gamma\,\E_{s'\sim P(\cdot\mid s,a)}\!\left[
-\max_{a'} Q^\star(s',a') - \max_{a'} f_{k-1}(s',a')
-\right].
-\]
-Using $(\E[X])^2\le \E[X^2]$ and
-$\big(\max_x u_x - \max_x v_x\big)^2 \le \max_x (u_x-v_x)^2$ gives
-\begin{align*}
-\|Q^\star-\Tcal f_{k-1}\|_{2,\beta}^2
-&\le
-\gamma^2\,\E_{\substack{(s,a)\sim\beta\\ s'\sim P(\cdot\mid s,a)}}\!
-\left[
-\max_{a'}\big(Q^\star(s',a')-f_{k-1}(s',a')\big)^2
-\right].
-\end{align*}
-Define a distribution $\beta'$ over $(s',a')$ by sampling
-$(s,a)\sim\beta$, then $s'\sim P(\cdot\mid s,a)$, and finally choosing
-\[
-a' \in \arg\max_{a\in\Acal}\ \big(Q^\star(s',a)-f_{k-1}(s',a)\big)^2.
-\]
-With this definition,
-\[
-\E_{\substack{(s,a)\sim\beta\\ s'\sim P(\cdot\mid s,a)}}\!
-\left[
-\max_{a'}\big(Q^\star(s',a')-f_{k-1}(s',a')\big)^2
-\right]
-=
-\E_{(s',a')\sim\beta'}\!\left[\big(Q^\star(s',a')-f_{k-1}(s',a')\big)^2\right]
-=
-\|Q^\star-f_{k-1}\|_{2,\beta'}^2,
-\]
-and therefore
-\begin{equation}\label{eq:bellman_to_next_dist}
-\|Q^\star-\Tcal f_{k-1}\|_{2,\beta} \le \gamma\,\|Q^\star-f_{k-1}\|_{2,\beta'}.
-\end{equation}
-Combining \eqref{eq:triangle_Qstar_fk}, \eqref{eq:conc_l2}, and \eqref{eq:bellman_to_next_dist} gives
-\begin{equation}\label{eq:one_step_recursion}
-\|Q^\star-f_k\|_{2,\beta}
+\|f_{t+1}-\Tcal f_t\|_{2,d^{\pi^t}_\mu}
 \le
-\gamma\,\|Q^\star-f_{k-1}\|_{2,\beta'}
-+
-\sqrt{C}\,\|f_k-\Tcal f_{k-1}\|_{2,\nu}.
-\end{equation}
-Iterating \eqref{eq:one_step_recursion} for $k$ steps yields
-\[
-\|Q^\star-f_k\|_{2,\beta}
+\sqrt{C}\,\|f_{t+1}-\Tcal f_t\|_{2,\nu}
 \le
-\sqrt{C}\sum_{t=0}^{k-1}\gamma^t\,\|f_{k-t}-\Tcal f_{k-t-1}\|_{2,\nu}
-+
-\gamma^k\,\|Q^\star-f_0\|_{2,\widetilde\beta},
+\sqrt{C}\,\varepsilon.
 \]
-for some distribution $\widetilde\beta$ over $\Scal\times\Acal$.
-Under the hypothesis $\|f_{t+1}-\Tcal f_t\|_{2,\nu}\le \varepsilon$ and since
-$Q^\star,f_0\in[0,\vmax]$ pointwise, we obtain
-\[
-\|Q^\star-f_k\|_{2,\beta}
-\le
-\frac{\sqrt{C}\,\varepsilon}{1-\gamma} + \gamma^k\vmax.
-\]
-Applying this bound to both distributions in \eqref{eq:pdl_split} gives
-\[
-(1-\gamma)\big(V^\star - V^{\pi^k}\big)
-\le
-2\left(\frac{\sqrt{C}\,\varepsilon}{1-\gamma} + \gamma^k\vmax\right),
-\]
-and dividing by $(1-\gamma)$ yields the claim.
+Using $\sum_{t=0}^{k-1}\gamma^{k-1-t}\le (1-\gamma)^{-1}$ yields the claim.
 \end{proof}
 
 \begin{lemma}[Uniform regression (Bellman error) bound]\label{lem:generalization_least_square}
@@ -355,9 +232,9 @@ With probability at least $1-\delta$, for all $t=0,1,\dots,K-1$,
 \[
 \| f_{t+1} - \Tcal f_t \|_{2,\nu}^2
 \;\le\;
-\frac{22 \vmax^2 \ln(|\Fcal|^2 K/\delta)}{n}
+\frac{20 \vmax^2 \ln\!\big(2|\Fcal|^2 K/\delta\big)}{n}
 \;+\;
-20\,\epsilon_{\mathrm{approx},\nu}.
+3\,\epsilon_{\mathrm{approx},\nu}.
 \]
 \end{lemma}
 
@@ -366,27 +243,24 @@ Fix $g\in\Fcal$ and consider the regression problem with inputs $(s_i,a_i)$ and 
 \[
 y_i := r_i + \gamma \max_{a'} g(s_i',a').
 \]
-Then $\E[y_i\mid s_i,a_i] = (\Tcal g)(s_i,a_i)$, and, as noted above,
-$0\le y_i \le \vmax$ and $0\le (\Tcal g)(s,a)\le \vmax$.
-By Assumption~\ref{assum:ibe},
+Then $\E[y_i\mid s_i,a_i]=(\Tcal g)(s_i,a_i)$. Since $r\in[0,1]$ and $g\in[0,\vmax]$,
 \[
-\min_{f\in\Fcal}\ \|f-\Tcal g\|_{2,\nu}^2 \le \epsilon_{\mathrm{approx},\nu}.
+0\le y_i \le 1+\gamma\vmax = \vmax,
+\qquad
+0\le (\Tcal g)(s,a)\le \vmax.
 \]
-Applying the least-squares generalization bound from Lemma~\ref{lem:least_square_gen}
-(square loss, bounded responses, finite $\Fcal$) yields that, with probability at least
+By Assumption~\ref{assum:ibe}, $\min_{f\in\Fcal}\|f-\Tcal g\|_{2,\nu}^2\le \epsilon_{\mathrm{approx},\nu}$.
+Applying Lemma~\ref{lem:least_square_gen} with $B=\vmax$ gives that, with probability at least
 $1-\delta$, for this fixed $g$,
 \[
-\|\hat f_g - \Tcal g\|_{2,\nu}^2
+\|\widehat f_g - \Tcal g\|_{2,\nu}^2
 \le
-\frac{22 \vmax^2 \ln(|\Fcal|/\delta)}{n}
-+ 20\,\epsilon_{\mathrm{approx},\nu},
+\frac{20 \vmax^2 \ln\!\big(2|\Fcal|/\delta\big)}{n}
++ 3\,\epsilon_{\mathrm{approx},\nu},
 \]
-where $\hat f_g$ is the ERM over $\Fcal$ for targets $y_i$.
-
-Now take a union bound over all $g\in\Fcal$ (replacing $\delta$ by $\delta/|\Fcal|$),
-and then a union bound over $t=0,\dots,K-1$ (replacing $\delta$ by $\delta/K$).
-Since $f_{t+1}=\hat f_{f_t}$ by construction, this yields the stated bound
-simultaneously for all $t$.
+where $\widehat f_g$ is the ERM over $\Fcal$ for targets $y_i$.
+A union bound over $g\in\Fcal$ and $t=0,\dots,K-1$ (equivalently, replace $\delta$ by
+$\delta/(|\Fcal|K)$) yields the stated bound, and $f_{t+1}=\widehat f_{f_t}$ by construction.
 \end{proof}
 
 \begin{proof}[Proof of Theorem~\ref{thm:fqi_main_ch4}]
@@ -395,31 +269,32 @@ for all $t\le K-1$,
 \[
 \| f_{t+1} - \Tcal f_t \|_{2,\nu}
 \le
-\sqrt{\frac{22 \vmax^2 \ln(|\Fcal|^2 K/\delta)}{n}}
+\sqrt{\frac{20 \vmax^2 \ln\!\big(2|\Fcal|^2 K/\delta\big)}{n}}
 +
-\sqrt{20\,\epsilon_{\mathrm{approx},\nu}}.
+\sqrt{3\,\epsilon_{\mathrm{approx},\nu}}.
 \]
 Set
 \[
 \varepsilon :=
-\sqrt{\frac{22 \vmax^2 \ln(|\Fcal|^2 K/\delta)}{n}}
+\sqrt{\frac{20 \vmax^2 \ln\!\big(2|\Fcal|^2 K/\delta\big)}{n}}
 +
-\sqrt{20\,\epsilon_{\mathrm{approx},\nu}}.
+\sqrt{3\,\epsilon_{\mathrm{approx},\nu}}.
 \]
-Applying Lemma~\ref{lem:approximate_be_fqi} with this $\varepsilon$ and $k=K$ gives
+Applying Lemma~\ref{lem:approximate_be_fqi} with this $\varepsilon$ and $k=K$ yields
 \[
 V^\star - V^{\pi^K}
 \le
 \frac{2\sqrt{C}}{(1-\gamma)^2}\left(
-\sqrt{\frac{22 \vmax^2 \ln(|\Fcal|^2 K/\delta)}{n}}
+\sqrt{\frac{20 \vmax^2 \ln\!\big(2|\Fcal|^2 K/\delta\big)}{n}}
 +
-\sqrt{20\,\epsilon_{\mathrm{approx},\nu}}
+\sqrt{3\,\epsilon_{\mathrm{approx},\nu}}
 \right)
 +
 \frac{2\gamma^K \vmax}{1-\gamma},
 \]
 which is exactly the theorem statement.
 \end{proof}
+
 
 \subsection{What breaks without coverage: a minimal impossibility}
 \label{sec:no_concentrability}
@@ -448,10 +323,10 @@ offline algorithm must incur nontrivial suboptimality on at least one of the two
 MDPs.
 \end{enumerate}
 In particular, for any (possibly randomized) offline algorithm $\Acal$ that maps
-$\Dcal$ to a policy $\hat\pi$, we have
+$\Dcal$ to a policy $\widehat\pi$, we have
 \[
-\max\Big\{\E_{\Dcal\sim \mathcal{M}_+}\big[V^\star - V^{\hat\pi}\big],\;
-         \E_{\Dcal\sim \mathcal{M}_-}\big[V^\star - V^{\hat\pi}\big]\Big\}
+\max\Big\{\E_{\Dcal\sim \mathcal{M}_+}\big[V^\star - V^{\widehat\pi}\big],\;
+         \E_{\Dcal\sim \mathcal{M}_-}\big[V^\star - V^{\widehat\pi}\big]\Big\}
 \;\ge\; \frac{1}{4}\vmax.
 \]
 \end{proposition}
@@ -472,7 +347,7 @@ Now define two reward functions (keeping the same dynamics):
 Under $\nu$, the algorithm only ever observes rewards for $(s,a_0)$, which are
 identically $\tfrac12$ in both MDPs. Therefore the distribution of $\Dcal$ is
 \emph{exactly the same} under $\mathcal{M}_+$ and $\mathcal{M}_-$, and any
-algorithm $\Acal$ induces the same distribution over outputs $\hat\pi$ under both
+algorithm $\Acal$ induces the same distribution over outputs $\widehat\pi$ under both
 MDPs.
 
 Since $\Dcal$ has the same distribution under $\mathcal{M}_+$ and $\mathcal{M}_-$,

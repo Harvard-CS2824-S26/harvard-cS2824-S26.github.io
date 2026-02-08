@@ -92,9 +92,11 @@ of $\mathcal{F}$ to some target (e.g.\ $Q^\star$, or the iterates of a fitted va
 iteration procedure) under a chosen norm or data distribution.
 This is the analogue of agnostic supervised learning.
 We defer this viewpoint---and its attendant distribution-shift / concentrability
-issues---to the chapter on fitted value iteration. However, this
-chapter alone shows how the agnostic viewpoint alone can lead to
-subexponential results (in the relevant parameters).
+issues---to the chapter on fitted value iteration.
+However, the lower bounds presented later in this chapter for stronger
+assumptions (like realizability) imply that the agnostic viewpoint is
+prone to exponential sample complexity without further
+structural conditions. 
 
 \paragraph{(B) Linear $Q^\star$ realizability.}
 A common structural assumption is that the \emph{optimal} action-value function is linear:
@@ -147,6 +149,13 @@ In contrast, (C) and (D) are not comparable in general: (C) asserts realizabilit
 while (D) enforces closure under the optimality operator but does not a priori assert
 that $Q^\pi$ is linear for every policy $\pi$.
 
+Finally, note a key subtlety about data access: while (C) is still insufficient
+for sample-efficient \emph{offline} RL (Section~\ref{sec:linear_Qvalues}), it
+\emph{does} permit polynomial sample complexity with a generative model via
+adaptive, on-policy rollouts; see the discussion in
+Section~\ref{chapterBC_bib}.
+
+
 \paragraph{A remark on strength.}
 Bellman completeness should be read as a structural condition on the MDP itself (via the
 transition kernel and reward), not merely a property of $Q^\star$.
@@ -158,6 +167,21 @@ guarantees are on the table.
 With our ladder in place, the remainder of the chapter answers our organizing question
 by pairing a sharp positive result under (D) with lower bounds showing that (B) and (C)
 can fail dramatically.
+
+\paragraph{A remark on feature augmentation (non-monotonicity).}
+A perhaps surprising subtlety is that Bellman completeness is \emph{not} monotone in the
+feature map.
+If we enlarge the representation by appending an additional coordinate to $\phi$
+(thus enlarging $\Fcal$ from a $d$-dimensional linear class to a $(d+1)$-dimensional one),
+the closure property $f\in\Fcal \Rightarrow \Tcal_h f\in\Fcal$ can \emph{break}, even if it held before.
+Intuitively, completeness must hold for \emph{every} linear function in the class; adding
+a new feature introduces new functions $f$ whose Bellman backups may no longer be
+representable by the enlarged linear class.
+In contrast, realizability assumptions such as linear $Q^\star$ (or all-policies
+realizability) are monotone: adding features can only make it easier to represent the
+target functions. This fragility is another reason to view Bellman completeness as a
+structural assumption about the interaction between the MDP and the chosen feature map,
+rather than a mere approximation property of $Q^\star$.
 
 \section{Positive results under Bellman completeness}
 \label{sec:BC_positive}
@@ -247,11 +271,11 @@ $\widehat\pi_h(s)\in\arg\max_{a\in\Acal}\widehat Q_h(s,a)$
 \label{alg:lsvi}
 \end{algorithm}
 
-\paragraph{Remark.}
+
 If the empirical covariance at a stage is singular, one can take a minimum-norm
 solution (or add a small ridge). In the settings we analyze (D-optimal sampling
 from a generative model, or explicit coverage assumptions offline), the design
-is well-conditioned and this technicality is inessential.
+is well-conditioned, and this technicality is inessential.
 
 
 \subsection{Main guarantee: LSVI with a generative model}
@@ -293,8 +317,8 @@ objective:
 \end{align}
 (which is the Kiefer--Wolfowitz Theorem).
 Equivalently, the ellipsoid $\mathcal{E}=\{v:\|v\|_{\Sigma^{-1}}^2\le d\}$ is the
-unique minimum-volume centered ellipsoid containing $\Phi$, which
-John's Theorem. We do not provide a
+unique minimum-volume centered ellipsoid containing $\Phi$; this
+result is known as John's Theorem.  We do not provide a
 proof of either claim here (both of which lead to the D-optimal design
 lemma).  See Section~\ref{chapterBC_bib} for references and further discussion.
 
@@ -336,7 +360,7 @@ O\!\left(Hd^2 + \frac{H^7 d^2 \log(H/\delta)}{\epsilon^2}\right).
 \]
 \end{theorem}
 
-\subsubsection{Proof of Theorem~\ref{thm:lsvi_bc_generative}}
+\subsection{Proof of Theorem~\ref{thm:lsvi_bc_generative}}
 \label{subsubsec:BC_main_proof}
 
 We begin with a standard lemma: small Bellman residuals imply near-optimality of
@@ -760,11 +784,13 @@ absolute constants.
 \end{theorem}
 
 Theorem~\ref{thm:lower_gen_linearQstar} shows that linear $Q^\star$ realizability
-alone does not prevent exponential sample complexity.  Necessarily, such lower
+alone does not prevent exponential sample complexity. Necessarily, such lower
 bounds rely on state spaces that are exponential in $d$ or $H$ (otherwise one
 could revert to a tabular algorithm with polynomial dependence on $|\Scal||\Acal|$).
-We provide in Appendix~\ref{app:linearQstar_lb} a proof of a weaker version based
-on a simpler construction with $|\Acal|=\exp(d)$.
+In Appendix~\ref{app:linearQstar_lb}, we state and prove a weaker
+version of this theorem based on a simpler construction with
+$|\Acal|=\exp(d)$ (though, even for this weaker statement, the construction is
+quite involved).
 
 \subsection{Offline impossibility under all-policies linear realizability}
 \label{subsec:offline_all_policies_realizability}
@@ -837,6 +863,9 @@ samples to obtain a constant additive approximation to $V^\pi_0(s_0)$ with
 probability at least $0.9$.
 \end{theorem}
 
+Note that this theorem says it not possible to estimate the value of
+\emph{any} given policy, from the starting state $s_0$.
+
 \paragraph{Implication for offline control.}
 Although stated for policy evaluation, the hardness also applies to offline
 control under Assumption~\ref{assmp:realizability_all_policies}.  Indeed, add a
@@ -864,7 +893,7 @@ the \emph{observed} feature directions, the value of the policy depends on
 aggregator states to be an amplified combination of quantities that can only be
 estimated from the last layer, causing an exponential dependence on
 the horizon. Figure~\ref{fig:offline_pe_hard_instance_clean} shows
-this instance.
+this instance. 
 
 Let $m\ge 1$ be an integer and set
 \[
@@ -901,11 +930,12 @@ Each layer $h$ has $m$ ``observed'' states $\{s_h^i\}_{i=1}^m$ (boxed: states co
 and one ``aggregator'' state $g_h$ (never covered by the offline data).
 Action $a_2$ (dashed) keeps the trajectory in the observed chain $s_h^i\to s_{h+1}^i$,
 while action $a_1$ (solid) jumps to the aggregator chain $s_h^i\to g_{h+1}$; from aggregator states, both actions transition to the next aggregator state.
-Rewards are stage-dependent: on observed states, $r_h=0$ for $h\le H-2$ and $r_{H-1}\in\{\pm1\}$ with $\E[r_{H-1}]=r_\infty$;
-on aggregator states, $r_h(g_h,\cdot)=\alpha_h-\alpha_{h+1}$ for $h\le H-2$ and $r_{H-1}(g_{H-1},\cdot)=\alpha_{H-1}=r_\infty\sqrt m$, where $\alpha_h:=r_\infty m^{(H-h)/2}$.
+Rewards are stage-dependent. On observed states, $r_h=0$ for $h\le H-2$ and $r_{H-1}\in\{\pm1\}$ with $\E[r_{H-1}]=r_\infty$.
+On aggregator states, $r_h(g_h,\cdot)=\alpha_h-\alpha_{h+1}$ for $h\le H-2$ and $r_{H-1}(g_{H-1},\cdot)=\alpha_{H-1}=r_\infty\sqrt m$.
+(Note that $\alpha_h:=r_\infty m^{(H-h)/2}$).
 The lower bound compares two instances with $r_\infty=0$ versus
 $r_\infty=m^{-H/2}$, which induce identical offline data on the boxed
-support but different values at $g_0$. See text for further description.} 
+support but different values at $g_0$. See text for further description.}
 \label{fig:offline_pe_hard_instance_clean}
 \end{figure}
 
@@ -1142,6 +1172,22 @@ only polynomial in $(d,H)$; this is the form we invoke for
 Theorem~\ref{thm:lower_gen_linearQstar}.  In Appendix~\ref{app:linearQstar_lb} we
 also include a simpler (but weaker) proof in the spirit of the original
 construction of \citet{WeiszAS21}, using exponentially many actions.
+
+\paragraph{A note on (C) with a generative model.}
+Our exponential lower bound under all-policies linear realizability (C) is an
+\emph{offline} phenomenon: the fixed dataset can systematically miss the
+state--action pairs whose values drive $V^\pi$, forcing repeated extrapolation
+through Bellman backups and allowing estimation error to amplify across stages.
+With a generative model, this particular obstruction disappears because the
+learner can collect \emph{fresh} samples under (or targeted to) the current
+candidate policy, producing unbiased estimates of the relevant Bellman targets
+and avoiding the worst-case compounding that occurs with fixed data.
+This makes the (C) model genuinely subtle: naive least-squares dynamic
+programming can fail offline, yet the model is still PAC-learnable with a
+generative model by procedures that leverage adaptive rollouts; see
+\citet{du2019good}. Furthermore, it is currently an open question if
+(C) is learnable in an episodic setting.
+
 
 Finally, \citet{Wang_linear_lower} studies the \emph{episodic} (online) setting
 under linear $Q^\star$ realizability, together with an additional
