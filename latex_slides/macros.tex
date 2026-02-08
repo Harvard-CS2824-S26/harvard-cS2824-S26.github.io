@@ -1,0 +1,72 @@
+
+\iffalse
+% --- Environments ---
+\theoremstyle{plain} 
+\newtheorem{theorem}{Theorem}[chapter]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{claim}[theorem]{Claim}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{assumption}[theorem]{Assumption}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{fact}[theorem]{Fact}
+\fi
+
+% --- Custom Symbols (Fixes \xmark error) ---
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+
+% --- Math Symbols & Operators ---
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\eps}{\epsilon}
+\newcommand{\ind}{\mathbf{1}}
+\newcommand{\one}{\mathbf{1}}
+\DeclareMathOperator*{\argmax}{argmax}
+\DeclareMathOperator*{\argmin}{argmin}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\maxnorm}[1]{\left\| #1 \right\|_\infty}
+
+\newcommand{\bigNorm}[1]{\bigl\lVert#1\bigr\rVert}
+\newcommand{\BigNorm}[1]{\Bigl\lVert#1\Bigr\rVert}
+
+% --- Probability ---
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Cond}{~\Big\vert~}
+\newcommand{\cond}{~\big\vert~}
+\newcommand{\Expe}[1]{\mathbb{E}\Big[#1\Big]}
+\DeclareMathOperator{\Var}{Var}
+\newcommand{\kl}{\mathrm{KL}}
+
+% --- MDP Notation ---
+\newcommand{\Scal}{\mathcal{S}}
+\newcommand{\Acal}{\mathcal{A}}
+\newcommand{\Hcal}{\mathcal{H}}
+\newcommand{\Mcal}{\mathcal{M}}
+\newcommand{\Vstar}{V^\star}
+\newcommand{\Qstar}{Q^\star}
+\newcommand{\Phat}{\widehat{P}}
+\newcommand{\Tcal}{\mathcal{T}}
+
+\newcommand{\Dcal}{\mathcal{D}}
+\newcommand{\Ncal}{\mathcal{N}}
+\newcommand{\Wcal}{\mathcal{W}}
+\newcommand{\Zcal}{\mathcal{Z}}
+\newcommand{\Xcal}{\mathcal{X}}
+\newcommand{\Fcal}{\mathcal{F}} 
+\newcommand{\Gcal}{\mathcal{G}}
+
+\newcommand{\vmax}{V_{\max}}
+
+% --- Error & Complexity ---
+\newcommand{\poly}{\mathrm{poly}}
+
+\newcommand{\err}{\text{err}}
+\newcommand{\epsopt}{\eps_{\text{opt}}}
+\newcommand{\epsapp}{\eps_{\text{approx}}}
+\newcommand{\epstransfer}{\eps_{\text{transfer}}}
+
+% --- PG notation ---
+\newcommand{\w}{w}

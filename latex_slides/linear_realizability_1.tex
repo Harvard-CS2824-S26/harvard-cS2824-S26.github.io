@@ -1,0 +1,866 @@
+\documentclass[aspectratio=169]{beamer}
+\usepackage{amsmath, amssymb, amsthm, mathtools}
+\usepackage{algorithm, algorithmic}
+
+% --- Standard Beamer Theme ---
+\usetheme{Madrid}
+\usecolortheme{default}
+
+
+\include{macros}
+
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,calc}
+
+
+\title{RL with Linear Features: When Does It Work \\ \& When Doesn't It Work?}
+\subtitle{Lecture 1: The Assumption Ladder \& Bellman Completeness\\
+CS 2284: Foundations of Reinforcement Learning}
+\author{Kiant\'{e} Brantley \& Sham Kakade}
+\date{}
+
+\begin{document}
+
+\begin{frame}
+    \titlepage
+\end{frame}
+
+% =============================================================================
+% Part I: Motivation & Algorithm Setup
+% =============================================================================
+
+\section{Motivation}
+
+\begin{frame}{Motivation: Beyond Tabular RL}
+    \textbf{Recap: Tabular MDPs}
+    \begin{itemize}
+        \item State space $\Scal$, Action space $\Acal$.
+        \item Sample complexity scales with $|\Scal||\Acal|$.
+        \item \textbf{Problem:} In many real-world applications (robotics, games, healthcare), $|\Scal|$ is enormous or continuous.
+    \end{itemize}
+
+    \vspace{0.5cm}
+
+    \textbf{Function Approximation}
+    \begin{itemize}
+        \item Introduce a feature map $\phi: \Scal \times \Acal \to \R^d$.
+        \item Approximate values using linear functions:
+        \[
+        f_\theta(s,a) = \theta^\top \phi(s,a)
+        \]
+        \item \textbf{Goal:} Sample complexity polynomial in $d$ (and $H$), independent of $|\Scal|$.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Finite-horizon dynamic programming (reminder)}
+    Stage-$h$ \textbf{optimal Bellman operator}:
+    \[
+    (\Tcal_h f)(s,a)
+    \;:=\;
+    r_h(s,a) + \E_{s'\sim P_h(\cdot\mid s,a)}\Big[\max_{a'\in\Acal} f(s',a')\Big].
+    \]
+    Optimal $Q$ satisfies backward recursion:
+    \[
+    Q^\star_H \equiv 0,
+    \qquad
+    Q_h^\star = \Tcal_h Q_{h+1}^\star \quad\text{for } h=H-1,\dots,0.
+    \]
+\end{frame}
+
+\begin{frame}{Least-Squares Value Iteration (LSVI)}
+    \textbf{Setting:} Finite Horizon $H$, Generative Model (Simulator).
+
+    \vspace{0.3cm}
+
+    \textbf{Algorithm:} Backward Induction via Regression.
+    \begin{enumerate}
+        \item Initialize $\widehat{V}_H(s) = 0$.
+        \item For $h = H-1, \dots, 0$:
+        \begin{itemize}
+            \item \textbf{Collect Data:} Generate dataset $D_h = \{(s_i, a_i, r_i, s_i')\}_{i=1}^N$.
+            \item \textbf{Form Targets:} Compute regression targets using the \emph{next} value function:
+            \[
+            y_i = r_h(s_i, a_i) + \widehat{V}_{h+1}(s_i')
+            \]
+            \item \textbf{Regression:} Solve for parameters $\widehat{\theta}_h$:
+            \[
+            \widehat{\theta}_h \in \argmin_{\theta \in \R^d} \sum_{i=1}^N \left( \theta^\top \phi(s_i, a_i) - y_i \right)^2
+            \]
+            \item \textbf{Update:} Set $\widehat{Q}_h(s,a) = \widehat{\theta}_h^\top \phi(s,a)$ and $\widehat{V}_h(s) = \max_{a} \widehat{Q}_h(s,a)$.
+        \end{itemize}
+    \end{enumerate}
+\end{frame}
+
+\begin{frame}{The Central Question \& The Intuition Trap}
+  \begin{center}
+    \Large \emph{When do linear features actually buy you $\poly(d)$ sample complexity --- and when do they fundamentally not?}
+  \end{center}
+  
+  \vspace{0.3cm}
+  
+  \textbf{The Intuition Trap:}
+  \begin{itemize}
+  \item Standard Supervised Learning: "If the target function is linear, we can learn it with $O(d)$ samples."
+  \item \textbf{But RL is different:} LSVI is a \textbf{composition} of regressions.
+    \begin{itemize} 
+    \item The target for stage $h$ depends on our \emph{own estimate} at $h+1$:
+      \[
+        \text{Target}_h(s,a) \approx r(s,a) + \E \Big[ \max_{a'} \widehat{Q}_{h+1}(s', a') \Big]
+      \]
+    \item \textbf{Crucial Question:} Even if $Q^\star$ is linear, does the target defined by $\widehat{Q}_{h+1}$ remain learnable (linear)?
+    \end{itemize}
+  \item If the target "falls off the manifold," errors might compound.
+  \end{itemize}
+\end{frame}
+
+% =============================================================================
+% Part II: The Assumption Ladder
+% =============================================================================
+
+\section{The Assumption Ladder}
+
+\begin{frame}{The Assumption Ladder}
+  We can organize linear RL assumptions from weakest (hardest) to strongest (easiest).
+  
+  \vspace{0.3cm}
+  
+  \begin{itemize}
+  \item[(A)] \textbf{Agnostic Approximation} \\
+    \footnotesize No realizability. $Q^\star$ is "close" to linear. \\
+    \textit{Status: Hard. Requires strong distribution assumptions.}
+    
+    \vspace{0.2cm}
+  \item[(B)] \textbf{Linear $Q^\star$ Realizability} \\
+    \footnotesize $Q^\star_h(s,a) = (\theta^\star_h)^\top \phi(s,a)$. \\
+    \textit{Status: \textbf{Insufficient.} Exponential lower bounds exist.}
+    
+    \vspace{0.2cm}
+  \item[(C)] \textbf{All-Policies Realizability} \\
+    \footnotesize $Q^\pi_h(s,a) = (\theta^\pi_h)^\top \phi(s,a)$ for \textbf{all} $\pi$. \\
+    \textit{Status: \textbf{Subtle.} Fails offline even with perfect coverage.}
+    
+    \vspace{0.2cm}
+  \item[(D)] \textbf{Linear Bellman Completeness} \\
+    \footnotesize $\Tcal_h f \in \Fcal$ for all $f \in \Fcal$. \\
+    \textit{Status: \textbf{Sufficient!} (This Lecture)}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{The Error Propagation Question (Intuition)}
+  
+  Suppose we run approximate dynamic programming (like LSVI) where we force every estimate $\widehat{Q}_h$ to be a linear function:
+  \[
+    \widehat{Q}_H \equiv 0, \qquad \widehat{Q}_h \leftarrow \text{Project}_{\Fcal} \left( \Tcal_h \widehat{Q}_{h+1} \right).
+  \]
+  
+  \textbf{The Subtle Danger:}
+  \begin{itemize}
+      \item Even if $Q^\star$ is linear, the \textbf{target} $\Tcal_h \widehat{Q}_{h+1}$ might \emph{not} be linear!
+      \item If the target falls "off-manifold" (outside $\Fcal$), we incur a projection error (bias) at step $h$.
+      \item \textbf{The Crucial Question:} How do these errors compound?
+      \begin{itemize}
+          \item Does the error at $h+1$ get amplified when we back up to $h$?
+          \item Without \textbf{Completeness} (closure), this error can grow exponentially with $H$.
+      \end{itemize}
+  \end{itemize}
+  
+  \vspace{0.3cm}
+  
+  \centering
+  \emph{Realizability of $Q^\star$ alone does not guarantee the intermediate targets remain learnable.}
+\end{frame}
+
+\iffalse
+\begin{frame}{The Error Propagation Question (Intuition)}
+  
+  Suppose we did approximate dynamic programming:
+  \[
+    Q^\star_H \equiv 0,
+    \qquad
+    \widehat Q_h  \approx \Tcal_h \widehat Q_{h+1} \quad\text{for } h=H-1,\dots,0.
+  \]
+  where each $\widehat{Q}_h$ is a linear function.
+  
+  \begin{itemize}
+  \item For LSVI, it is natural to attempt to control:
+    \[
+      \|\widehat Q_h - \Tcal_h \widehat Q_{h+1}\|_\infty
+    \]
+  \item If our function class is not closed under Bellman updates, our intermediate estimates $\widehat{Q}_h$ might behave "off-manifold."
+  \item So the question then is: how does this ``off-manifold'' error propagate?
+    \end{itemize}
+\end{frame}
+\fi
+
+\begin{frame}{Assumption (D): Linear Bellman Completeness}
+    \textbf{Definition (Bellman Completeness)} \\
+    For any linear function $f(s,a) = w^\top \phi(s,a)$, applying the Bellman optimality operator $\Tcal_h$ yields a function that is also linear in $\phi$.
+
+    \[
+    \forall w \in \R^d, \exists \theta \in \R^d \text{ such that }
+    \]
+    \[
+    \underbrace{r_h(s,a) + \E_{s' \sim P_h(\cdot|s,a)} \left[ \max_{a'} w^\top \phi(s',a') \right]}_{(\Tcal_h f_w)(s,a)} = \theta^\top \phi(s,a)
+    \]
+
+    \vspace{0.3cm}
+    \textbf{Key Implication:}
+    \begin{itemize}
+    \item If we run LSVI with finite samples, the \textbf{target} is always realizable.
+    \item This reduces RL to a sequence of well-specified regression problems.
+    \end{itemize}
+  \end{frame}
+  
+\begin{frame}{Examples of Completeness}
+    When does Linear Bellman Completeness hold?
+
+    \begin{enumerate}
+        \item \textbf{Tabular MDPs} \\
+        $\phi(s,a)$ is a one-hot encoding of size $|\Scal||\Acal|$. \\
+        Any function over $\Scal \times \Acal$ is linear in $\phi$.
+
+        \vspace{0.2cm}
+
+        \item \textbf{Linear MDPs (Low-Rank Transition)} \\
+        \[
+        P_h(s'|s,a) = \sum_{i=1}^d \phi_i(s,a) \mu_i(s')
+        \]
+        Here, the transition dynamics themselves are linear in features.
+
+        \vspace{0.2cm}
+
+        \item \textbf{Linear Quadratic Regulators (LQR)?} \\
+        Yes, with quadratic features: $\phi(s,a) = [s^\top, a^\top, s^\top s, \dots]^\top$. \\
+        (Value functions are quadratic in $s,a$).
+    \end{enumerate}
+
+    \vspace{0.2cm}
+    \textit{Warning: Adding "junk" features can break completeness!} 
+\end{frame}
+
+% =============================================================================
+% Part III: The Algorithm (Analysis)
+% =============================================================================
+
+\section{Analysis of LSVI}
+
+\begin{frame}{Refresher: LSVI Regression Step}
+    To analyze the algorithm, let's focus on exactly what happens at stage $h$.
+    
+    \vspace{0.3cm}
+    
+    We have a fixed next-stage value $\widehat{V}_{h+1}$. We gather data $D_h$ and solve:
+    \[
+    \widehat{\theta}_h = \argmin_{\theta \in \R^d} \sum_{i=1}^N \left( \underbrace{\theta^\top \phi(s_i, a_i)}_{\text{Prediction}} - \underbrace{(r_i + \widehat{V}_{h+1}(s_i'))}_{\text{Target } y_i} \right)^2
+    \]
+    
+    \vspace{0.2cm}
+    
+    \textbf{Why does this work?}
+    \begin{itemize}
+        \item \textbf{Completeness} implies the \emph{true expected target} is linear:
+        \[
+        \E[y_i \mid s_i, a_i] = (\Tcal_h \widehat{Q}_{h+1})(s_i, a_i) = \theta^\star_h \phi(s_i, a_i)
+        \]
+        \item So this is \textbf{well-specified} linear regression!
+        \item Bias is zero; we only need to control variance.
+    \end{itemize}
+\end{frame}
+
+
+% =============================================================================
+% Part IV: The Sampling Challenge
+% =============================================================================
+
+\section{The Sampling Challenge}
+
+\begin{frame}{Fixed Design OLS (The Tool)}
+    Consider the standard linear regression setting:
+    \[
+    y_i = x_i^\top \theta^\star + \xi_i, \quad \text{with } \E[\xi_i|x_i]=0 \text{ (sub-Gaussian)}.
+    \]
+    
+    The OLS estimator is $\widehat{\theta} = \Lambda^{-1} \sum_{i=1}^N x_i y_i$, where $\Lambda = \sum_i x_i x_i^\top$.
+    
+    \begin{block}{Fixed-design OLS Bound}
+    With probability at least $1-\delta$, the prediction error is bounded in the $\Lambda$-norm:
+    \[
+    \|\widehat\theta - \theta^\star\|_{\Lambda}
+    \;\lesssim\;
+    \sigma\,\sqrt{d\log(1/\delta)}.
+    \]
+    \end{block}
+    
+    \vspace{0.2cm}
+    
+    This translates to a pointwise bound using leverage scores:
+    \[
+    |(\widehat\theta-\theta^\star)^\top\phi(s,a)|
+    \;\le\;
+    \|\widehat\theta - \theta^\star\|_{\Lambda} \sqrt{\phi(s,a)^\top \Lambda^{-1} \phi(s,a)}
+    \]
+\end{frame}
+
+\begin{frame}{The Hidden Failure Mode of OLS}
+    
+    \textbf{The Problem:}
+    \begin{itemize}
+        \item The OLS bound depends on $\Lambda = \sum \phi(s_i,a_i)\phi(s_i,a_i)^\top$.
+        \item It bounds the \textbf{average} prediction error (weighted by training data).
+        \item RL requires \textbf{Uniform ($\ell_\infty$)} error bounds. We must predict well at \emph{any} state the optimal policy might visit.
+    \end{itemize}
+    
+    \vspace*{-0.4cm}
+
+    \centering
+    \begin{tikzpicture}[scale=0.75]
+        % Draw axes
+        \draw[->] (-1,0) -- (6,0) node[right] {$x_1$};
+        \draw[->] (0,-1) -- (0,4) node[above] {$x_2$};
+
+        % Draw "Training Data" ellipse
+        \draw[thick, blue, fill=blue!10, rotate=10] (2.5,0.0) ellipse (2.5cm and 0.5cm);
+        \node[blue] at (2.5, -0.8) {Training Data Distribution ($\Lambda$)};
+
+        % Draw data points
+        \foreach \x in {1, 1.5, 2, 2.5, 3, 3.5, 4}
+            \filldraw (\x, {0.2*(\x-2.5) + rand*0.2 + 0.5}) circle (2pt);
+
+        % Draw the "Unknown State"
+        \filldraw[red] (2.5, 3.0) circle (3pt);
+        \node[red, above] at (2.5, 3.2) {Unseen State $(s,a)$};
+        \draw[->, red, thick] (2.5, 3.0) -- (2.5, 0.8);
+        \node[red, right, align=left] at (2.7, 2.5) {High Variance! \\ $\phi^\top \Lambda^{-1} \phi$ is huge};
+
+    \end{tikzpicture}
+    
+    \small
+    Backward induction might query \emph{outside} the ellipse, causing explosion.
+\end{frame}
+
+% =============================================================================
+% Part V: D-Optimal Design
+% =============================================================================
+
+\section{D-Optimal Design}
+
+\begin{frame}{D-optimal design: the leverage-minimizing geometry}
+To guarantee uniform bounds, we must choose our training data carefully.
+
+\vspace*{0.1cm}  
+The feature set is:
+\[
+\Phi := \{\phi(s,a):(s,a)\in\Scal\times\Acal\}\subset\R^d.
+\]
+
+\begin{block}{D-optimal design (lemma; geometric fact)}
+Suppose $\Phi$ is compact. There exists a distribution $\rho$ supported on at most $d(d+1)/2$ state--action pairs s.t.
+with
+\[
+\Sigma := \E_{(s,a)\sim\rho}\big[\phi(s,a)\phi(s,a)^\top\big],
+\]
+we have $\Sigma\succ 0$ and
+\[
+\sup_{(s,a)}\ \phi(s,a)^\top \Sigma^{-1}\phi(s,a) \;\le\; d.
+\]
+\end{block}
+\end{frame}
+
+\begin{frame}{Geometric intuition }
+Equivalent viewpoints (pick your favorite story):
+\begin{itemize}
+  \item \textbf{Kiefer--Wolfowitz:} $\rho$ maximizes $\log\det\!\Big(\E_\rho[\phi\phi^\top]\Big)$
+  \item \textbf{John's ellipsoid:} the ellipsoid
+  \[
+  \mathcal{E}=\{v:\ v^\top \Sigma^{-1}v \le d\}
+  \]
+  is the minimum-volume centered ellipsoid containing $\Phi$
+  \item \textbf{Leverage control:} the quantity $\phi^\top\Sigma^{-1}\phi$ is exactly the (population) leverage
+\end{itemize}
+Message: there is always a way to sample from only $O(d^2)$ points while keeping worst-case leverage $\le d$.
+\end{frame}
+
+\begin{frame}{From Global to Pointwise Error}
+    If we sample $N$ points from the D-optimal design $\rho$ (supported on $\approx d^2$ points), our empirical design matrix is $\Lambda \approx N \Sigma$.
+
+    \vspace{0.3cm}
+
+    \textbf{The Leverage Score Bound:}
+    \[
+    \max_{\phi \in \Phi} \phi^\top \Lambda^{-1} \phi \approx \frac{1}{N} \max_{\phi \in \Phi} \phi^\top \Sigma^{-1} \phi \le \frac{d}{N}
+    \]
+
+    \vspace{0.3cm}
+
+    \textbf{Resulting Pointwise Guarantee:}
+    With probability $1-\delta$:
+    \[
+    \sup_{(s,a)} | \widehat{Q}_h(s,a) - \Tcal_h \widehat{Q}_{h+1}(s,a) | \le \tilde{O} \left( \sigma \sqrt{\frac{d^2}{N}} \right)
+    \]
+    
+    This allows us to control the \emph{max-norm} Bellman residual!
+\end{frame}
+
+
+% =============================================================================
+% Part VI: Putting it Together (The Rough Sketch)
+% =============================================================================
+
+\section{Main Result}
+
+\begin{frame}{Returning to LSVI}
+    We now have all the pieces to analyze LSVI.
+
+    \vspace{0.3cm}
+
+    \textbf{1. The Data Collection (Generative Model)}
+    \begin{itemize}
+        \item For each stage $h$, we don't just sample randomly.
+        \item We compute the D-optimal design $\rho^\star$ on $\Phi$.
+        \item We query the simulator $N$ times distributed according to $\rho^\star$.
+    \end{itemize}
+
+    \vspace{0.3cm}
+
+    \textbf{2. The "Rough Sketch" of the Proof}
+    \begin{center}
+    \small
+    Regression Error $\xrightarrow{\text{D-Opt}}$ Pointwise Error $\xrightarrow{\text{Completeness}}$
+    
+    \vspace{0.2cm}
+    Bellman Residual $\xrightarrow{\text{Sim. Lemma}}$ Policy Loss
+    \end{center}
+\end{frame}
+
+\begin{frame}{The Main Theorem (Informal)}
+  \textbf{Theorem (LSVI with Generative Model)} 
+
+    Assume Linear Bellman Completeness. If we set:
+    \[
+    N \approx \frac{H^6 d^2}{\epsilon^2}
+    \]
+    and collect data using D-optimal design, then LSVI returns a policy $\widehat{\pi}$ such that with high probability:
+    \[
+    V^\star(s_0) - V^{\widehat{\pi}}(s_0) \le \epsilon
+    \]
+
+    \vspace{0.5cm}
+    \textbf{Takeaway:}
+    We have achieved sample complexity polynomial in $d$ and $H$, independent of $|\Scal|$!
+    \begin{itemize}
+        \item \textbf{Completeness} ensures realizability.
+        \item \textbf{D-Optimal Design} ensures uniform error control.
+    \end{itemize}
+  \end{frame}
+
+% =============================================================================
+% LECTURE 2: Analysis of LSVI & Offline RL
+% =============================================================================
+
+% --- Lecture 2 Title Slide ---
+\begin{frame}
+    \centering
+    \LARGE \textbf{Lecture 2} \\
+    \vspace{0.5em}
+    \large Analysis of LSVI \& The Simulation Lemma
+\end{frame}
+
+\section{Analysis Roadmap}
+
+\begin{frame}{Roadmap: Proving LSVI Works}
+    Recall our strategy:
+    \[
+      \text{Regression Error} \xrightarrow{\text{D-Opt}} \text{Pointwise Error} \xrightarrow{\text{Completeness}} \text{Bellman Residual}
+      \xrightarrow{\text{Sim. Lemma}} \text{Policy Loss}
+    \]
+
+    \vspace{0.5cm}
+    
+    We will formalize this in three steps:
+    \begin{enumerate}
+        \item \textbf{Regression Analysis:} Bound the error $\|\widehat{\theta}_h - \theta_h^\star\|$ using OLS and D-Optimal Design.
+        \item \textbf{Bellman Residuals:} Translate parameter error into uniform value function error $\text{Res}_h$.
+        \item \textbf{The Simulation Lemma:} Show how residuals propagate to the final policy performance $V^\star - V^{\widehat{\pi}}$.
+    \end{enumerate}
+\end{frame}
+
+% =============================================================================
+% Step 1: Fixed Design Regression
+% =============================================================================
+
+\section{Step 1: Regression Analysis}
+
+\begin{frame}{Step 1: The Regression at Stage $h$}
+    Consider a fixed stage $h$. We have the "next" value function $\widehat{V}_{h+1}$.
+    
+    \textbf{The Data:}
+    \begin{itemize}
+        \item Dataset $D_h = \{(s_i, a_i, r_i, s_i')\}_{i=1}^N$ collected via D-optimal design $\rho$.
+        \item Design Matrix $\Lambda_h = \sum_{i=1}^N \phi(s_i, a_i) \phi(s_i, a_i)^\top$.
+    \end{itemize}
+
+    \textbf{The Target:}
+    \[
+    y_i = r_h(s_i, a_i) + \widehat{V}_{h+1}(s_i')
+    \]
+    By \textbf{Completeness}, the true expected target is linear:
+    \[
+    \E[y_i | s_i, a_i] = (\Tcal_h \widehat{Q}_{h+1})(s_i, a_i) = (\theta_h^\star)^\top \phi(s_i, a_i)
+    \]
+    Thus, $y_i = (\theta_h^\star)^\top \phi(s_i, a_i) + \xi_i$, where $\xi_i$ is sub-Gaussian noise.
+\end{frame}
+
+\begin{frame}{Step 1: The Fixed Design Bound}
+    We apply the standard Fixed-Design OLS bound.
+
+    \begin{block}{OLS Generalization Bound}
+    With probability $1-\delta'$,
+    \[
+    \|\widehat{\theta}_h - \theta_h^\star\|_{\Lambda_h} \;\le\; c \cdot H \sqrt{d \log(H/\delta)}
+    \]
+    (Here the noise scale is $H$ because values are bounded by $H$).
+    \end{block}
+
+    \vspace{0.3cm}
+    \textbf{Applying D-Optimal Design:}
+    Since we sampled $N$ times from $\rho$, we have $\Lambda_h \succeq N \Sigma_\rho$.
+    \[
+    \implies \Lambda_h^{-1} \preceq \frac{1}{N} \Sigma_\rho^{-1}
+    \]
+\end{frame}
+
+\begin{frame}{Step 1: From Parameters to Pointwise Error}
+    We want to bound the prediction error at \emph{any} $(s,a)$.
+    
+    \[
+    | (\widehat{\theta}_h - \theta_h^\star)^\top \phi(s,a) | 
+    \;\le\; \|\widehat{\theta}_h - \theta_h^\star\|_{\Lambda_h} \sqrt{\phi(s,a)^\top \Lambda_h^{-1} \phi(s,a)}
+    \]
+
+    \vspace{0.2cm}
+    Plug in our bounds:
+    \begin{itemize}
+        \item Parameter Error: $\approx H \sqrt{d}$
+        \item Leverage Score (D-Opt): $\sqrt{\phi^\top \Sigma_\rho^{-1} \phi / N} \le \sqrt{d/N}$
+    \end{itemize}
+
+    \vspace{0.2cm}
+    \textbf{Result (Uniform Error):}
+    \[
+    \sup_{(s,a)} | \widehat{Q}_h(s,a) - (\Tcal_h \widehat{Q}_{h+1})(s,a) | \;\lesssim\; H d \sqrt{\frac{1}{N}}
+    \]
+\end{frame}
+
+% =============================================================================
+% Step 2: The Simulation Lemma
+% =============================================================================
+
+\section{Step 2: The Simulation Lemma}
+
+\begin{frame}{Step 2: The Simulation Lemma}
+    \textbf{Definitions:}
+    \begin{itemize}
+        \item Let $\widehat{V}_h(s) := \max_{a} \widehat{Q}_h(s,a)$ and $\widehat{\pi}_h(s) := \argmax_a \widehat{Q}_h(s,a)$.
+        \item Define the stage-$h$ \textbf{Bellman Residual} as the prediction error:
+        \[
+        \mathrm{Res}_h \;:=\; \big\|\widehat Q_h - \Tcal_h \widehat Q_{h+1}\big\|_\infty
+        \]
+    \end{itemize}
+
+    \begin{block}{Lemma 3.3 (Small residual $\Rightarrow$ good policy)}
+    Assume $\widehat Q_H\equiv 0$ and $\mathrm{Res}_h \le \eta$ for all $h$. Then:
+    \begin{enumerate}
+        \item \textbf{Value Accuracy:} For all $h \in [H]$,
+        \[
+        \|\widehat Q_h - Q_h^\star\|_\infty \;\le\; (H-h)\eta.
+        \]
+        \item \textbf{Policy Loss:} For the greedy policy $\widehat\pi$,
+        \[
+        V_0^\star(s) - V^{\widehat\pi}_0(s) \;\le\; 2H^2\eta.
+        \]
+    \end{enumerate}
+    \end{block}
+\end{frame}
+
+\begin{frame}{Proof of Claim 1: Value Accuracy}
+    We prove $\|\widehat Q_h - Q_h^\star\|_\infty \le (H-h)\eta$ by backward induction.
+    
+    \vspace{0.3cm}
+    
+    \textbf{Base Case ($h=H$):} $Q_H^\star = \widehat{Q}_H = 0$, so error is 0.
+    
+    \textbf{Inductive Step:}
+    Consider the error at stage $h$:
+    \begin{align*}
+    \|\widehat{Q}_h - Q_h^\star\|_\infty 
+    &= \|\widehat{Q}_h - \Tcal_h Q_{h+1}^\star\|_\infty \\
+    &\le \underbrace{\|\widehat{Q}_h - \Tcal_h \widehat{Q}_{h+1}\|_\infty}_{\text{Residual } \le \eta} + \underbrace{\|\Tcal_h \widehat{Q}_{h+1} - \Tcal_h Q_{h+1}^\star\|_\infty}_{\text{Recursive Error}}
+    \end{align*}
+    
+    Using the contraction property (non-expansion) of $\Tcal_h$:
+    \[
+    \|\Tcal_h \widehat{Q}_{h+1} - \Tcal_h Q_{h+1}^\star\|_\infty \le \|\widehat{Q}_{h+1} - Q_{h+1}^\star\|_\infty
+    \]
+    
+    Thus, $\text{Error}_h \le \eta + \text{Error}_{h+1}$. Unrolling gives $\sum \eta = (H-h)\eta$. \qed
+\end{frame}
+
+\begin{frame}{Proof of Claim 2: Policy Loss}
+    This follows the standard "Performance Difference" logic.
+    
+    \vspace{0.3cm}
+    
+    \textbf{The Argument:}
+    \begin{itemize}
+        \item The loss of a greedy policy is bounded by the sum of suboptimality gaps at each step.
+        \item Since $\widehat{\pi}$ is greedy with respect to $\widehat{Q}$, the single-step loss is bounded by $2 \times$ estimation error:
+        \[
+        Q^\star_h(s, \pi^\star) - Q^\star_h(s, \widehat{\pi}) \;\le\; 2 \|\widehat{Q}_h - Q_h^\star\|_\infty
+        \]
+    \end{itemize}
+    
+    \textbf{Total Loss:}
+    Summing over $H$ steps:
+    \[
+    V_0^\star - V_0^{\widehat{\pi}} \;\le\; \sum_{h=0}^{H-1} 2 \underbrace{\|\widehat{Q}_h - Q_h^\star\|_\infty}_{\le (H-h)\eta} \;\le\; \sum_{h=0}^{H-1} 2(H-h)\eta \approx H^2 \eta
+    \]
+\end{frame}
+
+
+\begin{frame}{Final Result: LSVI Sample Complexity}
+    \textbf{Putting it all together:}
+
+    \begin{enumerate}
+        \item We want final error $V^\star - V^{\widehat{\pi}} \le \epsilon$.
+        \item By Simulation Lemma, we need $\text{Res}_h \le \epsilon / (2H^2)$.
+        \item By Regression Analysis, we need $H d / \sqrt{N} \approx \epsilon / H^2$.
+    \end{enumerate}
+
+    \vspace{0.3cm}
+    
+    \textbf{Solve for $N$:}
+    \[
+    \frac{H d}{\sqrt{N}} \approx \frac{\epsilon}{H^2} \implies \sqrt{N} \approx \frac{H^3 d}{\epsilon} \implies N \approx \frac{H^6 d^2}{\epsilon^2}
+    \]
+
+    \begin{block}{Theorem (LSVI Generative)}
+    LSVI with D-optimal design yields an $\epsilon$-optimal policy with $\tilde{O}(H^6 d^2 / \epsilon^2)$ samples.
+    \end{block}
+\end{frame}
+
+% =============================================================================
+% Part IV: Extension to Offline RL
+% =============================================================================
+
+\section{Offline Reinforcement Learning}
+
+\begin{frame}{Switching to Offline RL}
+    \textbf{The Setting:}
+    \begin{itemize}
+        \item We can no longer query the simulator.
+        \item We are given static datasets $D_0, \dots, D_{H-1}$.
+        \item \textbf{Key Question:} When does LSVI still work?
+    \end{itemize}
+
+    \vspace{0.3cm}
+
+    \textbf{The Challenge:}
+    \begin{itemize}
+        \item In Generative Mode, we used \emph{D-Optimal Design} to ensure:
+        \[
+        \Lambda_h \succeq N \Sigma_{\rho^\star} \implies \text{Good Coverage Everywhere}
+        \]
+        \item In Offline RL, we are stuck with the behavior policy's distribution.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{The Coverage Assumption}
+    To guarantee success, the offline data must "cover" the feature space at least as well as the optimal design (up to a constant).
+
+    \begin{block}{Assumption: Uniform Coverage}
+    There exists a constant $\kappa \ge 1$ such that for all $h$, the empirical covariance $\widehat{\Sigma}_h$ satisfies:
+    \[
+    \widehat{\Sigma}_h \;\succeq\; \frac{1}{\kappa} \Sigma_{\rho^\star}
+    \]
+    where $\Sigma_{\rho^\star}$ is the covariance of the D-optimal design.
+    \end{block}
+
+    \vspace{0.3cm}
+    \textbf{Interpretation:}
+    \begin{itemize}
+        \item $\kappa$ is the "relative condition number."
+        \item If $\kappa=1$, our data is perfect (D-optimal).
+        \item If $\kappa$ is huge, we have missing directions (poor coverage).
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Analysis of Offline LSVI}
+    The analysis remains almost identical! We just swap the variance bound.
+
+    \vspace{0.3cm}
+
+    \textbf{Generative (D-Optimal):}
+    \[
+    \phi^\top \Lambda^{-1} \phi \;\le\; \frac{d}{N}
+    \]
+
+    \textbf{Offline (Coverage $\kappa$):}
+    \[
+    \Lambda \approx N \widehat{\Sigma} \succeq \frac{N}{\kappa} \Sigma_{\rho^\star} \implies \Lambda^{-1} \preceq \frac{\kappa}{N} \Sigma_{\rho^\star}^{-1}
+    \]
+    \[
+    \implies \phi^\top \Lambda^{-1} \phi \;\le\; \frac{\kappa d}{N}
+    \]
+
+    \vspace{0.3cm}
+    \textbf{Result:}
+    Sample complexity scales linearly with coverage $\kappa$:
+    \[
+    N \approx \frac{\kappa H^6 d^2}{\epsilon^2}
+    \]
+\end{frame}
+
+% =============================================================================
+% Part V: Policy Evaluation (LSPE)
+% =============================================================================
+
+\section{Policy Evaluation (LSPE)}
+
+\begin{frame}{Task 2: Policy Evaluation}
+    Sometimes we don't want to find $\pi^\star$, but just evaluate a fixed policy $\pi$.
+
+    \vspace{0.3cm}
+
+    \textbf{Algorithm: Least-Squares Policy Evaluation (LSPE)}
+    \begin{itemize}
+        \item Same backward regression structure.
+        \item \textbf{Target Change:} Instead of $\max_{a'} \widehat{Q}_{h+1}(s', a')$, we use the value of our specific policy:
+        \[
+        y_i = r_i + \widehat{Q}_{h+1}(s_i', \pi(s_i'))
+        \]
+    \end{itemize}
+
+    \vspace{0.3cm}
+    \textbf{Weaker Assumption:}
+    \begin{itemize}
+        \item We don't need closure under $\Tcal$ (Optimality).
+        \item We only need closure under $\Tcal^\pi$ (Policy Operator).
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{LSPE Analysis: Why it's better}
+    Evaluating a fixed policy is easier than finding the optimal one.
+
+    \vspace{0.3cm}
+
+    \textbf{1. No "Greedy" Error Propagation}
+    \begin{itemize}
+        \item In LSVI, we incur error from the Bellman residual AND the greedy step.
+        \item In LSPE, we only track the estimation error of a fixed operator.
+    \end{itemize}
+
+    \textbf{2. Tighter Simulation Lemma}
+    \begin{itemize}
+        \item \textbf{Control (LSVI):} $V^\star - V^{\widehat{\pi}} \le 2 H^2 \eta$.
+        \item \textbf{Evaluation (LSPE):} $|V^\pi - \widehat{V}^\pi| \le H \eta$.
+    \end{itemize}
+
+    \vspace{0.3cm}
+    \textbf{Result:}
+    Better dependence on horizon $H$ (typically $H^4$ instead of $H^6$).
+\end{frame}
+
+% =============================================================================
+% Part V: The Danger of Realizability (Analysis Breakdown)
+% =============================================================================
+
+\section{Where Analysis Fails Without Completeness}
+
+\begin{frame}{The Critical Decomposition}
+    Recall our backward induction analysis. The total error at stage $h$ is:
+    \[
+    \|\widehat{Q}_h - Q^\star_h\|_\infty \le \underbrace{\|\widehat{Q}_h - \Tcal_h \widehat{Q}_{h+1}\|_\infty}_{\text{Bellman Residual}} + \underbrace{\|\Tcal_h \widehat{Q}_{h+1} - \Tcal_h Q^\star_{h+1}\|_\infty}_{\text{Recursive Error}}
+    \]
+    
+    The Recursive Error is bounded by the previous step's error. The analysis boils down to controlling the **Bellman Residual**.
+    
+    \vspace{0.3cm}
+    \textbf{Decomposing the Residual:}
+    Let the regression target be $y = \Tcal_h \widehat{Q}_{h+1}$. Our estimator $\widehat{Q}_h$ is the best linear fit to $y$.
+    \[
+    \text{Residual} \;\le\; \underbrace{\|\widehat{Q}_h - \Pi_\Fcal y\|_\infty}_{\text{Estimation Error (Variance)}} \;+\; \underbrace{\|\Pi_\Fcal y - y\|_\infty}_{\text{Approximation Error (Bias)}}
+    \]
+    \small
+    \emph{(Here $\Pi_\Fcal$ is the projection onto linear functions under our data distribution).}
+\end{frame}
+
+\begin{frame}{The Off-Manifold Problem}
+    \[
+    \text{Residual} \;\le\; \text{Estimation} \;+\; \text{Approximation}
+    \]
+
+    \textbf{Case 1: Bellman Completeness}
+    \begin{itemize}
+        \item By assumption, $y = \Tcal_h \widehat{Q}_{h+1} \in \Fcal$.
+        \item Therefore, $\Pi_\Fcal y = y$.
+        \item \textbf{Approximation Error = 0.} We only fight variance (solved by $N$).
+    \end{itemize}
+
+    \vspace{0.3cm}
+
+    \textbf{Case 2: Realizability Only (No Completeness)}
+    \begin{itemize}
+        \item Even if $Q^\star \in \Fcal$, the intermediate target $y = \Tcal_h \widehat{Q}_{h+1}$ may leave $\Fcal$.
+        \item \textbf{Approximation Error $> 0$.}
+        \item This is the "Off-Manifold" error. It exists even with infinite data.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Why Approximation is Deadly ($\sqrt{d}$ Amplification)}
+    Why can't we just accept a small approximation error?
+    
+    \textbf{The Geometry of Linear Regression:}
+    We control errors in the data norm ($L_2$), but we need uniform bounds ($L_\infty$).
+    \[
+    \|f\|_\infty \le \sqrt{d} \cdot \|f\|_{L_2(\rho)} \quad \text{(for D-optimal } \rho\text{)}
+    \]
+    
+    \textbf{The Amplification Loop:}
+    \begin{enumerate}
+        \item At step $h+1$, we have error $\epsilon_{h+1}$.
+        \item The target $\Tcal_h \widehat{Q}_{h+1}$ leaves the manifold.
+        \item We project back to $\Fcal$. In the worst case, this projection aligns with the "spiky" directions of the basis.
+        \item We pay the geometry factor: $\epsilon_h \approx \sqrt{d} \cdot \epsilon_{h+1}$.
+    \end{enumerate}
+    
+    \vspace{0.2cm}
+    \textbf{Result:} Over $H$ steps, error grows as $(\sqrt{d})^H$.
+    \small \emph{(Lecture 3 will show this lower bound is tight!)}
+\end{frame}
+
+
+% =============================================================================
+% Part VI: Conclusion / Tease
+% =============================================================================
+
+\section{Conclusion}
+
+\begin{frame}{Summary \& What's Next}
+    \textbf{Summary of Lecture 2:}
+    \begin{itemize}
+        \item \textbf{Generative Model:} LSVI + D-Optimal Design achieves $\poly(d, H)$ sample complexity.
+        \item \textbf{Offline RL:} The same algorithm works if we assume coverage ($\kappa$).
+        \item \textbf{The Key Ingredient:} \textbf{Linear Bellman Completeness} ensures the regression targets remain realizable, preventing bias propagation.
+    \end{itemize}
+
+    \vspace{0.5cm}
+
+    \textbf{Next Lecture (The Negative Results):}
+    \begin{itemize}
+        \item What if we \emph{don't} have Completeness?
+        \item What if we only know $Q^\star$ is linear?
+        \item We will show that without Completeness, sample complexity can become \textbf{Exponential in $H$ or $d$}.
+    \end{itemize}
+\end{frame}
+
+\end{document}
