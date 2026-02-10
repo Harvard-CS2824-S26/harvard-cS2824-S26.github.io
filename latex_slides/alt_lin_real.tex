@@ -1,0 +1,918 @@
+\documentclass[aspectratio=169]{beamer}
+\usepackage{amsmath, amssymb, amsthm, mathtools}
+\usepackage{algorithm, algorithmic}
+
+% --- Standard Beamer Theme ---
+\usetheme{Madrid}
+\usecolortheme{default}
+
+%\documentclass[aspectratio=169]{beamer}
+
+% If your course template already sets theme/colors/fonts, feel free to delete these.
+%\usetheme{default}
+%\usecolortheme{default}
+
+%\usepackage{amsmath,amssymb,mathtools}
+
+% Assumes macros.tex is the same as the book chapter (defines \Scal,\Acal,\Tcal_h, etc.)
+\input{macros.tex}
+
+\title{Chapter 3: RL with Linear Features}
+\subtitle{Lecture 1: Motivation \& Assumption Ladder (Part 1)}
+\author{}
+\date{}
+
+\begin{document}
+
+
+%------------------------------------------------
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Lecture 1 plan (high level)}
+\begin{itemize}
+  \item \textbf{(1) Hook:} finite-horizon backups + why linear features are tempting
+  \item \textbf{(2) Assumption ladder:} what ``linear RL'' could mean
+  \item \textbf{(3) Regression toolkit:} leverage + a fixed-design OLS bound
+  \item \textbf{(4) Design for RL:} D-optimal sampling + a first look at LSVI
+\end{itemize}
+\end{frame}
+
+%================================================
+\section{(1) Hook}
+
+\begin{frame}{Finite-horizon dynamic programming (reminder)}
+Stage-$h$ \textbf{optimal Bellman operator}:
+\[
+(\Tcal_h f)(s,a)
+\;:=\;
+r_h(s,a) + \E_{s'\sim P_h(\cdot\mid s,a)}\Big[\max_{a'\in\Acal} f(s',a')\Big].
+\]
+Optimal $Q$ satisfies backward recursion:
+\[
+Q^\star_H \equiv 0,
+\qquad
+Q_h^\star = \Tcal_h Q_{h+1}^\star \quad\text{for } h=H-1,\dots,0.
+\]
+\end{frame}
+
+\begin{frame}{Linear features: the standard response}
+Feature map:
+\[
+\phi:\Scal\times\Acal \to \R^d,
+\qquad
+f_\theta(s,a)=\theta^\top\phi(s,a),
+\qquad
+\Fcal := \{f_\theta:\theta\in\R^d\}.
+\]
+\textbf{Hope:} complexity depends on $d$ (not $|\Scal||\Acal|$).
+\end{frame}
+
+\begin{frame}{Why this is subtle: DP is a composition of regressions}
+A natural template:
+\[
+\widehat Q_{h} \;\approx\; \Tcal_h(\widehat Q_{h+1})
+\quad\text{implemented by regression.}
+\]
+But targets depend on \emph{previous estimates}:
+\[
+\text{target at stage }h \;\;\propto\;\; \Tcal_h(\widehat Q_{h+1}),
+\]
+so we need structure guaranteeing these targets remain learnable from the available data.
+\end{frame}
+
+%================================================
+\section{(2) Assumption ladder}
+
+\begin{frame}{Assumption ladder: four notions of ``linear RL''}
+Fix $\phi$ and $\Fcal$.
+\begin{itemize}
+  \item[(A)] Agnostic approximation (no realizability)
+  \item[(B)] Linear $Q^\star$ realizability
+  \item[(C)] All-policies linear realizability
+  \item[(D)] Linear Bellman completeness (closure under $\Tcal_h$)
+\end{itemize}
+
+\vspace{0.5em}
+\textbf{Thesis:} (B) and (C) can still have exponential sample complexity in $H$; (D) enables $\mathrm{poly}(d)$ RL.
+\end{frame}
+
+\begin{frame}{(B) Linear $Q^\star$ realizability}
+For each stage $h$, exists $\theta_h^\star\in\R^d$ such that
+\[
+Q_h^\star(s,a)= (\theta_h^\star)^\top\phi(s,a)\qquad \forall(s,a).
+\]
+Tempting analogy to realizable linear regression \ldots but \textbf{not sufficient} for efficient RL in general.
+\end{frame}
+
+\begin{frame}{(D) Linear Bellman completeness (closure)}
+For each stage $h$:
+\[
+f\in\Fcal \ \Longrightarrow\ \Tcal_h f \in\Fcal.
+\]
+Equivalently: for any $\theta$, there exists $w$ with
+\[
+r_h(s,a) + \E\!\Big[\max_{a'} \theta^\top\phi(s',a') \,\Big|\, s,a\Big]
+= w^\top\phi(s,a)\qquad \forall(s,a).
+\]
+\textbf{Interpretation:} DP-by-regression stays \emph{well-specified} stage by stage.
+\end{frame}
+
+%================================================
+\section{(3) Regression toolkit: leverage + OLS}
+
+\begin{frame}{DP-by-regression: what one stage looks like}
+Imagine we have some stage-$(h+1)$ value estimate $\widehat V_{h+1}$ (coming from later stages).
+
+Given samples $(s_i,a_i,r_i,s_i')$ at stage $h$, define regression target
+\[
+y_i \;:=\; r_h(s_i,a_i) + \widehat V_{h+1}(s_i').
+\]
+Covariates are
+\[
+x_i := \phi(s_i,a_i)\in\R^d.
+\]
+Then LSVI fits $\widehat\theta_h$ by least squares to predict $y$ from $x$.
+\end{frame}
+
+\begin{frame}{When is the regression well-specified?}
+Under \textbf{Bellman completeness} (later):
+\[
+\E[y_i \mid s_i,a_i]
+=
+r_h(s_i,a_i) + \E[\widehat V_{h+1}(s_i')\mid s_i,a_i]
+=
+(\theta_h^\star)^\top \phi(s_i,a_i)
+\]
+for some $\theta_h^\star$ (depends on $\widehat V_{h+1}$, but is linear in $\phi$).
+
+So we can write
+\[
+y_i = (\theta_h^\star)^\top x_i + \xi_i,
+\qquad
+\E[\xi_i\mid x_i]=0,
+\]
+with noise scale typically $\|\xi_i\|\lesssim H$ (since values are $\le H$ in finite horizon).
+\end{frame}
+
+\begin{frame}{Design matrix + leverage scores}
+Let the (fixed-design) matrix at stage $h$ be
+\[
+\Lambda_h := \sum_{i=1}^N x_i x_i^\top
+= \sum_{(s,a,r,s')\in D_h} \phi(s,a)\phi(s,a)^\top.
+\]
+
+Two key facts for turning parameter error into prediction error:
+\[
+|(\widehat\theta_h-\theta_h^\star)^\top \phi(s,a)|
+\le
+\|\widehat\theta_h-\theta_h^\star\|_{\Lambda_h}\;
+\sqrt{\phi(s,a)^\top \Lambda_h^{-1}\phi(s,a)}.
+\]
+
+The term
+\[
+\ell_h(s,a) := \phi(s,a)^\top \Lambda_h^{-1}\phi(s,a)
+\]
+is the \textbf{leverage score}. Uniform control needs $\sup_{s,a}\ell_h(s,a)$ small.
+\end{frame}
+
+\begin{frame}{A fixed-design OLS bound (high level)}
+Think: $y_i = x_i^\top\theta^\star + \xi_i$ with independent, mean-zero, sub-Gaussian noise.
+
+\vspace{0.5em}
+A standard statement (one convenient form) is:
+\begin{block}{Fixed-design OLS (informal)}
+With probability at least $1-\delta$,
+\[
+\|\widehat\theta - \theta^\star\|_{\Lambda}
+\;\lesssim\;
+\sigma\,\sqrt{d\log(1/\delta)},
+\]
+where $\Lambda=\sum_i x_i x_i^\top$ and $\sigma$ is the sub-Gaussian noise scale.
+\end{block}
+
+Combining with leverage:
+\[
+\sup_{s,a} |(\widehat\theta-\theta^\star)^\top\phi(s,a)|
+\;\lesssim\;
+\sigma\sqrt{d\log(1/\delta)}\;\sqrt{\sup_{s,a}\phi(s,a)^\top\Lambda^{-1}\phi(s,a)}.
+\]
+\end{frame}
+
+\begin{frame}{Takeaway for RL: regression reduces to ``get leverage under control''}
+To get \emph{uniform} prediction error at each stage, we want
+\[
+\sup_{(s,a)}\phi(s,a)^\top \Lambda_h^{-1}\phi(s,a)
+\quad\text{small (ideally } \approx d/N\text{)}.
+\]
+
+This is exactly where:
+\begin{itemize}
+  \item \textbf{generative models} help (we can choose where to sample), and
+  \item \textbf{coverage assumptions} matter (offline data must cover the feature geometry)
+\end{itemize}
+\end{frame}
+
+%================================================
+\section{(4) Design for RL: D-optimal sampling + LSVI preview}
+
+\begin{frame}{Generative model: we can design the covariates}
+In the generative model setting, at each stage $h$ we can query any $(s,a)$ to get
+independent $s'\sim P_h(\cdot\mid s,a)$.
+
+So we can aim to choose a sampling distribution on $(s,a)$ that makes the design well-conditioned:
+\[
+\Lambda_h \approx N \cdot \E_{(s,a)\sim\rho}[\phi(s,a)\phi(s,a)^\top].
+\]
+Goal: control \emph{all} leverage scores uniformly over $(s,a)$.
+\end{frame}
+
+\begin{frame}{D-optimal design: the leverage-minimizing geometry}
+Let
+\[
+\Phi := \{\phi(s,a):(s,a)\in\Scal\times\Acal\}\subset\R^d.
+\]
+
+\begin{block}{D-optimal design (lemma; geometric fact)}
+There exists a distribution $\rho$ supported on at most $d(d+1)/2$ state--action pairs such that,
+with
+\[
+\Sigma := \E_{(s,a)\sim\rho}\big[\phi(s,a)\phi(s,a)^\top\big],
+\]
+we have $\Sigma\succ 0$ and
+\[
+\sup_{(s,a)}\ \phi(s,a)^\top \Sigma^{-1}\phi(s,a) \;\le\; d.
+\]
+\end{block}
+\end{frame}
+
+\begin{frame}{Why D-optimal design is exactly what we want}
+If we allocate $n_{s,a}\approx N\rho(s,a)$ samples per support point, then
+\[
+\Lambda_h
+=
+\sum_{(s,a)\in\textrm{supp}(\rho)} n_{s,a}\,\phi(s,a)\phi(s,a)^\top
+\ \succeq\ N\Sigma.
+\]
+Hence $\Lambda_h^{-1}\preceq (N\Sigma)^{-1}$ and
+\[
+\sup_{(s,a)}\phi(s,a)^\top \Lambda_h^{-1}\phi(s,a)
+\ \le\
+\frac{1}{N}\sup_{(s,a)}\phi(s,a)^\top \Sigma^{-1}\phi(s,a)
+\ \le\ \frac{d}{N}.
+\]
+
+\vspace{0.5em}
+So: \textbf{D-optimal sampling + OLS} $\Rightarrow$ \textbf{uniform prediction error}.
+\end{frame}
+
+\begin{frame}{Geometric intuition (one slide)}
+Equivalent viewpoints (you can pick your favorite story):
+\begin{itemize}
+  \item \textbf{Kiefer--Wolfowitz:} $\rho$ maximizes $\log\det\!\Big(\E_\rho[\phi\phi^\top]\Big)$
+  \item \textbf{John's ellipsoid:} the ellipsoid
+  \[
+  \mathcal{E}=\{v:\ v^\top \Sigma^{-1}v \le d\}
+  \]
+  is the minimum-volume centered ellipsoid containing $\Phi$
+  \item \textbf{Leverage control:} the quantity $\phi^\top\Sigma^{-1}\phi$ is exactly the (population) leverage
+\end{itemize}
+Message: there is always a way to sample from only $O(d^2)$ points while keeping worst-case leverage $\le d$.
+\end{frame}
+
+\begin{frame}{LSVI (preview): dynamic programming implemented by regression}
+LSVI runs backward:
+\begin{itemize}
+  \item Initialize $\widehat V_H \equiv 0$
+  \item For $h=H-1,\dots,0$:
+  \begin{itemize}
+    \item targets: $y=r_h(s,a)+\widehat V_{h+1}(s')$
+    \item fit $\widehat\theta_h$ by least squares on $(\phi(s,a),y)$
+    \item define $\widehat Q_h(s,a)=\widehat\theta_h^\top\phi(s,a)$ and $\widehat V_h(s)=\max_a \widehat Q_h(s,a)$
+  \end{itemize}
+  \item Return greedy policy $\widehat\pi_h(s)\in\arg\max_a \widehat Q_h(s,a)$
+\end{itemize}
+
+\vspace{0.5em}
+\textbf{Under Bellman completeness:} each stage regression is well-specified.
+\end{frame}
+
+\begin{frame}{From regression error to RL performance: Bellman residuals}
+Define stage-$h$ Bellman residual of an estimated sequence $\{\widehat Q_h\}$:
+\[
+\mathrm{Res}_h := \big\|\widehat Q_h - \Tcal_h \widehat Q_{h+1}\big\|_\infty.
+\]
+
+\begin{block}{Residual $\Rightarrow$ value accuracy (informal)}
+If $\mathrm{Res}_h \le \eta$ for all $h$, then errors grow at most linearly with remaining horizon:
+\[
+\|\widehat Q_h - Q_h^\star\|_\infty \;\lesssim\; (H-h)\eta.
+\]
+\end{block}
+
+\begin{block}{Residual $\Rightarrow$ near-optimal greedy policy (informal)}
+Greedy policy $\widehat\pi$ satisfies
+\[
+V_0^\star(s) - V_0^{\widehat\pi}(s) \;\lesssim\; H^2\,\eta.
+\]
+\end{block}
+\end{frame}
+
+\begin{frame}{Putting (3) + (4) together: the Lecture 1 punchline}
+At each stage:
+\[
+\mathrm{Res}_h \approx \text{(uniform regression error)}
+\ \lesssim\
+\underbrace{\sigma\sqrt{d\log(H/\delta)}}_{\text{OLS}}
+\cdot
+\underbrace{\sqrt{d/N}}_{\text{D-opt leverage}}.
+\]
+
+Choose $N$ so that $\mathrm{Res}_h \le \eta \approx \epsilon/H^2$:
+\[
+\Rightarrow\quad
+V_0^\star - V_0^{\widehat\pi} \;\le\; \epsilon.
+\]
+
+\vspace{0.5em}
+The chapter carries this out carefully (and tracks the polynomial dependence on $H,d,\epsilon,\delta$).
+\end{frame}
+
+\begin{frame}{Where we go next (Lecture 2)}
+\begin{itemize}
+  \item Do the LSVI analysis cleanly: conditioning, noise scale, union bounds over stages
+  \item Offline version: replace ``we can sample D-opt'' by an explicit \textbf{coverage} condition
+  \item Then (Lecture 3): why weaker linear assumptions can still fail exponentially
+\end{itemize}
+\end{frame}
+
+% ============================================================
+% Lecture 2 (append to end of Lecture 1 deck)
+% Full positive theorem + offline extensions (LSVI + LSPE)
+% ============================================================
+
+\section{Lecture 2: Bellman completeness $\Rightarrow$ poly$(d)$ learning}
+
+% --------------------------
+\begin{frame}{Where we are going today (75 min)}
+\textbf{Goal:} reproduce the proof structure; see exactly what changes offline.
+
+\vspace{0.5em}
+\textbf{Today:}
+\begin{enumerate}
+\item The 3-ingredient proof template (roadmap).
+\item LSVI with a \emph{generative model}: proof skeleton end-to-end.
+\item Offline control via LSVI: same proof, replace ``construct design'' by ``assume coverage''.
+\item Offline evaluation via LSPE: weaker closure + milder horizon dependence.
+\item Teaser: why weaker realizability can still be exponentially hard (Lecture 3).
+\end{enumerate}
+\end{frame}
+
+% --------------------------
+\begin{frame}{The 3-ingredient proof template}
+All positive results today follow the same chain:
+\[
+\boxed{\text{(i) conditioning / leverage control}}
+\;\Rightarrow\;
+\boxed{\text{(ii) uniform OLS generalization}}
+\;\Rightarrow\;
+\boxed{\text{(iii) residual $\Rightarrow$ performance}}.
+\]
+
+\vspace{0.75em}
+Concretely, at each stage $h$:
+\begin{itemize}
+\item Build or assume a well-conditioned design matrix $\Lambda_h$ so that
+$\sup_{s,a}\phi(s,a)^\top \Lambda_h^{-1}\phi(s,a)$ is small.
+\item Condition on future stages to make stage-$h$ regression \emph{fixed-design}.
+\item Convert a uniform prediction bound into a uniform Bellman residual bound.
+\item Sum residuals across stages to bound suboptimality / evaluation error.
+\end{itemize}
+\end{frame}
+
+% ============================================================
+\subsection{LSVI with a generative model: main theorem + proof skeleton}
+% ============================================================
+
+% --------------------------
+\begin{frame}{Reminder: Bellman completeness (finite horizon)}
+Fix a feature map $\phi:\Scal\times\Acal\to\R^d$ and $\Fcal=\{(s,a)\mapsto w^\top\phi(s,a)\}$.
+
+\vspace{0.5em}
+\textbf{Linear Bellman completeness:} for each stage $h$,
+\[
+f\in\Fcal \;\Longrightarrow\; \Tcal_h f \in \Fcal,
+\qquad
+(\Tcal_h f)(s,a)= r_h(s,a)+\E_{s'\sim P_h(\cdot|s,a)}\Big[\max_{a'} f(s',a')\Big].
+\]
+
+\vspace{0.5em}
+\textbf{Interpretation:} DP stays inside the linear class, so each backup target is representable.
+\end{frame}
+
+% --------------------------
+\begin{frame}{Reminder: LSVI (Least-Squares Value Iteration)}
+Stage-wise datasets: for each $h\in\{0,\dots,H-1\}$,
+\[
+D_h=\{(s_i,a_i,r_i,s_i')\}_{i=1}^N,\qquad s_i'\sim P_h(\cdot\mid s_i,a_i),\quad r_i=r_h(s_i,a_i).
+\]
+
+\medskip
+Backward recursion:
+\begin{align*}
+\widehat V_H(s) &:= 0\\
+\widehat\theta_h &\in \arg\min_{\theta\in\R^d}\sum_{(s,a,r,s')\in D_h}\Big(\theta^\top \phi(s,a)-[r+\widehat V_{h+1}(s')]\Big)^2\\
+\widehat Q_h(s,a) &:= \widehat\theta_h^\top\phi(s,a),\qquad
+\widehat V_h(s):=\max_{a\in\Acal}\widehat Q_h(s,a)\\
+\widehat\pi_h(s) &\in \arg\max_{a\in\Acal}\widehat Q_h(s,a).
+\end{align*}
+\end{frame}
+
+% --------------------------
+\begin{frame}{Main generative-model theorem (LSVI under Bellman completeness)}
+Assume:
+\begin{itemize}
+\item finite horizon $H$, rewards $r_h(s,a)\in[0,1]$,
+\item linear Bellman completeness of $\phi$,
+\item access to a generative model: query any $(s,a,h)$ to sample $s'\sim P_h(\cdot\mid s,a)$.
+\end{itemize}
+
+\medskip
+Then there is a way to \emph{construct} datasets $\{D_h\}$ (via D-opt design) so that with
+\[
+N \;\gtrsim\; \frac{H^6 d^2 \log(H/\delta)}{\eps^2}
+\quad\text{samples per stage (up to constants),}
+\]
+running LSVI returns $\widehat\pi$ with
+\[
+\E_{s\sim \mu}\big[V_0^\star(s)-V_0^{\widehat\pi}(s)\big]\le \eps
+\qquad\text{w.p.}\ \ge 1-\delta.
+\]
+
+\medskip
+(We will track the proof as a \emph{4-step chain}.)
+\end{frame}
+
+% --------------------------
+\begin{frame}{Proof skeleton: the concluding chain (keep this slide!)}
+
+\[
+\boxed{\text{Bellman completeness}}
+\Rightarrow
+\boxed{\text{stage-$h$ regression is well-specified (given $\widehat V_{h+1}$)}}
+\Rightarrow
+\boxed{\text{uniform prediction error at stage $h$}}
+\Rightarrow
+\boxed{\text{small Bellman residuals}}
+\Rightarrow
+\boxed{\text{$\widehat Q \approx Q^\star$ and greedy $\widehat\pi$ is near-optimal}}.
+\]
+
+\vspace{1em}
+Everything today is just: \emph{make each box precise} and keep track of the norms.
+\end{frame}
+
+% --------------------------
+\begin{frame}{Step A: Conditioning makes each stage fixed-design regression}
+Fix a stage $h$ and \emph{condition on future stages} (equivalently on $\widehat V_{h+1}$).
+
+\medskip
+Define labels
+\[
+y := r_h(s,a) + \widehat V_{h+1}(s'), \qquad x:=\phi(s,a).
+\]
+
+By Bellman completeness, there exists $\theta_h^\star$ such that for all $(s,a)$,
+\[
+(\theta_h^\star)^\top \phi(s,a)
+=
+r_h(s,a)+ \E_{s'\sim P_h(\cdot\mid s,a)}\big[\widehat V_{h+1}(s')\big]
+=
+(\Tcal_h \widehat Q_{h+1})(s,a).
+\]
+
+Hence, conditional on $\widehat V_{h+1}$:
+\[
+y = (\theta_h^\star)^\top x + \xi,\qquad \E[\xi\mid x]=0,\qquad |\xi|\lesssim H.
+\]
+
+So stage $h$ is \textbf{ordinary linear regression with fixed covariates} $\{x_i\}$.
+\end{frame}
+
+% --------------------------
+\begin{frame}{Step B: D-opt design gives uniform leverage control}
+Key quantity in uniform prediction:
+\[
+\sup_{(s,a)} \phi(s,a)^\top \Lambda_h^{-1}\phi(s,a),
+\qquad
+\Lambda_h:=\sum_{(s,a,r,s')\in D_h}\phi(s,a)\phi(s,a)^\top.
+\]
+
+\medskip
+\textbf{D-opt design lemma (geometric experimental design).}
+There exists a distribution $\rho$ supported on $\le d(d+1)/2$ state-action pairs such that,
+with $\Sigma:=\E_{(s,a)\sim\rho}[\phi\phi^\top]$,
+\[
+\Sigma\succ 0
+\quad\text{and}\quad
+\sup_{(s,a)}\phi(s,a)^\top \Sigma^{-1}\phi(s,a)\le d.
+\]
+
+\medskip
+\textbf{Use in generative model:} sample $(s,a)$ i.i.d.\ from $\rho$ (or replicate support points)
+so that $\Lambda_h \succeq N\Sigma$, giving
+\[
+\sup_{(s,a)}\phi(s,a)^\top \Lambda_h^{-1}\phi(s,a)\le \frac{d}{N}.
+\]
+\end{frame}
+
+% --------------------------
+\begin{frame}{Step C: Uniform OLS generalization (fixed-design)}
+Standard fixed-design OLS bound (sub-Gaussian noise): with prob.\ $\ge 1-\delta'$,
+\[
+\|\widehat\theta_h-\theta_h^\star\|_{\Lambda_h}
+\;\lesssim\;
+(\text{noise scale})\cdot \sqrt{d\log(1/\delta')}.
+\]
+
+Then for any test point $(s,a)$:
+\[
+\big|(\widehat\theta_h-\theta_h^\star)^\top \phi(s,a)\big|
+\le
+\|\widehat\theta_h-\theta_h^\star\|_{\Lambda_h}\;
+\sqrt{\phi(s,a)^\top \Lambda_h^{-1}\phi(s,a)}.
+\]
+
+With D-opt leverage $\sup \phi^\top\Lambda_h^{-1}\phi \le d/N$ and noise $\lesssim H$:
+\[
+\|\widehat Q_h - \Tcal_h \widehat Q_{h+1}\|_\infty
+=
+\sup_{s,a}\big|(\widehat\theta_h-\theta_h^\star)^\top \phi(s,a)\big|
+\;\lesssim\;
+H\, d\, \sqrt{\frac{\log(H/\delta')}{N}}.
+\]
+
+\medskip
+Union bound across $h=0,\dots,H-1$ with $\delta' \approx \delta/H$.
+\end{frame}
+
+% --------------------------
+\begin{frame}{Step D: Residual $\Rightarrow$ performance (control)}
+Define the stage-$h$ Bellman residual:
+\[
+\mathrm{Res}_h := \|\widehat Q_h - \Tcal_h \widehat Q_{h+1}\|_\infty.
+\]
+
+\medskip
+\textbf{Lemma (approximate DP):} If $\mathrm{Res}_h \le \eta$ for all $h$, then
+\[
+\|\widehat Q_h - Q_h^\star\|_\infty \le (H-h)\eta,
+\qquad
+V_0^\star(s)-V_0^{\widehat\pi}(s) \le 2H^2\eta\ \ \forall s.
+\]
+
+\medskip
+So it suffices to make
+\[
+\max_h \mathrm{Res}_h \;\lesssim\; \frac{\eps}{H^2}.
+\]
+
+\medskip
+Combine with Step C to choose $N$ so that
+$H d \sqrt{\log(H/\delta)/N}\lesssim \eps/H^2$.
+\end{frame}
+
+% --------------------------
+\begin{frame}{End-to-end: what to remember (generative LSVI)}
+The proof is literally:
+
+\begin{enumerate}
+\item Condition on $\widehat V_{h+1}$ $\Rightarrow$ stage-$h$ is well-specified regression.
+\item D-opt design $\Rightarrow$ $\sup_{s,a}\phi^\top\Lambda_h^{-1}\phi \le d/N$.
+\item Fixed-design OLS $\Rightarrow$ uniform prediction / residual bound at each stage.
+\item Residual lemma $\Rightarrow$ $\widehat\pi$ near-optimal.
+\end{enumerate}
+
+\vspace{0.75em}
+\textbf{Conceptual punchline:} under (linear) Bellman completeness, RL reduces to
+a \emph{sequence of supervised learning problems}, provided the design is well-conditioned.
+\end{frame}
+
+% ============================================================
+\subsection{Offline control via LSVI: what changes (almost nothing)}
+% ============================================================
+
+% --------------------------
+\begin{frame}{Offline RL: what changes vs.\ generative model?}
+\textbf{Generative model:} we \emph{construct} each $D_h$ to make $\Lambda_h$ well-conditioned.
+
+\medskip
+\textbf{Offline:} datasets $\{D_h\}$ are given. So we must \emph{assume coverage}:
+the data distribution must control leverage for the feature geometry.
+
+\medskip
+Everything else in the proof is unchanged:
+conditioning $\to$ fixed-design regression $\to$ uniform OLS $\to$ residual lemma.
+\end{frame}
+
+% --------------------------
+\begin{frame}{Coverage as uniform leverage control}
+Let
+\[
+\widehat\Sigma_h := \frac{1}{N}\sum_{(s,a,r,s')\in D_h}\phi(s,a)\phi(s,a)^\top,
+\qquad
+\Lambda_h = N\widehat\Sigma_h.
+\]
+
+A convenient coverage condition is:
+\[
+\widehat\Sigma_h \succeq \frac{1}{\kappa}\Sigma,
+\]
+where $\Sigma$ is the D-opt covariance for $\Phi=\{\phi(s,a)\}$ and $\kappa\ge 1$.
+
+\medskip
+Then leverage is uniformly bounded:
+\[
+\sup_{(s,a)}\phi(s,a)^\top \Lambda_h^{-1}\phi(s,a)
+=
+\frac{1}{N}\sup_{(s,a)}\phi^\top \widehat\Sigma_h^{-1}\phi
+\;\le\;
+\frac{\kappa d}{N}.
+\]
+
+\medskip
+This is the \textbf{exact substitution} for D-opt in the generative proof.
+\end{frame}
+
+% --------------------------
+\begin{frame}{Offline LSVI theorem (Bellman completeness + coverage)}
+Assume:
+\begin{itemize}
+\item linear Bellman completeness,
+\item rewards in $[0,1]$,
+\item coverage: $\widehat\Sigma_h \succeq \Sigma/\kappa$ for all $h$.
+\end{itemize}
+
+Then if
+\[
+N \;\gtrsim\; \frac{\kappa\,H^6 d^2 \log(H/\delta)}{\eps^2}
+\quad\text{(samples per stage),}
+\]
+running LSVI on $\{D_h\}$ returns $\widehat\pi$ with
+\[
+\E_{s\sim\mu}\big[V_0^\star(s)-V_0^{\widehat\pi}(s)\big]\le \eps
+\qquad\text{w.p.}\ \ge 1-\delta.
+\]
+
+\medskip
+\textbf{Proof:} identical chain; replace D-opt leverage $\frac{d}{N}$ by coverage leverage $\frac{\kappa d}{N}$.
+\end{frame}
+
+% ============================================================
+\subsection{Offline evaluation: LSPE + policy completeness}
+% ============================================================
+
+% --------------------------
+\begin{frame}{Offline policy evaluation: why separate it?}
+\textbf{Task:} given a target policy $\pi=\{\pi_h\}$, estimate $V_0^\pi$ from offline data.
+
+\vspace{0.75em}
+Key conceptual difference vs.\ control:
+\begin{itemize}
+\item Control needs \emph{greedy improvement} $\Rightarrow$ a policy-mismatch term.
+\item Evaluation follows a \emph{fixed} $\pi$ $\Rightarrow$ residuals translate directly to value error.
+\end{itemize}
+
+This yields a milder horizon dependence in the final sample complexity.
+\end{frame}
+
+% --------------------------
+\begin{frame}{LSPE algorithm (Least-Squares Policy Evaluation)}
+Replace $\max$-backup by $\pi$-backup.
+
+\medskip
+Initialize $\widehat V_H^\pi\equiv 0$. For $h=H-1,\dots,0$:
+\[
+\widehat\theta_h
+\in \arg\min_{\theta\in\R^d}\sum_{(s,a,r,s')\in D_h}
+\Big(\theta^\top\phi(s,a) - [r+\widehat V_{h+1}^\pi(s')]\Big)^2,
+\]
+and define
+\[
+\widehat V_h^\pi(s):=\widehat\theta_h^\top\phi(s,\pi_h(s)).
+\]
+
+\medskip
+(Equivalent view: compute $\widehat Q_h(s,a)=\widehat\theta_h^\top\phi(s,a)$, then evaluate on-policy.)
+\end{frame}
+
+% --------------------------
+\begin{frame}{Policy completeness (weaker closure for a fixed $\pi$)}
+Define the policy Bellman operator:
+\[
+(\Tcal_h^\pi f)(s,a)
+:= r_h(s,a) + \E_{s'\sim P_h(\cdot\mid s,a)} f\!\big(s',\pi_{h+1}(s')\big).
+\]
+
+\medskip
+\textbf{Policy completeness for $\pi$:}
+\[
+f\in\Fcal \;\Longrightarrow\; \Tcal_h^\pi f \in \Fcal \qquad \forall h.
+\]
+
+\medskip
+Interpretation: LSPE’s regression targets remain linear, but only along $\pi$ (no $\max$).
+\end{frame}
+
+% --------------------------
+\begin{frame}{Residual $\Rightarrow$ evaluation accuracy (no greedy mismatch)}
+Define the stage-$h$ $\pi$-residual:
+\[
+\mathrm{Res}_h^\pi
+:=
+\sup_{(s,a)}
+\Big|
+\widehat Q_h(s,a) - (\Tcal_h^\pi \widehat V_{h+1}^\pi)(s,a)
+\Big|.
+\]
+
+\medskip
+\textbf{Lemma:} If $\mathrm{Res}_h^\pi\le \eta$ for all $h$, then for all $s$,
+\[
+|V_0^\pi(s)-\widehat V_0^\pi(s)| \le H\eta.
+\]
+
+\medskip
+Compare with control: near-optimality incurred an extra $H$ factor (via greedy suboptimality),
+leading to the $H^6$-type scaling in our crude analysis.
+\end{frame}
+
+% --------------------------
+\begin{frame}{Offline LSPE theorem (policy completeness + coverage)}
+Assume:
+\begin{itemize}
+\item rewards in $[0,1]$,
+\item coverage (same leverage control): $\widehat\Sigma_h \succeq \Sigma/\kappa$,
+\item policy completeness for the target $\pi$.
+\end{itemize}
+
+Then with
+\[
+N \;\gtrsim\; \frac{\kappa\,H^4 d^2 \log(H/\delta)}{\eps^2}
+\quad\text{(samples per stage),}
+\]
+LSPE satisfies (w.p.\ $\ge 1-\delta$):
+\[
+\sup_{s\in\Scal} |V_0^\pi(s)-\widehat V_0^\pi(s)| \le \eps.
+\]
+
+\medskip
+\textbf{Proof:} identical regression + leverage steps; then use the evaluation residual lemma (only $H$ amplification).
+\end{frame}
+
+% --------------------------
+\begin{frame}{Control vs.\ evaluation: the conceptual contrast}
+\textbf{Same regression core:} fixed-design OLS + leverage control + union bound across stages.
+
+\medskip
+\textbf{Different last step:}
+\begin{itemize}
+\item \textbf{Control (LSVI):} residuals $\Rightarrow \widehat Q\approx Q^\star$ $\Rightarrow$ greedy policy loss
+$\sim H^2\eta$.
+\item \textbf{Evaluation (LSPE):} residuals $\Rightarrow$ value error along $\pi$
+$\sim H\eta$.
+\end{itemize}
+
+\vspace{0.75em}
+\textbf{Moral:} evaluation is easier because there is no greedy mismatch / improvement step.
+\end{frame}
+
+% ============================================================
+\subsection{Set up Lecture 3: why negative results matter}
+% ============================================================
+
+% --------------------------
+\begin{frame}{Teaser (Lecture 3): why not just assume ``$Q$ is linear''?}
+Today’s positive story needed a \textbf{closure} condition:
+\[
+f\in\Fcal \Rightarrow \Tcal f\in\Fcal.
+\]
+
+\vspace{0.75em}
+Next time: even much more “obvious” linear assumptions can fail:
+\begin{itemize}
+\item $Q^\star$ linear (known features) \emph{still} can require $\exp(\min\{d,H\})$ samples (even generative model).
+\item Offline: even \emph{all-policies} linear realizability + isotropic coverage can force $\Omega((d/2)^H)$ samples for evaluation.
+\end{itemize}
+
+\vspace{0.5em}
+\textbf{Mechanism:} compounding through \emph{unobserved} states / aggregation $\Rightarrow$ exponential variance.
+\end{frame}
+
+% =========================================================
+% Lecture 2 add-on: Where analysis can go wrong without (policy) Bellman completeness
+% (1–3 slides, clean "off-manifold" / approximation amplification story)
+% =========================================================
+
+\begin{frame}{Where things can go wrong without Bellman completeness}
+\small
+\textbf{Key identity (finite horizon).} For any estimates $\{\widehat Q_h\}_{h=0}^H$ with $\widehat Q_H\equiv 0$,
+\[
+\|\widehat Q_h - Q_h^\star\|_\infty
+\;\le\;
+\underbrace{\|\widehat Q_h - \Tcal_h \widehat Q_{h+1}\|_\infty}_{\text{Bellman residual at stage $h$}}
+\;+\;
+\underbrace{\|\Tcal_h \widehat Q_{h+1} - \Tcal_h Q_{h+1}^\star\|_\infty}_{\le \|\widehat Q_{h+1}-Q_{h+1}^\star\|_\infty}.
+\]
+So the whole DP analysis reduces to controlling the residuals
+\[
+\mathrm{Res}_h := \|\widehat Q_h - \Tcal_h \widehat Q_{h+1}\|_\infty.
+\]
+
+\vspace{0.5em}
+\textbf{Residual-to-performance (recall).} If $\max_h \mathrm{Res}_h \le \eta$, then
+\[
+\|\widehat Q_h - Q_h^\star\|_\infty \le (H-h)\eta,
+\qquad
+V_0^\star(s)-V_0^{\widehat\pi}(s)\;\lesssim\; H^2\eta.
+\]
+
+\vspace{0.75em}
+\textbf{Moral:} the critical quantity is \emph{not} just ``regression error'' but whether the
+\emph{regression targets} $\Tcal_h \widehat Q_{h+1}$ stay inside the function class.
+\end{frame}
+
+\begin{frame}{Residual = estimation + approximation (``off-manifold'')}
+\small
+At stage $h$, define the (unknown) regression target
+\[
+g_h(\cdot,\cdot) := (\Tcal_h \widehat Q_{h+1})(\cdot,\cdot).
+\]
+LSVI/LSPE fits $\widehat Q_h\in\Fcal$ from samples of $g_h$.
+
+\vspace{0.5em}
+\textbf{Always true:} for any comparator $f_h\in\Fcal$,
+\[
+\|\widehat Q_h - g_h\|_\infty
+\;\le\;
+\underbrace{\|\widehat Q_h - f_h\|_\infty}_{\text{estimation}}
+\;+\;
+\underbrace{\|f_h - g_h\|_\infty}_{\text{approximation / misspecification}}.
+\]
+
+\vspace{0.5em}
+\textbf{Under Bellman completeness:} $g_h=\Tcal_h\widehat Q_{h+1}\in\Fcal$, so choose $f_h=g_h$ and the
+approximation term is $0$.
+
+\vspace{0.5em}
+\textbf{Without completeness:} even with \emph{perfect regression / infinite data},
+\[
+\mathrm{Res}_h = \inf_{f\in\Fcal}\|f-\Tcal_h\widehat Q_{h+1}\|_\infty
+\quad\text{may be nonzero.}
+\]
+This is the \textbf{off-manifold} issue: the algorithm generates targets outside $\Fcal$.
+\end{frame}
+
+\begin{frame}{A clean $\sqrt d$ amplification from geometry (D-opt / leverage)}
+\small
+In practice we control errors in an $L_2(\rho_h)$ / design norm, but the residual lemma needs $\ell_\infty$.
+
+\vspace{0.35em}
+Let $\Sigma_h := \E_{(s,a)\sim\rho_h}[\phi(s,a)\phi(s,a)^\top]$ and suppose the design is well-conditioned
+(e.g.\ D-opt or coverage) so that
+\[
+\sup_{s,a}\; \phi(s,a)^\top \Sigma_h^{-1}\phi(s,a) \;\le\; d.
+\]
+Then for any linear difference $u(s,a)=\langle \Delta, \phi(s,a)\rangle$,
+\[
+\|u\|_\infty
+\;\le\;
+\sqrt{\sup_{s,a}\phi(s,a)^\top\Sigma_h^{-1}\phi(s,a)}\;\cdot\;\|u\|_{L_2(\rho_h)}
+\;\le\;
+\sqrt d\;\|u\|_{L_2(\rho_h)}.
+\]
+
+\vspace{0.6em}
+Apply this to the stage-wise decomposition:
+\[
+\mathrm{Res}_h
+\;\le\;
+\sqrt d\cdot \underbrace{\|\widehat Q_h - f_h\|_{L_2(\rho_h)}}_{\text{statistical regression error}}
+\;+\;
+\underbrace{\inf_{f\in\Fcal}\|f-\Tcal_h\widehat Q_{h+1}\|_\infty}_{\text{off-manifold approximation}}.
+\]
+
+\vspace{0.6em}
+\textbf{Takeaway:} even with excellent ``coverage'' (D-opt), leaving the manifold $\Fcal$ can incur
+a \textbf{$\sqrt d$ geometric penalty per stage}, and residual accumulation can amplify this across $H$.
+
+\vspace{0.4em}
+\textbf{Lecture 3 preview:} our lower bounds show this amplification is \emph{real} (not an artifact).
+\end{frame}
+
+
+\end{document}
+
+
