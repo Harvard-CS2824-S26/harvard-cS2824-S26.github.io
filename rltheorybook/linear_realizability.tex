@@ -433,16 +433,16 @@ Each sample has covariate $x_i := \phi(s_i,a_i)$ and response
 $y_i := r_h(s_i,a_i) + \widehat V_{h+1}(s_i')$.
 (Optionally clip $\widehat V_{h+1}$ to $[0,H]$ to strengthen boundedness.)
 
-By Bellman completeness, there exists $\theta_h^\star\in\R^d$ such that for all
+By Bellman completeness, there exists $\tilde\theta_h\in\R^d$ such that for all
 $(s,a)$,
 \[
-(\theta_h^\star)^\top \phi(s,a)
+\tilde\theta_h^\top \phi(s,a)
 =
 r_h(s,a) + \E_{s'\sim P_h(\cdot\mid s,a)}\big[\widehat V_{h+1}(s')\big]
 =
 (\Tcal_h \widehat Q_{h+1})(s,a).
 \]
-Hence $y_i = (\theta_h^\star)^\top x_i + \xi_i$ where $\E[\xi_i\mid x_i]=0$ and
+Hence $y_i = \tilde\theta_h^\top x_i + \xi_i$ where $\E[\xi_i\mid x_i]=0$ and
 $\{\xi_i\}$ are independent across samples. Moreover $|\xi_i|\lesssim H$, so
 $\xi_i$ is $O(H)$-sub-Gaussian.
 
@@ -481,39 +481,39 @@ by Lemma~\ref{lem:d_opt_design},
 \paragraph{Step 3: OLS generalizes uniformly (normalized).}
 Apply the fixed-design OLS bound from the Appendix (Theorem~\ref{thm:ols_fixed_design})
 to the stage-$h$ regression with sample size $n_h$, failure probability
-$\delta' := \delta/(H)$, and noise scale $\sigma=O(H)$. Using the empirical covariance
+$\delta' := \delta/H$, and noise scale $\sigma=O(H)$. Using the empirical covariance
 $\widehat\Sigma_h$ (normalized by $n_h$), we obtain with probability at least $1-\delta'$,
 \[
-\|\widehat\theta_h-\theta_h^\star\|_{\widehat\Sigma_h}
+\|\widehat\theta_h-\tilde\theta_h\|_{\widehat\Sigma_h}
 \;\le\;
 c_1 H \cdot \frac{\sqrt{d}+\sqrt{2\log(1/\delta')}}{\sqrt{n_h}}
 \;=\;
-c_1 H \cdot \frac{\sqrt{d}+\sqrt{2\log(2H/\delta)}}{\sqrt{n_h}},
+c_1 H \cdot \frac{\sqrt{d}+\sqrt{2\log(H/\delta)}}{\sqrt{n_h}},
 \]
 for an absolute constant $c_1$.
 Since $\Lambda_h = \frac{n_h}{N}\widehat\Sigma_h$, we have
 \[
-\|\widehat\theta_h-\theta_h^\star\|_{\Lambda_h}
+\|\widehat\theta_h-\tilde\theta_h\|_{\Lambda_h}
 =
-\sqrt{\frac{n_h}{N}}\;\|\widehat\theta_h-\theta_h^\star\|_{\widehat\Sigma_h}
+\sqrt{\frac{n_h}{N}}\;\|\widehat\theta_h-\tilde\theta_h\|_{\widehat\Sigma_h}
 \;\le\;
-c_1 H \cdot \frac{\sqrt{d}+\sqrt{2\log(2H/\delta)}}{\sqrt{N}}.
+c_1 H \cdot \frac{\sqrt{d}+\sqrt{2\log(H/\delta)}}{\sqrt{N}}.
 \]
 Therefore, for any $(s,a)$,
 \begin{align*}
-\big|(\widehat\theta_h-\theta_h^\star)^\top \phi(s,a)\big|
+\big|(\widehat\theta_h-\tilde\theta_h)^\top \phi(s,a)\big|
 &\le
-\|\widehat\theta_h-\theta_h^\star\|_{\Lambda_h}\cdot
+\|\widehat\theta_h-\tilde\theta_h\|_{\Lambda_h}\cdot
 \sqrt{\phi(s,a)^\top \Lambda_h^{-1}\phi(s,a)} \\
 &\le
-c_1 H \cdot \frac{\sqrt{d}+\sqrt{2\log(2H/\delta)}}{\sqrt{N}}
+c_1 H \cdot \frac{\sqrt{d}+\sqrt{2\log(H/\delta)}}{\sqrt{N}}
 \cdot \sqrt{d}.
 \end{align*}
 Equivalently,
 \[
 \big\|\widehat Q_h - \Tcal_h \widehat Q_{h+1}\big\|_\infty
 \;\le\;
-c_1 H \cdot \frac{\sqrt{d}\big(\sqrt{d}+\sqrt{2\log(2H/\delta)}\big)}{\sqrt{N}}.
+c_1 H \cdot \frac{\sqrt{d}\big(\sqrt{d}+\sqrt{2\log(H/\delta)}\big)}{\sqrt{N}}.
 \]
 
 Finally, apply the bound for all $h\in[H]$ and take a union bound: with probability at least
@@ -521,7 +521,7 @@ $1-\delta$,
 \[
 \max_{h\in[H]}\big\|\widehat Q_h - \Tcal_h \widehat Q_{h+1}\big\|_\infty
 \le
-c_1 H \cdot \frac{\sqrt{d}\big(\sqrt{d}+\sqrt{2\log(2H/\delta)}\big)}{\sqrt{N}}.
+c_1 H \cdot \frac{\sqrt{d}\big(\sqrt{d}+\sqrt{2\log(H/\delta)}\big)}{\sqrt{N}}.
 \]
 With our choice of $N$ (and $c$ large enough), the right-hand side is at most
 $\epsilon/(2H^2)$. Lemma~\ref{lem:residual_to_policy} then yields, for all $s$,
@@ -736,9 +736,12 @@ Consequently, $\big|\E_{s\sim\mu}[V_0^\pi(s)] - \E_{s\sim\mu}[\widehat V_0^\pi(s
 \begin{proof}[Proof sketch]
 Fix a stage $h$ and condition on $\widehat V_{h+1}^\pi$. By policy completeness,
 the regression target has the form
-$r_h(s,a)+\E[\widehat V_{h+1}^\pi(s')\mid s,a]=(\theta_h^\star)^\top\phi(s,a)$
-for some $\theta_h^\star$. Thus each stage is a fixed-design linear regression with
-$O(H)$-sub-Gaussian noise. Define the normalized covariance $\Lambda_h:=\frac{1}{N}\sum_{(s,a,r,s')\in D_h}\phi(s,a)\phi(s,a)^\top=\widehat\Sigma_h$.
+\[
+r_h(s,a)+\E[\widehat V_{h+1}^\pi(s')\mid s,a]=(\tilde\theta_h)^\top\phi(s,a)
+\]
+for some $\tilde\theta_h\in\R^d$. Thus each stage is a fixed-design linear regression with
+$O(H)$-sub-Gaussian noise. Define the normalized covariance
+$\Lambda_h:=\frac{1}{N}\sum_{(s,a,r,s')\in D_h}\phi(s,a)\phi(s,a)^\top=\widehat\Sigma_h$.
 Coverage implies $\Lambda_h\succeq \Sigma/\kappa$, hence
 \[
 \sup_{(s,a)}\phi(s,a)^\top \Lambda_h^{-1}\phi(s,a)
@@ -1156,7 +1159,7 @@ Let $\Delta:=m^{-H/2}$.  A direct calculation shows that the KL divergence betwe
 a single sample under these two reward distributions satisfies
 \[
 \mathrm{KL}\big(P_{\Delta}\,\|\,P_{0}\big)
-= -\tfrac12\log(1-\Delta^2)
+\leq -\tfrac12\log(1-\Delta^2)
 \;\le\; 2\Delta^2
 \qquad (\text{for }\Delta\le 1/2).
 \]

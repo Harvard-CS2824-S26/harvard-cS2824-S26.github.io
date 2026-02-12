@@ -221,7 +221,9 @@ leverage score.
     
     We will formalize this in three steps:
     \begin{enumerate}
-        \item \textbf{Regression Analysis:} Bound the error $\|\widehat{\theta}_h - \theta_h^\star\|$ using OLS.
+        \item \textbf{Regression Analysis:} Bound the error
+          $\|\widehat{\theta}_h - \tilde\theta_h\|$ using OLS (where
+          $\tilde\theta_h$ is the target.)
         \item \textbf{Bellman Residuals:} D-Optimal Design lets us translate parameter err into uniform value function error $\text{Res}_h$.
         \item \textbf{The Simulation Lemma:} Show how residuals propagate to the final value/policy.
     \end{enumerate}
@@ -251,9 +253,9 @@ leverage score.
     \pause
     By \textbf{Completeness}, the true expected target is linear:
     \[
-    \E[y_i | s_i, a_i] = (\Tcal_h \widehat{Q}_{h+1})(s_i, a_i) = (\theta_h^\star)^\top \phi(s_i, a_i)
+    \E[y_i | s_i, a_i] = (\Tcal_h \widehat{Q}_{h+1})(s_i, a_i) = (\widetilde\theta_h)^\top \phi(s_i, a_i)
     \]
-    Thus, $y_i = (\theta_h^\star)^\top \phi(s_i, a_i) + \xi_i$, where $\xi_i$ is sub-Gaussian noise.
+    Thus, $y_i = (\widetilde\theta_h)^\top \phi(s_i, a_i) + \xi_i$, where $\xi_i$ is sub-Gaussian noise.
 \end{frame}
 
 \begin{frame}{Step 1: The Fixed Design Bound}
@@ -262,7 +264,7 @@ leverage score.
     \begin{block}{OLS Generalization Bound}
     With probability $1-\delta$, for all $h$
     \[
-    \|\widehat{\theta}_h - \theta_h^\star\|_{\Lambda_h} \;\le\; c \cdot H \sqrt{\frac{d \log(H/\delta)}{N}}
+    \|\widehat{\theta}_h - \widetilde\theta_h\|_{\Lambda_h} \;\le\; c \cdot H \sqrt{\frac{d \log(H/\delta)}{N}}
     \]
     (Here the noise scale is $H$ because values are bounded by $H$).
     \end{block}
@@ -273,8 +275,8 @@ leverage score.
     We want to bound the prediction error at \emph{any} $(s,a)$.
     
     \[
-    | (\widehat{\theta}_h - \theta_h^\star)^\top \phi(s,a) | 
-    \;\le\; \|\widehat{\theta}_h - \theta_h^\star\|_{\Lambda_h} \sqrt{\phi(s,a)^\top \Lambda_h^{-1} \phi(s,a)}
+    | (\widehat{\theta}_h - \widetilde\theta_h)^\top \phi(s,a) | 
+    \;\le\; \|\widehat{\theta}_h - \widetilde\theta_h\|_{\Lambda_h} \sqrt{\phi(s,a)^\top \Lambda_h^{-1} \phi(s,a)}
     \]
 
     \vspace{0.2cm}
@@ -400,7 +402,7 @@ leverage score.
 \begin{frame}[plain]
   \vfill
   \begin{center}
-    {\Huge \bfseries Offline RL Recap}
+    {\Huge \bfseries Offline RL}
   \end{center}
   \vfill
 \end{frame}

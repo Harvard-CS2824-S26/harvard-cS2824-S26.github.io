@@ -15,195 +15,6 @@
 \include{macros} % Assuming you have this file
 
 
-% =============================================================================
-% PREAMBLE / MACROS (Put this before \begin{document} if not already there)
-% =============================================================================
-\usepackage{tikz}
-\usetikzlibrary{arrows.meta,fit,positioning,calc}
-
-% Define the Figure as a macro to reuse it cleanly
-\newcommand{\HardInstanceFig}{
-\begin{tikzpicture}[
-  >=Latex,
-  font=\small,
-  state/.style={circle,draw,minimum size=9mm,inner sep=1pt},
-  % Make boxes visually distinct from a2 dashed edges:
-  obsbox/.style={draw,densely dotted,rounded corners,inner sep=3.0mm},
-  % If you want subtle arrowheads, use these instead:
-  % aone/.style={thick,-{Latex[length=1.9mm]}},
-  % atwo/.style={thick,dashed,-{Latex[length=1.9mm]}},
-  aone/.style={thick},
-  atwo/.style={thick,dashed}
-]
-
-% -------------------------
-% Geometry (as before)
-% -------------------------
-\def\xOne{0}
-\def\xTwo{2.1}
-\def\xThree{4.2}
-\def\xDots{6.2}
-\def\xLast{8.4}
-\def\xAgg{11.2}
-
-\def\yRowZero{0}
-\def\yRowOne{-2.0}
-\def\yRowMid{-4.2}
-\def\yRowHm{-6.4}
-\def\yRowH{-8.4}
-
-% How much extra room to the LEFT for the D_h boxes
-\def\boxLeftExtra{2.1cm}
-
-% Shift the whole picture right to create left margin
-\begin{scope}[xshift=1.6cm]
-
-% -------------------------
-% Top text: features + rewards legend + action legend
-% -------------------------
-% Use text widths to make the top feel "more justified"/blocky.
-\node[anchor=north west,align=left,text width=6.2cm] at (1,2.9) {%
-\textbf{features:}\\
-$\phi(s_h^c,a_1)=e_c$\\
-$\phi(s_h^c,a_2)=e_{m+c}$\\
-$\phi(g_h,a)=\frac{1}{\sqrt m}(e_1+e_2+\cdots+e_m)$};
-
-\node[anchor=north west,align=left,text width=5.4cm] at (-3,2.9) {%
-\textbf{reward params:}\\
-$r_\infty\in\{0,\ m^{-H/2}\}$\\
-$\alpha_h := r_\infty\, m^{(H-h)/2}$};
-
-% Legend box (higher)
-\node[draw,minimum width=2.7cm,minimum height=1.4cm,anchor=north east] (leg)
-  at (\xAgg+3.2,2.8) {};
-\draw[aone] ([xshift=-2.3cm,yshift=-0.45cm]leg.north east) -- ++(1.2,0)
-  node[midway,above] {$a_1$};
-\draw[atwo] ([xshift=-2.3cm,yshift=-1.05cm]leg.north east) -- ++(1.2,0)
-  node[midway,above] {$a_2$};
-
-  
-% -------------------------
-% Nodes
-% -------------------------
-\node[state] (s0-1) at (\xOne,\yRowZero) {$s_0^{1}$};
-\node[state] (s0-2) at (\xTwo,\yRowZero) {$s_0^{2}$};
-\node[state] (s0-3) at (\xThree,\yRowZero) {$s_0^{3}$};
-\node        (s0-d) at (\xDots,\yRowZero) {$\cdots$};
-\node[state] (s0-m) at (\xLast,\yRowZero) {$s_0^{m}$};
-\node[state] (g0)   at (\xAgg,\yRowZero) {$g_0$};
-
-\node[state] (s1-1) at (\xOne,\yRowOne) {$s_1^{1}$};
-\node[state] (s1-2) at (\xTwo,\yRowOne) {$s_1^{2}$};
-\node[state] (s1-3) at (\xThree,\yRowOne) {$s_1^{3}$};
-\node        (s1-d) at (\xDots,\yRowOne) {$\cdots$};
-\node[state] (s1-m) at (\xLast,\yRowOne) {$s_1^{m}$};
-\node[state] (g1)   at (\xAgg,\yRowOne) {$g_1$};
-
-\node[state] (sh-1) at (\xOne,\yRowMid) {$s_h^{1}$};
-\node[state] (sh-2) at (\xTwo,\yRowMid) {$s_h^{2}$};
-\node[state] (sh-3) at (\xThree,\yRowMid) {$s_h^{3}$};
-\node        (sh-d) at (\xDots,\yRowMid) {$\cdots$};
-\node[state] (sh-m) at (\xLast,\yRowMid) {$s_h^{m}$};
-\node[state] (gh)   at (\xAgg,\yRowMid) {$g_h$};
-
-\node[state] (sHm-1) at (\xOne,\yRowHm) {$s_{H-2}^{1}$};
-\node[state] (sHm-2) at (\xTwo,\yRowHm) {$s_{H-2}^{2}$};
-\node[state] (sHm-3) at (\xThree,\yRowHm) {$s_{H-2}^{3}$};
-\node        (sHm-d) at (\xDots,\yRowHm) {$\cdots$};
-\node[state] (sHm-m) at (\xLast,\yRowHm) {$s_{H-2}^{m}$};
-\node[state] (gHm)   at (\xAgg,\yRowHm) {$g_{H-2}$};
-
-\node[state] (sH-1) at (\xOne,\yRowH) {$s_{H-1}^{1}$};
-\node[state] (sH-2) at (\xTwo,\yRowH) {$s_{H-1}^{2}$};
-\node[state] (sH-3) at (\xThree,\yRowH) {$s_{H-1}^{3}$};
-\node        (sH-d) at (\xDots,\yRowH) {$\cdots$};
-\node[state] (sH-m) at (\xLast,\yRowH) {$s_{H-1}^{m}$};
-\node[state] (gH)   at (\xAgg,\yRowH) {$g_{H-1}$};
-
-% -------------------------
-% Data support boxes: extend LEFT to create writing room
-% -------------------------
-\coordinate (L0)  at ([xshift=-\boxLeftExtra]s0-1.west);
-\coordinate (L1)  at ([xshift=-\boxLeftExtra]s1-1.west);
-\coordinate (Lh)  at ([xshift=-\boxLeftExtra]sh-1.west);
-\coordinate (LHm) at ([xshift=-\boxLeftExtra]sHm-1.west);
-\coordinate (LH)  at ([xshift=-\boxLeftExtra]sH-1.west);
-
-\node[obsbox,fit=(L0)(s0-m)] (box0) {};
-\node[obsbox,fit=(L1)(s1-m)] (box1) {};
-\node[obsbox,fit=(Lh)(sh-m)] (boxh) {};
-\node[obsbox,fit=(LHm)(sHm-m)] (boxHm) {};
-\node[obsbox,fit=(LH)(sH-m)] (boxH) {};
-
-% Labels INSIDE boxes (shifted down a bit more to avoid top-border collision)
-\def\labx{2.5mm}
-\def\laby{-3.2mm}
-\node[anchor=north west] at ([xshift=\labx,yshift=\laby]box0.north west) {$D_0$};
-\node[anchor=north west] at ([xshift=\labx,yshift=\laby]box1.north west) {$D_1$};
-\node[anchor=north west] at ([xshift=\labx,yshift=\laby]boxh.north west) {$D_h$};
-\node[anchor=north west] at ([xshift=\labx,yshift=\laby]boxHm.north west) {$D_{H-2}$};
-\node[anchor=north west] at ([xshift=\labx,yshift=\laby]boxH.north west) {$D_{H-1}$};
-
-% Reward notes INSIDE boxes (left margin)
-\node[anchor=north west,align=left] at ([xshift=\labx,yshift=-8.2mm]box0.north west)
-  {\scriptsize $r_0=0$};
-\node[anchor=north west,align=left] at ([xshift=\labx,yshift=-8.2mm]box1.north west)
-  {\scriptsize $r_1=0$};
-\node[anchor=north west,align=left] at ([xshift=\labx,yshift=-8.2mm]boxh.north west)
-  {\scriptsize $r_h=0$};
-\node[anchor=north west,align=left] at ([xshift=\labx,yshift=-8.2mm]boxHm.north west)
-  {\scriptsize $r_{H-2}=0$};
-
-\node[anchor=north west,align=left] at ([xshift=\labx,yshift=-6.5mm]boxH.north west)
-  {\scriptsize $r_{H-1}\in\{\pm1\}$\\[-0.5mm]\scriptsize $\E[r_{H-1}]=r_\infty$};
-
-% -------------------------
-% Right-chain reward labels (stage-indexed, matches text)
-% -------------------------
-\node[anchor=west,align=left] at ([xshift=3mm]g0.east)
-  {\scriptsize $r_0=\alpha_0-\alpha_1$};
-\node[anchor=west,align=left] at ([xshift=3mm]g1.east)
-  {\scriptsize $r_1=\alpha_1-\alpha_2$};
-\node[anchor=west,align=left] at ([xshift=3mm]gh.east)
-  {\scriptsize $r_h=\alpha_h-\alpha_{h+1}$};
-\node[anchor=west,align=left] at ([xshift=3mm]gHm.east)
-  {\scriptsize $r_{H-2}=\alpha_{H-2}-\alpha_{H-1}$};
-\node[anchor=west,align=left] at ([xshift=3mm]gH.east)
-  {\scriptsize $r_{H-1}=\alpha_{H-1}$};
-
-% -------------------------
-% Transitions
-% -------------------------
-% a2 edges (vertical, observed chain)
-\foreach \u/\v in {s0-1/s1-1,s0-2/s1-2,s0-3/s1-3,s0-m/s1-m,
-                  s1-1/sh-1,s1-2/sh-2,s1-3/sh-3,s1-m/sh-m,
-                  sh-1/sHm-1,sh-2/sHm-2,sh-3/sHm-3,sh-m/sHm-m,
-                  sHm-1/sH-1,sHm-2/sH-2,sHm-3/sH-3,sHm-m/sH-m} {
-  \draw[atwo] (\u) -- (\v);
-}
-
-% a1 edges (to aggregator at next layer)
-\foreach \u/\v in {s0-1/g1,s0-2/g1,s0-3/g1,s0-m/g1,
-                  s1-1/gh,s1-2/gh,s1-3/gh,s1-m/gh,
-                  sh-1/gHm,sh-2/gHm,sh-3/gHm,sh-m/gHm,
-                  sHm-1/gH,sHm-2/gH,sHm-3/gH,sHm-m/gH} {
-  \draw[aone] (\u) -- (\v);
-}
-
-% aggregator chain: show BOTH actions with slight separation
-\foreach \u/\v in {g0/g1,g1/gh,gh/gHm,gHm/gH} {
-  \draw[aone] (\u) to[bend left=10] (\v);
-  \draw[atwo] (\u) to[bend right=10] (\v);
-}
-
-% dots
-\node at (\xAgg,{(\yRowMid+\yRowHm)/2}) {$\vdots$};
-\node at (\xOne,{(\yRowMid+\yRowHm)/2}) {$\vdots$};
-
-\end{scope}
-\end{tikzpicture}
-
-}
 
 \title{RL with Linear Features: When Does It Work \\ \& When Doesn't It Work?}
 \subtitle{Part 3: Lower Bounds\\
@@ -226,7 +37,7 @@ CS 2284: Foundations of Reinforcement Learning}
 % Part I: The Setup (Recap)
 % =============================================================================
 
-\section{Recap: The Split Universe}
+\section{The Split Universe: Completeness vs. Realizability}
 
 \begin{frame}{1. The Critical Decomposition}
     To analyze error propagation, we introduce the \textbf{Infinite-Sample Target}.
@@ -246,11 +57,13 @@ CS 2284: Foundations of Reinforcement Learning}
     \[
     \|\widehat{Q}_h - Q^\star_h\|_\infty \le \underbrace{\|\widehat{Q}_h - f^\star_h\|_\infty}_{\text{Statistical Error}} + \underbrace{\|f^\star_h - Q^\star_h\|_\infty}_{\text{Recursive Stability}}
     \]
-    \begin{itemize}
+   \begin{itemize}
         \item \textbf{Statistical Error:} Controlled by $N$ and D-Optimal Design ($\approx \sqrt{d/N}$).
         \item \textbf{Recursive Stability:} This is where the universe splits.
     \end{itemize}
 \end{frame}
+
+
 
 \begin{frame}{2. The Split Universe}
     How does the Recursive Error $\|f^\star_h - Q^\star_h\|_\infty$ behave?\\
@@ -261,6 +74,7 @@ CS 2284: Foundations of Reinforcement Learning}
     
     \begin{columns}[t]
         \column{0.48\textwidth}
+
         \begin{block}{Universe A: Completeness}
         \textbf{Assumption:} $\Tcal_h$ preserves linearity.
         
@@ -279,6 +93,7 @@ CS 2284: Foundations of Reinforcement Learning}
         \end{block}
 
         \column{0.48\textwidth}
+
         \begin{block}{Universe B: Realizability Only}
         \textbf{Assumption:} Only $Q^\star \in \Fcal$.
         
@@ -312,16 +127,64 @@ CS 2284: Foundations of Reinforcement Learning}
 
     \vspace{0.1cm}
     
-    \textbf{The Question for Today:}
-    Is this $\sqrt{d}$ amplification an artifact of our loose analysis? Or is it a fundamental barrier?
+    \textbf{The Verdict:}
+    The "price" of converting the $L_2$ guarantee (regression) to the $L_\infty$ guarantee (DP) is exactly $\sqrt{d}$.
     
     \centering
-    \alert{Today: The amplification is real, information theoretically.}
+    \alert{Total Amplification over $H$ steps $\approx (\sqrt{d})^H$.}
 \end{frame}
+
+
+\iffalse
+\begin{frame}{3. The Amplification Mechanism (Universe B): projection is not stable}
+\small
+
+The OLS population projection is:
+\[
+\Pi_{\Fcal,\rho}(g)\;:=\;\argmin_{f\in\Fcal}\ \E_{(s,a)\sim\rho}\big[(f(s,a)-g(s,a))^2\big].
+\]
+Then (using realizability for $Q_h^\star$):
+\[
+f_h^\star \;=\; \Pi_{\Fcal,\rho}(\Tcal_h \widehat Q_{h+1}) \;=\; \theta_h^\top\phi,
+\qquad
+Q_h^\star \;=\; \Pi_{\Fcal,\rho}(\Tcal_h Q_{h+1}^\star) \;=\; (\theta_h^\star)^\top\phi.
+\]
+
+\vspace{0.05cm}
+\textbf{Recursive error bound (Universe B):} Assuming we use the
+$D$-opt design $\Sigma_\rho :=
+\E_{\rho}[\phi\phi^\top]$ in our regression.
+\begin{align*}
+\|f_h^\star - Q_h^\star\|_\infty
+&= \sup_{s,a}\Big|(\theta_h-\theta_h^\star)^\top \phi(s,a)\Big|\\
+&\le \sup_{s,a}\ \|\theta_h-\theta_h^\star\|_{\Sigma_\rho}\,
+\sqrt{\phi(s,a)^\top \Sigma_\rho^{-1}\phi(s,a)} \\
+&\le \sqrt d\ \|\theta_h-\theta_h^\star\|_{\Sigma_\rho}
+\qquad\text{(D-opt leverage: $\sup \phi^\top\Sigma_\rho^{-1}\phi \le d$)}.\\
+&\le \sqrt d\ \|\theta_h-\theta_h^\star\|_{\Sigma_\rho}
+\qquad\text{(D-opt leverage: $\sup \phi^\top\Sigma_\rho^{-1}\phi \le d$)}.\\
+  \|\widehat{Q}_{h+1} - Q^\star_{h+1}\|_\infty
+\end{align*}
+
+\vspace{-0.05cm}
+\centering
+\alert{Total amplification over $H$ steps $\approx (\sqrt{d})^H$.}
+
+\end{frame}
+\fi
 
 % =============================================================================
 % Part II: The Offline Lower Bound
 % =============================================================================
+
+\begin{frame}[plain]
+  \vfill
+  \begin{center}
+    {\Huge \bfseries Offline Lower Bounds with Realizatiblity+Coverage}
+  \end{center}
+  \vfill
+\end{frame}
+\addtocounter{framenumber}{-1}
 
 \section{The Offline Lower Bound}
 
@@ -350,7 +213,7 @@ CS 2284: Foundations of Reinforcement Learning}
     \[
     N \ge \Omega\left( (d/2)^H \right)
     \]
-    samples to estimate $V^\pi(s_0)$ to constant accuracy.
+    samples to estimate $Q^\pi(s_0,a)$ to constant accuracy.
     \end{block}
 
     \vspace{0.3cm}
@@ -366,6 +229,29 @@ CS 2284: Foundations of Reinforcement Learning}
 
 
 \section{The Construction}
+
+\begin{frame}{The High-Level Idea: Hiding a Secret}
+    \textbf{The Goal:} Construct an MDP where the optimal value depends on a tiny parameter $r_\infty$, but we can only learn it by solving a "hard" regression problem.
+    
+    \vspace{0.3cm}
+    \textbf{The Mechanism (Two Chains):}
+    \begin{enumerate}
+        \item \textbf{The Hidden Chain ($g$):} 
+        Carries the true "signal" ($V \approx \text{Large}$).
+        \item \textbf{The Observed Chain ($s$):} 
+        Carries a "noisy version" of the signal ($V \approx \text{Small}$).
+    \end{enumerate}
+    
+    \vspace{0.3cm}
+    \textbf{The "Trap":}
+    Linearly Realizable implies that $V(g)$ is coupled to $V(s)$ by a factor of $\sqrt{d}$.
+    \begin{itemize}
+        \item To know the large value at $g$, we must estimate the small value at $s$.
+        \item Estimating the small value requires cancelling out huge noise.
+        \item This requires exponentially many samples.
+    \end{itemize}
+\end{frame}
+
 
 % --- Slide 1: Schematic and Definitions ---
 \begin{frame}{Offline PE hard instance (schematic)}
@@ -416,33 +302,12 @@ CS 2284: Foundations of Reinforcement Learning}
 \end{columns}
 \end{frame}
 
-% --- Slide 0: High Level Intuition ---
-\begin{frame}{The High-Level Idea: Hiding a Secret}
-    \textbf{The Goal:} Construct an MDP where the optimal value depends on a tiny parameter $r_\infty$, but we can only learn it by solving a "hard" regression problem.
-    
-    \vspace{0.3cm}
-    \textbf{The Mechanism (Two Chains):}
-    \begin{enumerate}
-        \item \textbf{The Hidden Chain ($g$):} 
-        Carries the true "signal" ($V \approx \text{Large}$).
-        \item \textbf{The Observed Chain ($s$):} 
-        Carries a "noisy version" of the signal ($V \approx \text{Small}$).
-    \end{enumerate}
-    
-    \vspace{0.3cm}
-    \textbf{The "Trap":}
-    Linearly Realizable means $V(g) \approx \sqrt{d} \times V(s)$.
-    \begin{itemize}
-        \item To know the large value at $g$, we must estimate the small value at $s$.
-        \item Estimating the small value requires cancelling out huge noise.
-        \item This requires exponentially many samples.
-    \end{itemize}
-\end{frame}
+
 
 % --- Slide 2: Dynamics ---
 \begin{frame}{State space and transitions (two chains)}
 \small
-Fix $m\ge 1$, set $d=2m$, $\Acal=\{a_1,a_2\}$, horizon $H$.
+Fix $m\ge 1$, set $d=2m$, $|\Scal_h|=m+1$, $\Acal=\{a_1,a_2\}$, horizon $H$.
 
 \vspace{0.5em}
 \textbf{State space (layered).}
@@ -467,7 +332,7 @@ Fix $m\ge 1$, set $d=2m$, $\Acal=\{a_1,a_2\}$, horizon $H$.
 \end{frame}
 
 % --- Slide 3: Features & Coverage ---
-\begin{frame}{Features and Coverage}
+\begin{frame}{Features and Verifying Perfect Coverage}
     \textbf{The Features:}
     We use the standard basis for the observed states, and a dense "mean" vector for the aggregators.
     \begin{itemize}
@@ -489,192 +354,72 @@ Fix $m\ge 1$, set $d=2m$, $\Acal=\{a_1,a_2\}$, horizon $H$.
     \alert{Perfect isotropic coverage!} The offline data explores every dimension of the feature space equally.
 \end{frame}
 
-% --- Slide 4: Realizability (Base Case) ---
-\begin{frame}{Step 1: Verifying Realizability (Base Case $h=H-1$)}
-    Let's prove that $Q_{H-1}$ is linear.
+% --- Slide 4: Realizability Step 1 ---
+\begin{frame}{Verifying Realizability. Step 1: The Constraint}
+    Linearity $Q(s,a) = \theta^\top \phi(s,a)$ imposes rigid
+    structure. (Fix level $h$ below. Let $\pi$ be arbitrary.)
     
-    \textbf{The Values:}
-    \begin{itemize}
-        \item Leaves ($s^i$): Mean reward is $r_\infty$. $\implies Q(s^i, \cdot) = r_\infty$.
-        \item Aggregator ($g$): Deterministic reward $\alpha_{H-1} = r_\infty \sqrt{m}$. $\implies Q(g, \cdot) = r_\infty \sqrt{m}$.
-    \end{itemize}
-
-    \vspace{0.2cm}
-    \textbf{The Linear Fit:}
-    Can we find a $\theta$ such that $\theta^\top \phi = Q$?
-    Try the uniform vector: $\theta = \sum_{j=1}^{2m} r_\infty e_j$.
+    \vspace{0.1cm}
     
-    \vspace{0.2cm}
-    \textbf{Verification:}
-    \begin{enumerate}
-        \item \textbf{At $s^i$:} $\theta^\top \phi(s^i) = (\sum r_\infty e_j)^\top e_i = r_\infty$. \textcolor{green!60!black}{\checkmark}
-        \item \textbf{At $g$:} $\theta^\top \phi(g) = (\sum r_\infty e_j)^\top (\frac{1}{\sqrt{m}} \sum e_k) = \frac{r_\infty}{\sqrt{m}} (m) = r_\infty \sqrt{m}$. \textcolor{green!60!black}{\checkmark}
-    \end{enumerate}
+    \textbf{1. The Observed States are Tabular:}
+    Since $\phi(s^i, a_1) = e_i$, the weights $\theta$ just memorize the values:
+    \[
+    \theta_i = Q(s^i, a_1) \quad \text{and} \quad \theta_{m+i} = Q(s^i, a_2)
+    \]
+    We can represent \emph{any} function on the observed states perfectly.
     
+    \vspace{0.1cm}
+    
+    \textbf{2. The Aggregator is Constrained:}
+    However, the value at $g$ is fixed by the weights $\theta$:
+    \[
+    Q(g, \cdot) \;=\; \theta^\top \phi(g) \;=\; \theta^\top \left( \frac{1}{\sqrt{m}} \sum_{i=1}^m e_i \right)
+    \]
+    Substituting $\theta_i = Q(s^i, a_1)$, we get the \textbf{Realizability Constraint}:
+    \[
+    \boxed{ Q(g, \cdot) \;=\; \frac{1}{\sqrt{m}} \sum_{i=1}^m Q(s^i, a_1) }
+    \]
     \small
-    \emph{It fits perfectly! The linearity forces the value at $g$ to be $\sqrt{m}$ times the value at $s$.}
+    \emph{To be realizable, the value at $g$ must be the scaled sum of values at $s$.}
 \end{frame}
 
-% --- Slide 5: Realizability (Inductive Step) ---
-\begin{frame}{Step 2: Verifying Realizability (Inductive Step $h < H-1$)}
-    Assume $V_{h+1}(g_{h+1}) = \alpha_{h+1}$.
+% --- Slide 5: Realizability Step 2 ---
+\begin{frame}{Verifying Realizability. Step 2: Checking the Values}
+    Does our specific MDP satisfy this constraint?
+    \[
+    \text{Constraint: } Q_h(g_h, \cdot) \overset{?}{=} \frac{1}{\sqrt{m}} \sum_{i=1}^m Q_h(s_h^i, a_1)
+    \]
+
+    \textbf{First:}
+    By construction, $\alpha_h = \sqrt{m} \alpha_{h+1}$.
     
-    \textbf{The Values at step $h$:}
-    \begin{itemize}
-        \item \textbf{Action $a_1$ (Jump):} $Q_h(s^i, a_1) = 0 + V_{h+1}(g_{h+1}) = \alpha_{h+1}$.
-        \item \textbf{Aggregator $g_h$:} $V_h(g_h) = (\alpha_h - \alpha_{h+1}) + \alpha_{h+1} = \alpha_h$.
-    \end{itemize}
+    \textbf{LHS (Actual Value at $g$):}
+    By construction, rewards telescope so $V_h(g_h) = \alpha_h=\sqrt{m}V_{h+1}(g_{h+1})$.
     
-    \vspace{0.2cm}
-    \textbf{The Linear Fit:}
-    We need $\theta$ to match $\alpha_{h+1}$ at leaves and $\alpha_h$ at aggregator.
-    Try $\theta = \sum_{i=1}^m \alpha_{h+1} e_i$.
+    \vspace{0.3cm}
     
-    \vspace{0.2cm}
-    \textbf{Verification:}
-    \begin{enumerate}
-        \item \textbf{At $s^i$:} $\theta^\top e_i = \alpha_{h+1}$. \textcolor{green!60!black}{\checkmark}
-        \item \textbf{At $g$:} $\theta^\top (\frac{1}{\sqrt{m}}\sum e_i) = \sqrt{m} \alpha_{h+1}$.
-        \item Does $\sqrt{m} \alpha_{h+1} = \alpha_h$?
-        \[
-        \sqrt{m} (r_\infty m^{(H-(h+1))/2}) = r_\infty m^{(H-h)/2} = \alpha_h. \quad \textcolor{green!60!black}{\checkmark}
-        \]
-    \end{enumerate}
-    \small
-    \emph{Realizability holds, but implies geometric amplification at every step.}
+    \textbf{RHS (Sum of Values at $s$):}
+    Action $a_1$ at $s_h^i$ jumps to $g_{h+1}$.
+    \[
+    Q_h(s_h^i, a_1) = 0 + V_{h+1}(g_{h+1}) %= \alpha_{h+1}
+    \]
+    So the sum is:
+    \[
+    \frac{1}{\sqrt{m}} \sum_{i=1}^m V_{h+1}(g_{h+1}) \;=\; \sqrt{m} V_{h+1}(g_{h+1})
+    \]
+
+    \textcolor{green!60!black}{\textbf{Constraint Verified.}}
 \end{frame}
 
 % --- Slide 6: Impossibility ---
 \begin{frame}{Step 3: The Impossibility Result}
     \textbf{Putting it together:}
     \begin{itemize}
-        \item We verified Realizability holds for all $h$.
-        \item Value at start: $V^\pi(g_0) = \alpha_0 = m^{H/2} r_\infty$.
-    \end{itemize}
-
-    \vspace{0.3cm}
-    \textbf{The Hypothesis Test:}
-    To decide if $V^\pi(g_0)$ is 0 or 1, we must distinguish:
-    \[
-    r_\infty = 0 \quad \text{vs} \quad r_\infty = m^{-H/2}
-    \]
-    
-    \textbf{The Bottleneck:}
-    We never see $g_h$. We only see the noisy leaves at $H-1$.
-    \begin{itemize}
-        \item Signal Gap: $\Delta = m^{-H/2}$.
-        \item Samples Needed: $N \approx 1/\Delta^2 = m^H = (d/2)^H$.
-    \end{itemize}
-    
-    \centering
-    \alert{We need exponential samples to track the value of the unseen state.}
-\end{frame}
-
-% --- Slide 2: Dynamics ---
-\begin{frame}{State space and transitions (two chains)}
-\small
-Fix $m\ge 1$, set $d=2m$, $\Acal=\{a_1,a_2\}$, horizon $H$.
-
-\vspace{0.5em}
-\textbf{State space (layered).}
-\[
-\Scal_h := \{s_h^1,\dots,s_h^m\}\cup\{g_h\},\qquad h=0,\dots,H-1,
-\quad\text{and } s_0=g_0.
-\]
-
-\vspace{0.75em}
-\textbf{Deterministic transitions for $h\le H-2$:}
-\begin{align*}
-&\text{From any state, action $a_1$ jumps to aggregators:}
-&&P(g_{h+1}\mid s,a_1)=1 \quad \forall s\in\Scal_h.\\
-&\text{Action $a_2$ keeps index on observed chain:}
-&&P(s_{h+1}^i\mid s_h^i,a_2)=1 \quad \forall i\in[m].\\
-&\text{Aggregator chain stays on aggregators:}
-&&P(g_{h+1}\mid g_h,a_2)=1.
-\end{align*}
-
-\vspace{0.5em}
-\textbf{Interpretation:} $a_2$ keeps you in the observed world; $a_1$ (or being at $g_h$) takes you off it.
-\end{frame}
-
-% --- Slide 3: Features & Coverage ---
-\begin{frame}{Features and Coverage}
-    \textbf{The Features:}
-    We use the standard basis for the observed states, and a dense "mean" vector for the aggregators.
-    \begin{itemize}
-        \item $\phi(s^i, a_1) = e_i$ \quad and \quad $\phi(s^i, a_2) = e_{m+i}$
-        \item $\phi(g, \cdot) = \frac{1}{\sqrt{m}} \sum_{i=1}^m e_i$
-    \end{itemize}
-
-    \vspace{0.3cm}
-    \textbf{Observed Data Distribution ($\mu_h$):}
-    Uniform distribution over the $m$ observed states $\{s_h^i\}_{i=1}^m$ and actions.
-    
-    \vspace{0.3cm}
-    \textbf{Coverage Check:}
-    Calculate the covariance matrix of the data:
-    \[
-    \Sigma_{D} \;=\; \frac{1}{2m} \sum_{i=1}^m (e_i e_i^\top + e_{m+i} e_{m+i}^\top) \;=\; \frac{1}{2m} I \;=\; \frac{1}{d} I
-    \]
-    
-    \alert{Perfect isotropic coverage!} The offline data explores every dimension of the feature space equally.
-\end{frame}
-
-% --- Slide 4: Base Case (Bottom Up) ---
-\begin{frame}{Verification Step 1: The Base Case ($h=H-1$)}
-    Let's check Realizability at the last layer.
-    
-    \begin{itemize}
-        \item \textbf{On the observed states ($s_{H-1}^i$):}
-        The rewards are Bernoulli$(r_\infty)$.
-        \[
-        Q_{H-1}(s_{H-1}^i, \cdot) = \E[r] = r_\infty
-        \]
-        \item \textbf{On the aggregator ($g_{H-1}$):}
-        The reward is deterministic and large.
-        \[
-        Q_{H-1}(g_{H-1}, \cdot) = \alpha_{H-1} = r_\infty \sqrt{m}
-        \]
-    \end{itemize}
-    
-    \textbf{Does a linear $\theta$ exist?}
-    Consider $\theta = \sum_{j=1}^{2m} r_\infty e_j$ (the all-$r_\infty$ vector).
-    \begin{enumerate}
-        \item $\phi(s^i)^\top \theta = e_i^\top \theta = r_\infty$. \textbf{(Matches!)}
-        \item $\phi(g)^\top \theta = (\frac{1}{\sqrt{m}} \sum e_i)^\top \theta = \frac{1}{\sqrt{m}} (m \cdot r_\infty) = r_\infty \sqrt{m}$. \textbf{(Matches!)}
-    \end{enumerate}
-\end{frame}
-
-% --- Slide 5: Inductive Step (Amplification) ---
-\begin{frame}{Verification Step 2: The Amplification ($h < H-1$)}
-    Suppose $V_{h+1}(g_{h+1}) = \alpha_{h+1}$.
-    
-    \textbf{Q-values at layer $h$:}
-    \begin{itemize}
-        \item \textbf{Action $a_1$ (Jump):} Transitions to $g_{h+1}$.
-        \[
-        Q_h(s_h^i, a_1) = 0 + V_{h+1}(g_{h+1}) = \alpha_{h+1}
-        \]
-        \item \textbf{Aggregator $g_h$:} Also transitions to $g_{h+1}$.
-        \[
-        V_h(g_h) = r_h(g_h) + V_{h+1}(g_{h+1}) = (\alpha_h - \alpha_{h+1}) + \alpha_{h+1} = \alpha_h
-        \]
-    \end{itemize}
-    
-    \textbf{The Geometric Amplification:}
-    If $\theta$ predicts $\alpha_{h+1}$ on the standard basis (leaves), it \emph{must} predict $\sqrt{m} \alpha_{h+1}$ on the dense vector (aggregator).
-    \[
-    \text{If } \theta^\top e_i = \alpha_{h+1} \implies \theta^\top \phi(g) = \sqrt{m} \alpha_{h+1}
-    \]
-    Thus, $V(g_h) = \sqrt{m} V(g_{h+1})$. The value grows by $\sqrt{m}$ at every step!
-\end{frame}
-
-% --- Slide 6: Impossibility ---
-\begin{frame}{Step 3: The Impossibility Result}
-    \textbf{Putting it together:}
-    \begin{itemize}
-        \item We verified Realizability holds for all $h$.
-        \item Value at start: $V^\pi(g_0) = m^{H/2} r_\infty$.
+        \item We verified Realizability + Opt. Coverage hold for all
+          $h$.
+        \item Problem choice: $r_\infty\in\{0,\ m^{-H/2}\}$
+        \item Value at start: $V^\pi(g_0) = \alpha_0 = m^{H/2}
+          r_\infty\in\{0,1\}$.
     \end{itemize}
 
     \vspace{0.3cm}
@@ -696,95 +441,163 @@ Fix $m\ge 1$, set $d=2m$, $\Acal=\{a_1,a_2\}$, horizon $H$.
 \end{frame}
 
 % --- Slide 7: LSPE Discussion ---
-\begin{frame}{Why LSPE Fails (Variance Explosion)}
+\begin{frame}{Discussion 1: Why LSPE Fails (Variance Explosion)}
     \textbf{The Paradox:}
-    LSPE is an unbiased estimator. If the sample size is infinite, it converges to the true parameters. Why does it fail here?
+    LSPE is an unbiased estimator. Why does it fail?
     
+    \vspace{0.2cm}
+    
+    \textbf{1. Tabular Learning on Observed States (Base Case)}
+    On the observed states, the features are standard basis vectors $e_i$. Thus, LSPE estimates the parameters $\widehat{Q}_{H-1}(s^i, a_1)$ purely locally:
+    \[
+    \widehat{Q}_{H-1}(s^i, a_1) \;\approx\; Q^\star_{H-1}(s^i, a_1) \pm \frac{\sigma}{\sqrt{N}}
+    \]
+    
+    \vspace{0.1cm}
+    
+    \textbf{2. The Recursive Update.}
+    At subsequent layers, the value of jumping $Q_h(s, a_1)$ is determined by the value at the (unseen) next state $g_{h+1}$. Working out the LSPE update shows:
+    \[
+    \widehat{Q}_h(s, a_1) \;=\; \frac{1}{\sqrt{m}} \sum_{i=1}^m \widehat{Q}_{h+1}(s^i, a_1) 
+    \;=\; \sqrt{m} \underbrace{\left(\frac{1}{m} \sum_{i=1}^m \widehat{Q}_{h+1}(s^i, a_1)\right)}_{\text{Average Estimate}}
+    \]
+    
+    \textbf{Variance Explosion:}
+    The estimate at $h$ is inflated by $\sqrt{m}$ times the average estimate at $h+1$.
+    
+    \centering
+    \small
+    \emph{We are extrapolating $\sqrt{m}$ further out than our data support, $H$ times in a row.}
+\end{frame}
+
+\begin{frame}{Discussion 2: Can Online RL Save Us?}
+  \begin{itemize}
+  \item The features are not \textbf{complete} (even though every
+    policy is linear).
+
+    \vspace{0.2cm}
+    
+  \item \textbf{A Trivial Observation:} Our offline hard instance has very few states-action pairs. \\
+    $|\Scal|\cdot|\Acal|=H \cdot (d+2)$
+
+    \vspace{0.2cm}
+    
+  \item In an \textbf{Online} (episodic) or \textbf{Generative
+      model} setting, we could simply visit every state and
+    solve it tabularly! 
+        
+        \vspace{0.2cm}
+        
+   
+      \item \textbf{The Question:} Is there a hard instance --- where
+        the state space is huge --- where even active exploration
+        fails because we can't ``find'' the hidden $\theta^\star$ direction?
+      \end{itemize}
+
+      \vspace{0.5cm}
+      \centering      
+\emph{Can we construct a "Needle in a Haystack" where we can't find the features?}
+\end{frame}
+  
+
+% =============================================================================
+% Part III: The Online Lower Bound (Linear Q*)
+% =============================================================================
+
+\section{The Online Lower Bound}
+
+\begin{frame}[plain]
+  \vfill
+  \begin{center}
+    {\Huge \bfseries Online Lower Bounds\\ with Realizability}
+  \end{center}
+  \vfill
+\end{frame}
+\addtocounter{framenumber}{-1}
+
+
+\begin{frame}{What if we can explore? (Generative Model)}
+    \textbf{The Question:}
+    We saw Offline RL fails even with coverage and all policies linear. 
+    What if we have a \textbf{Generative Model} (can sample any $(s,a)$)?
+    
+    \vspace{0.2cm}
+    
+    \textbf{The Assumption (Weakening):}
+    Suppose \textbf{only} that $Q^\star$ is linear.
+    \[
+    Q^\star_h(s,a) = \langle \theta^\star_h, \phi(s,a) \rangle
+    \]
+    (So no linear BC, i.e. we do \emph{not} assume $\Tcal Q \in \Fcal$
+    for all $Q$).
+
     \vspace{0.3cm}
-    \textbf{Answer: Exponential Variance.}
+    \begin{block}{Theorem (Hardness of Linear $Q^\star$)}
+    Even with a Generative Model, any algorithm requires
+    \[
+    N \ge \min \{ 2^{\Omega(d)}, 2^{\Omega(H)} \}
+    \]
+    samples to find an $\epsilon$-optimal policy (hard instance:
+    $|\Acal| \approx \text{poly}(d)$, $|\Scal| \approx \text{exp}(d)$).
+    \end{block}
+\end{frame}
+
+\begin{frame}{Proof Comments}
+    
+    \textbf{1. The Construction:}
+    
     \begin{itemize}
-        \item The parameter $\theta_h$ has a "hidden direction" (the direction pointing to $\phi(g)$).
-        \item This direction is orthogonal to the data distribution at step $h$.
-        \item However, $\theta_h$ is coupled to $\theta_{h+1}$.
-        \item The small noise in $\widehat{\theta}_{h+1}$ gets multiplied by $\sqrt{m}$ when we solve for $\widehat{\theta}_h$.
-        \item Repeated $H$ times: $\text{Var}(\widehat{V}_0) \approx (\sqrt{m})^{2H} \times \text{Noise} = m^H$.
+        \item Construct a tree where only one specific path (the "needle") has high value.
+        \item Again there is this ``amplfication'' effect.
+        \item But the feature vector construction is very subtle.
+    \end{itemize}
+
+    \textbf{2. The Failure of Gradient Signal:}
+    \begin{itemize}
+        \item Without \textbf{Completeness}, the Bellman updates on the "distractor" paths do not propagate useful gradient information about $\theta^\star$.
+        \item The value function looks "flat" everywhere except exactly on the optimal path.
     \end{itemize}
     
-    \small
-    \emph{Even with unbiased estimators, the variance can scale with the "off-policy" condition number (here $\sqrt{d}$), compounded $H$ times.}
-  \end{frame}
+\end{frame}
+
+
+% =============================================================================
+% Part IV: Summary & Implications
+% =============================================================================
+
+\section{Summary}
+
+\begin{frame}{Summary: The Linearity Ladder}
+    We can classify RL problems based on their structural assumptions.
+
+    \vspace{0.3cm}
+
+    \begin{enumerate}
+        \item \textbf{Linear Bellman Completeness:}
+        \begin{itemize}
+            \item \textbf{Result:} $\text{poly}(d, H)$.
+            \item \textbf{Status:} \textcolor{green!60!black}{Efficient} (LSVI).
+        \end{itemize}
+        \vspace{0.2cm}
+
+        \item \textbf{Linear $Q^\star$ Realizability:}
+        \begin{itemize}
+            \item \textbf{Result:} Hard with a Generative Model.
+            \item \textbf{Status:} \textcolor{red}{Exponential Lower Bounds}.
+        \end{itemize}
+        \vspace{0.2cm}
+
+        \item \textbf{All-Policy Realizability:}
+        \begin{itemize}
+            \item \textbf{Offline (+ Coverage):} \textcolor{red}{Hard} (Variance Explosion).
+            \item \textbf{Generative Model:} \textcolor{green!60!black}{Easy} (Matrix Estimation).
+            \item \textbf{Online RL:} \textbf{Unknown/Open Question}.
+        \end{itemize}
+    \end{enumerate}
+        
+    \vspace{0.4cm}
+    \textbf{Implication:}
+    To get polynomial sample complexity in RL, we need strong \textbf{Structural Assumptions} (like Completeness, Block MDPs, or Low Rank) that ensure values can be propagated globally.
+\end{frame}
 
 \end{document}
-
-% =============================================================================
-% Part II: The Construction (Revised)
-% =============================================================================
-
-\section{The Construction}
-
-% --- Slide 0: High Level Intuition (New) ---
-\begin{frame}{The High-Level Idea: Hiding a Secret}
-    \textbf{The Goal:} Construct an MDP where the optimal value depends on a tiny parameter $r_\infty$, but we can only learn it by solving a "hard" regression problem.
-    
-    \vspace{0.3cm}
-    \textbf{The Mechanism (Two Chains):}
-    \begin{enumerate}
-        \item \textbf{The Hidden Chain ($g$):} 
-        Carries the true "signal" ($V \approx \text{Large}$).
-        \item \textbf{The Observed Chain ($s$):} 
-        Carries a "noisy version" of the signal ($V \approx \text{Small}$).
-    \end{enumerate}
-    
-    \vspace{0.3cm}
-    \textbf{The "Trap":}
-    Linearly Realizable means $V(g) \approx \sqrt{d} \times V(s)$.
-    \begin{itemize}
-        \item To know the large value at $g$, we must estimate the small value at $s$.
-        \item Estimating the small value requires cancelling out huge noise.
-        \item This requires exponentially many samples.
-    \end{itemize}
-\end{frame}
-
-% --- Slide 1: Schematic and Definitions ---
-\begin{frame}{Offline PE hard instance (schematic)}
-\begin{columns}[T,onlytextwidth]
-  % ---------------- Left: dynamics ----------------
-  \begin{column}{0.65\textwidth}
-    \centering
-    \resizebox{0.95\textwidth}{!}{ \HardInstanceFig }
-  \end{column}
-
-  % ---------------- Right: Legend ----------------
-  \begin{column}{0.35\textwidth}
-  \footnotesize
-  
-  \noindent
-  \begin{tikzpicture}
-    \node[draw,inner sep=3.5pt] (leg) {%
-      \begin{tikzpicture}[>=Latex]
-        \draw[thick] (0,0) -- (1.2,0) node[midway,above] {$a_1$};
-        \draw[thick,dashed] (0,-0.5) -- (1.2,-0.5) node[midway,above] {$a_2$};
-      \end{tikzpicture}
-    };
-  \end{tikzpicture}
-  
-  \vspace{0.4em}
-  \noindent\textbf{Features.}\\%[-0.25em]
-  $\phi(s_h^c,a_1)=e_c$\\
-  $\phi(s_h^c,a_2)=e_{m+c}$\\
-  $\phi(g_h,a)=\frac{1}{\sqrt m}\sum_{i=1}^m e_i$
-  
-  \vspace{0.4em}
-  \noindent\textbf{Reward parameters.}\\%[-0.25em]
-  $r_\infty\in\{0,\ m^{-H/2}\}$\\
-  $\alpha_h := r_\infty\, m^{(H-h)/2}$
-  
-  \vspace{0.4em}
-  \noindent\textbf{Aggregator rewards.}\\%[-0.25em]
-  $r_h(g_h,\cdot)=\alpha_h-\alpha_{h+1}$.\\
-  Last layer: $r_{H-1}(g_{H-1})=\alpha_{H-1}$.
-  
-  \end{column}
-\end{columns}
-\end{frame}
-
