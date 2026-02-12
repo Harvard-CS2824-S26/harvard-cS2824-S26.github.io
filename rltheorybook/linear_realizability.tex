@@ -219,9 +219,9 @@ will be explicit about boundedness assumptions when they matter.)
 To keep the algorithm reusable, we phrase everything in terms of per-stage
 datasets. For each $h\in[H]$, let
 \[
-D_h = \{(s_i,a_i,r_i,s_i')\}_{i=1}^N
+D_h = \{(s_i,a_i,r_i,s_i')\}_{i=1}^{n_h}
 \]
-be a dataset of $N$ transitions at stage $h$, where each
+be a dataset of $n_h$ transitions at stage $h$, where each
 $s_i'\sim P_h(\cdot\mid s_i,a_i)$ is sampled independently conditional on
 $(s_i,a_i)$ and $r_i=r_h(s_i,a_i)$.
 In the generative-model setting we will \emph{construct} these datasets; in the
@@ -446,57 +446,82 @@ Hence $y_i = (\theta_h^\star)^\top x_i + \xi_i$ where $\E[\xi_i\mid x_i]=0$ and
 $\{\xi_i\}$ are independent across samples. Moreover $|\xi_i|\lesssim H$, so
 $\xi_i$ is $O(H)$-sub-Gaussian.
 
-Let $\Lambda_h := \sum_{(s,a,r,s')\in D_h} \phi(s,a)\phi(s,a)^\top$ denote the
-(stage-$h$) design matrix.
-
-Now we leverage the D-optimal sampling properties.
-Let $\Sigma=\E_{(s,a)\sim\rho}[\phi(s,a)\phi(s,a)^\top]$. By construction,
+Let $n_h:=|D_h|$. For notational consistency with the Appendix, we normalize all
+second-moment matrices by $N$ (the nominal per-stage sample size used in the construction)
+and define
 \[
 \Lambda_h
+\;:=\;
+\frac{1}{N}\sum_{(s,a,r,s')\in D_h}\phi(s,a)\phi(s,a)^\top.
+\]
+(Equivalently, if we also define the usual empirical covariance
+$\widehat\Sigma_h := \frac{1}{n_h}\sum_{(s,a,r,s')\in D_h}\phi(s,a)\phi(s,a)^\top$,
+then $\Lambda_h = \frac{n_h}{N}\,\widehat\Sigma_h$.)
+
+\paragraph{Step 2: leverage control from D-optimal sampling (normalized).}
+Let $\Sigma=\E_{(s,a)\sim\rho}[\phi(s,a)\phi(s,a)^\top]$. By construction of $D_h$,
+\[
+\sum_{(s,a,r,s')\in D_h}\phi(s,a)\phi(s,a)^\top
 =
 \sum_{(s,a)\in\mathrm{supp}(\rho)} \lceil N\rho(s,a)\rceil\, \phi(s,a)\phi(s,a)^\top
 \succeq
 \sum_{(s,a)\in\mathrm{supp}(\rho)} N\rho(s,a)\, \phi(s,a)\phi(s,a)^\top
 =
-N\Sigma,
+N\Sigma.
 \]
-so $\Lambda_h^{-1}\preceq (N\Sigma)^{-1}$ and Lemma~\ref{lem:d_opt_design} implies
+Dividing by $N$ yields $\Lambda_h\succeq \Sigma$, hence $\Lambda_h^{-1}\preceq \Sigma^{-1}$ and,
+by Lemma~\ref{lem:d_opt_design},
 \[
-\sup_{(s,a)} \phi(s,a)^\top \Lambda_h^{-1}\phi(s,a) \;\le\; \frac{d}{N}.
+\sup_{(s,a)} \phi(s,a)^\top \Lambda_h^{-1}\phi(s,a)
+\;\le\;
+\sup_{x\in\Phi} x^\top\Sigma^{-1}x
+\;\le\; d.
 \]
 
-Next we characterize the OLS generalization, uniformly.
+\paragraph{Step 3: OLS generalizes uniformly (normalized).}
 Apply the fixed-design OLS bound from the Appendix (Theorem~\ref{thm:ols_fixed_design})
-with failure probability $\delta' := \delta/(2H)$ and noise scale $O(H)$ to obtain,
-with probability at least $1-\delta'$,
+to the stage-$h$ regression with sample size $n_h$, failure probability
+$\delta' := \delta/(H)$, and noise scale $\sigma=O(H)$. Using the empirical covariance
+$\widehat\Sigma_h$ (normalized by $n_h$), we obtain with probability at least $1-\delta'$,
 \[
-\|\widehat\theta_h - \theta_h^\star\|_{\Lambda_h}
+\|\widehat\theta_h-\theta_h^\star\|_{\widehat\Sigma_h}
 \;\le\;
-c_1 H \sqrt{ d\log(H/\delta) } ,
+c_1 H \cdot \frac{\sqrt{d}+\sqrt{2\log(1/\delta')}}{\sqrt{n_h}}
+\;=\;
+c_1 H \cdot \frac{\sqrt{d}+\sqrt{2\log(2H/\delta)}}{\sqrt{n_h}},
 \]
-for an absolute constant $c_1$. Therefore, for any $(s,a)$,
+for an absolute constant $c_1$.
+Since $\Lambda_h = \frac{n_h}{N}\widehat\Sigma_h$, we have
 \[
-\big|(\widehat\theta_h-\theta_h^\star)^\top \phi(s,a)\big|
-\le
 \|\widehat\theta_h-\theta_h^\star\|_{\Lambda_h}
-\sqrt{\phi(s,a)^\top \Lambda_h^{-1}\phi(s,a)}
-\le
-c_1 H d \sqrt{\frac{\log(H/\delta)}{N}}.
+=
+\sqrt{\frac{n_h}{N}}\;\|\widehat\theta_h-\theta_h^\star\|_{\widehat\Sigma_h}
+\;\le\;
+c_1 H \cdot \frac{\sqrt{d}+\sqrt{2\log(2H/\delta)}}{\sqrt{N}}.
 \]
+Therefore, for any $(s,a)$,
+\begin{align*}
+\big|(\widehat\theta_h-\theta_h^\star)^\top \phi(s,a)\big|
+&\le
+\|\widehat\theta_h-\theta_h^\star\|_{\Lambda_h}\cdot
+\sqrt{\phi(s,a)^\top \Lambda_h^{-1}\phi(s,a)} \\
+&\le
+c_1 H \cdot \frac{\sqrt{d}+\sqrt{2\log(2H/\delta)}}{\sqrt{N}}
+\cdot \sqrt{d}.
+\end{align*}
 Equivalently,
 \[
 \big\|\widehat Q_h - \Tcal_h \widehat Q_{h+1}\big\|_\infty
-\le
-c_1 H d \sqrt{\frac{\log(H/\delta)}{N}}.
+\;\le\;
+c_1 H \cdot \frac{\sqrt{d}\big(\sqrt{d}+\sqrt{2\log(2H/\delta)}\big)}{\sqrt{N}}.
 \]
 
-Finally, we complete the argument with a union bound.
-Apply the bound for all $h\in[H]$ and take a union bound: with probability at
-least $1-\delta/2$,
+Finally, apply the bound for all $h\in[H]$ and take a union bound: with probability at least
+$1-\delta$,
 \[
 \max_{h\in[H]}\big\|\widehat Q_h - \Tcal_h \widehat Q_{h+1}\big\|_\infty
 \le
-c_1 H d \sqrt{\frac{\log(H/\delta)}{N}}.
+c_1 H \cdot \frac{\sqrt{d}\big(\sqrt{d}+\sqrt{2\log(2H/\delta)}\big)}{\sqrt{N}}.
 \]
 With our choice of $N$ (and $c$ large enough), the right-hand side is at most
 $\epsilon/(2H^2)$. Lemma~\ref{lem:residual_to_policy} then yields, for all $s$,
@@ -598,10 +623,22 @@ on $\{D_h\}_{h=0}^{H-1}$ returns a greedy policy $\widehat\pi$ satisfying
 \begin{proof}[Proof sketch]
 The argument is identical to the proof of Theorem~\ref{thm:lsvi_bc_generative},
 except that leverage control now comes from coverage rather than D-optimal sampling.
-Concretely, at stage $h$, the design matrix satisfies
-$\Lambda_h=\sum_{(s,a,r,s')\in D_h}\phi(s,a)\phi(s,a)^\top = N\widehat\Sigma_h$,
-so Assumption~\ref{assumption:coverage} implies
-$\sup_{(s,a)}\phi(s,a)^\top\Lambda_h^{-1}\phi(s,a)\le (\kappa d)/N$.
+Concretely, at stage $h$, define the normalized covariance
+\[
+\Lambda_h
+\;:=\;
+\frac{1}{N}\sum_{(s,a,r,s')\in D_h}\phi(s,a)\phi(s,a)^\top
+=
+\widehat\Sigma_h.
+\]
+Then Assumption~\ref{assumption:coverage} implies $\Lambda_h\succeq \Sigma/\kappa$, hence
+\[
+\sup_{(s,a)}\phi(s,a)^\top\Lambda_h^{-1}\phi(s,a)
+\;\le\;
+\kappa\cdot \sup_{(s,a)}\phi(s,a)^\top\Sigma^{-1}\phi(s,a)
+\;\le\;
+\kappa d.
+\]
 Applying the same fixed-design OLS generalization bound (Appendix,
 Theorem~\ref{thm:ols_fixed_design}) and the same residual-to-policy lemma
 (Lemma~\ref{lem:residual_to_policy}), and union bounding over stages, yields the stated
@@ -701,9 +738,13 @@ Fix a stage $h$ and condition on $\widehat V_{h+1}^\pi$. By policy completeness,
 the regression target has the form
 $r_h(s,a)+\E[\widehat V_{h+1}^\pi(s')\mid s,a]=(\theta_h^\star)^\top\phi(s,a)$
 for some $\theta_h^\star$. Thus each stage is a fixed-design linear regression with
-$O(H)$-sub-Gaussian noise. Coverage gives the uniform leverage bound
-$\sup_{(s,a)}\phi(s,a)^\top \Lambda_h^{-1}\phi(s,a)\le (\kappa d)/N$
-with $\Lambda_h=N\widehat\Sigma_h$.
+$O(H)$-sub-Gaussian noise. Define the normalized covariance $\Lambda_h:=\frac{1}{N}\sum_{(s,a,r,s')\in D_h}\phi(s,a)\phi(s,a)^\top=\widehat\Sigma_h$.
+Coverage implies $\Lambda_h\succeq \Sigma/\kappa$, hence
+\[
+\sup_{(s,a)}\phi(s,a)^\top \Lambda_h^{-1}\phi(s,a)
+\;\le\;
+\kappa d.
+\]
 Applying the fixed-design OLS bound (Appendix, Theorem~\ref{thm:ols_fixed_design})
 and union bounding over $h$ yields a uniform residual bound of order
 \[

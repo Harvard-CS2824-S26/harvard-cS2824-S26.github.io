@@ -191,7 +191,7 @@ we have $\Sigma\succ 0$ and
 \[
 \sup_{(s,a)}\ \phi(s,a)^\top \Sigma^{-1}\phi(s,a) \;=\; d.
 \]
-Furthermore, no distirbution $\rho$ can achive a lower (worst-case)
+Furthermore, no distribution $\rho$ can achieve a lower (worst-case)
 leverage score.
 \end{block}
 \end{frame}
@@ -238,14 +238,17 @@ leverage score.
           collected via D-optimal design $\rho$.
           \\
           %\footnotesize{(suppose $N$ is a multiple of $d(d+1)/2$)}.
+          \pause
         \item Design Matrix $\Lambda_h = \frac{1}{N}\sum_{i=1}^N \phi(s_i, a_i)
-          \phi(s_i, a_i)^\top \approx \frac{1}{N} \Sigma_\rho$.
+          \phi(s_i, a_i)^\top \approx \Sigma_\rho$.
     \end{itemize}
 
+    \pause
     \textbf{The Target:}
     \[
     y_i = r_h(s_i, a_i) + \widehat{V}_{h+1}(s_i')
     \]
+    \pause
     By \textbf{Completeness}, the true expected target is linear:
     \[
     \E[y_i | s_i, a_i] = (\Tcal_h \widehat{Q}_{h+1})(s_i, a_i) = (\theta_h^\star)^\top \phi(s_i, a_i)
@@ -257,7 +260,7 @@ leverage score.
     We apply the standard Fixed-Design OLS bound.
 
     \begin{block}{OLS Generalization Bound}
-    With probability $1-\delta'$, for all $h$
+    With probability $1-\delta$, for all $h$
     \[
     \|\widehat{\theta}_h - \theta_h^\star\|_{\Lambda_h} \;\le\; c \cdot H \sqrt{\frac{d \log(H/\delta)}{N}}
     \]
@@ -275,18 +278,22 @@ leverage score.
     \]
 
     \vspace{0.2cm}
-    Plug in our bounds:
+    \pause
+    Plug in our bounds (using $\Lambda_h \approx \Sigma_\rho$):
     \begin{itemize}
-        \item Parameter Error: $\approx H \sqrt{\frac{d }{N}}$
-        \item Leverage Score (D-Opt): $\sqrt{\phi^\top \Sigma_\rho^{-1} \phi } \le \sqrt{d}$
+        \item Parameter Error (OLS): $\approx H \sqrt{\frac{d}{N}}$
+        \item Leverage Score (D-Opt): $\sqrt{\phi^\top \Lambda_h^{-1} \phi } \approx \sqrt{\phi^\top \Sigma_\rho^{-1} \phi } \le \sqrt{d}$
     \end{itemize}
 
     \vspace{0.2cm}
+    \pause
     \textbf{Result (Uniform Error):}
+    Multiply them together:
     \[
-    \sup_{(s,a)} | \widehat{Q}_h(s,a) - (\Tcal_h \widehat{Q}_{h+1})(s,a) | \;\lesssim\; H d \sqrt{\frac{1}{N}}
+    \sup_{(s,a)} | \widehat{Q}_h(s,a) - (\Tcal_h \widehat{Q}_{h+1})(s,a) | \;\lesssim\; H \sqrt{\frac{d}{N}} \cdot \sqrt{d} \;=\; \frac{H d}{\sqrt{N}}
     \]
 \end{frame}
+
 
 \begin{frame}{Step 3: The Simulation Lemma}
     \textbf{Definitions:}
@@ -298,14 +305,16 @@ leverage score.
         \]
     \end{itemize}
 
+    \pause
     \begin{block}{Lemma 3.3 (Small residual $\Rightarrow$ good policy)}
     Assume $\widehat Q_H\equiv 0$ and $\mathrm{Res}_h \le \eta$ for all $h$. Then:
     \begin{enumerate}
         \item \textbf{Value Accuracy:} For all $h \in [H]$,
         \[
         \|\widehat Q_h - Q_h^\star\|_\infty \;\le\; (H-h)\eta.
-        \]
-        \item \textbf{Policy Loss:} For the greedy policy $\widehat\pi$,
+      \]
+      \pause
+    \vspace*{-0.5cm}\item \textbf{Policy Loss:} For the greedy policy $\widehat\pi$,
         \[
         V_0^\star(s) - V^{\widehat\pi}_0(s) \;\le\; 2H^2\eta.
         \]
@@ -322,12 +331,14 @@ leverage score.
     
     \textbf{Inductive Step:}
     Consider the error at stage $h$:
+    \pause
     \begin{align*}
     \|\widehat{Q}_h - Q_h^\star\|_\infty 
     &= \|\widehat{Q}_h - \Tcal_h Q_{h+1}^\star\|_\infty \\
     &\le \underbrace{\|\widehat{Q}_h - \Tcal_h \widehat{Q}_{h+1}\|_\infty}_{\text{Residual } \le \eta} + \underbrace{\|\Tcal_h \widehat{Q}_{h+1} - \Tcal_h Q_{h+1}^\star\|_\infty}_{\text{Recursive Error}}
     \end{align*}
     
+    \pause
     Using the contraction property (non-expansion) of $\Tcal_h$:
     \[
     \|\Tcal_h \widehat{Q}_{h+1} - \Tcal_h Q_{h+1}^\star\|_\infty \le \|\widehat{Q}_{h+1} - Q_{h+1}^\star\|_\infty
@@ -369,6 +380,7 @@ leverage score.
 
     \vspace{0.3cm}
     
+    \pause
     \textbf{Solve for $N$:}
     \[
     \frac{H d}{\sqrt{N}} \approx \frac{\epsilon}{H^2} \implies \sqrt{N} \approx \frac{H^3 d}{\epsilon} \implies N \approx \frac{H^6 d^2}{\epsilon^2}
@@ -418,6 +430,7 @@ leverage score.
 \begin{frame}{The Coverage Assumption}
     To guarantee success, the offline data must "cover" the feature space at least as well as the optimal design (up to a constant).
 
+    \pause
     \begin{block}{Assumption: Uniform Coverage}
     There exists a constant $\kappa \ge 1$ such that for all $h$, the empirical covariance $\Lambda_h$ satisfies:
     \[
@@ -427,6 +440,7 @@ leverage score.
     \end{block}
 
     \vspace{0.3cm}
+    \pause
     \textbf{Interpretation:}
     \begin{itemize}
         \item $\kappa$ is the "relative condition number."
@@ -436,30 +450,31 @@ leverage score.
 \end{frame}
 
 \begin{frame}{Analysis of Offline LSVI}
-    The analysis remains almost identical! We just swap the variance bound.
+    The analysis remains almost identical! We just swap the leverage bound.
 
     \vspace{0.3cm}
 
-    \textbf{Generative (D-Optimal):}
+\pause    \textbf{1. Generative (D-Optimal):}
     \[
-    \phi^\top \Lambda^{-1} \phi \;\le\; \frac{d}{N}
+    \phi^\top \Lambda^{-1} \phi \approx \phi^\top \Sigma_{\rho^\star}^{-1} \phi \;\le\; d
     \]
 
-    \textbf{Offline (Coverage $\kappa$):}
+\pause    \textbf{2. Offline (Coverage $\kappa$):}
     \[
     \Lambda \succeq \frac{1}{\kappa} \Sigma_{\rho^\star} \implies \Lambda^{-1} \preceq \kappa \Sigma_{\rho^\star}^{-1}
     \]
     \[
-    \implies \phi^\top \Lambda^{-1} \phi \;\le\; \kappa d
+    \implies \phi^\top \Lambda^{-1} \phi \;\le\; \kappa \left( \phi^\top \Sigma_{\rho^\star}^{-1} \phi \right) \;\le\; \kappa d
     \]
 
     \vspace{0.3cm}
-    \textbf{Result:}
-    Sample complexity scales linearly with coverage $\kappa$:
+\pause    \textbf{Result:}
+    The error scales by $\sqrt{\kappa}$. Sample complexity scales linearly with $\kappa$:
     \[
-    N \approx \frac{\kappa H^6 d^2}{\epsilon^2}
+    \text{Error} \approx \frac{H d \sqrt{\kappa}}{\sqrt{N}} \implies N \approx \frac{\kappa H^6 d^2}{\epsilon^2}
     \]
 \end{frame}
+
 
 % =============================================================================
 % Part V: Policy Evaluation (LSPE)
@@ -472,7 +487,7 @@ leverage score.
 
     \vspace{0.3cm}
 
-    \textbf{Algorithm: Least-Squares Policy Evaluation (LSPE)}
+\pause    \textbf{Algorithm: Least-Squares Policy Evaluation (LSPE)}
     \begin{itemize}
         \item Same backward regression structure.
         \item \textbf{Target Change:} Instead of $\max_{a'} \widehat{Q}_{h+1}(s', a')$, we use the value of our specific policy:
@@ -482,7 +497,7 @@ leverage score.
     \end{itemize}
 
     \vspace{0.3cm}
-    \textbf{Weaker Assumption:}
+\pause    \textbf{Weaker Assumption:}
     \begin{itemize}
         \item We don't need closure under $\Tcal$ (Optimality).
         \item We only need closure under $\Tcal^\pi$ (Policy Operator).
@@ -507,7 +522,7 @@ leverage score.
     \end{itemize}
 
     \vspace{0.3cm}
-    \textbf{Result:}
+\pause    \textbf{Result:}
     Better dependence on horizon $H$ (typically $H^4$ instead of $H^6$).
 \end{frame}
 
@@ -531,12 +546,12 @@ leverage score.
     
     \vspace{0.3cm}
     
-    \textbf{The Error Triangle:}
+\pause    \textbf{The Error Triangle:}
     We split the total error into Statistical Variance and Recursive Stability.
     \[
     \|\widehat{Q}_h - Q^\star_h\|_\infty \le \underbrace{\|\widehat{Q}_h - f^\star_h\|_\infty}_{\text{Statistical Error}} + \underbrace{\|f^\star_h - Q^\star_h\|_\infty}_{\text{Recursive Stability}}
     \]
-    \begin{itemize}
+\pause    \begin{itemize}
         \item \textbf{Statistical Error:} Controlled by $N$ and D-Optimal Design ($\approx \sqrt{d/N}$).
         \item \textbf{Recursive Stability:} This is where the universe splits.
     \end{itemize}
@@ -553,6 +568,7 @@ leverage score.
     
     \begin{columns}[t]
         \column{0.48\textwidth}
+        \pause
         \begin{block}{Universe A: Completeness}
         \textbf{Assumption:} $\Tcal_h$ preserves linearity.
         
@@ -571,6 +587,7 @@ leverage score.
         \end{block}
 
         \column{0.48\textwidth}
+        \pause
         \begin{block}{Universe B: Realizability Only}
         \textbf{Assumption:} Only $Q^\star \in \Fcal$.
         
