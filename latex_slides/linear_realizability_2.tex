@@ -18,7 +18,7 @@
 
 
 \title{RL with Linear Features: When Does It Work \\ \& When Doesn't It Work?}
-\subtitle{Part 2: The Offline RL Case\\
+\subtitle{Part 2: Linear BC \& The Offline RL Case\\
 CS 2284: Foundations of Reinforcement Learning}
 \author{Kiant\'{e} Brantley \& Sham Kakade}
 \date{}
@@ -37,33 +37,176 @@ CS 2284: Foundations of Reinforcement Learning}
 
     \textbf{Announcements}
     \begin{itemize}
-        \item Second reading assignment is out.
+        \item HW1 due Monday.
     \end{itemize}
 
     \vfill
 
-    \textbf{Recap++}
+    \textbf{Recap}
     \begin{itemize}
-        \item Wrap up our tabular sample complexity analysis (Chapter 2).
-        \item \textbf{Minimax Result:} We established the fundamental limits of tabular learning.
+        \item Regression + D-opt design.
     \end{itemize}
 
     \vfill
 
     \textbf{Today}
     \begin{itemize}
-        \item Function Approximation. \textbf{We'll move beyond tabular RL!}
+    \item Finish linear BC analysis.
+    \item Offline RL
     \end{itemize}
 
 \end{frame}
 
-% --- Lecture 2 Title Slide ---
-\begin{frame}
-    \centering
-    \LARGE \textbf{Lecture 2} \\
-    \vspace{0.5em}
-    \large Analysis of LSVI \& The Simulation Lemma
+% --- Transition slide: Recap (beamer) ---
+% Assumes your document is \documentclass{beamer} and your theme/fonts already set.
+
+\section{Recap}
+
+\begin{frame}[plain]
+  \vfill
+  \begin{center}
+    {\Huge \bfseries Recap}
+  \end{center}
+  \vfill
 \end{frame}
+\addtocounter{framenumber}{-1}
+
+
+\begin{frame}{Least-Squares Value Iteration (LSVI)}
+    \textbf{Setting:} Finite Horizon $H$, Generative Model (Simulator).
+
+    \vspace{0.3cm}
+
+    \textbf{Algorithm:} Backward Induction via Regression.
+    \begin{enumerate}
+        \item Initialize $\widehat{V}_H(s) = 0$.
+        \item For $h = H-1, \dots, 0$:
+        \begin{itemize}
+            \item \textbf{Collect Data:} Generate dataset $D_h = \{(s_i, a_i, r_i, s_i')\}_{i=1}^N$.
+
+            \item \textbf{Form Targets:} Compute regression targets using the \emph{next} value function:
+            \[
+            y_i = r_h(s_i, a_i) + \widehat{V}_{h+1}(s_i')
+            \]
+
+            \item \textbf{Regression:} Solve for parameters $\widehat{\theta}_h$:
+            \[
+            \widehat{\theta}_h \in \argmin_{\theta \in \R^d} \sum_{i=1}^N \left( \theta^\top \phi(s_i, a_i) - y_i \right)^2
+            \]
+
+            \item \textbf{Update:} Set $\widehat{Q}_h(s,a) = \widehat{\theta}_h^\top \phi(s,a)$ and $\widehat{V}_h(s) = \max_{a} \widehat{Q}_h(s,a)$.
+        \end{itemize}
+    \end{enumerate}
+\end{frame}
+
+
+
+
+\begin{frame}{The Assumption Ladder}
+  We can organize linear RL assumptions from weakest (hardest) to strongest (easiest).
+  
+  \vspace{0.3cm}
+  
+  \begin{itemize}
+  \item[(A)] \textbf{Agnostic Approximation} \\
+    \footnotesize No realizability. $Q^\star$ is ``close'' to linear. \\
+    \textit{Status: Hard. Requires strong distribution assumptions.}
+    
+
+    \vspace{0.2cm}
+  \item[(B)] \textbf{Linear $Q^\star$ Realizability} \\
+    \footnotesize $Q^\star_h(s,a) = (\theta^\star_h)^\top \phi(s,a)$. \\
+    \textit{Status: \textbf{Insufficient.} Exponential lower bounds exist.}
+    
+
+    \vspace{0.2cm}
+  \item[(C)] \textbf{All-Policies Realizability} \\
+    \footnotesize $Q^\pi_h(s,a) = (\theta^\pi_h)^\top \phi(s,a)$ for \textbf{all} $\pi$. \\
+    \textit{Status: \textbf{Subtle.} Fails offline even with perfect coverage.}
+    
+
+    \vspace{0.2cm}
+  \item[(D)] \textbf{Linear Bellman Completeness} \\
+    \footnotesize $\Tcal_h f \in \Fcal$ for all $f \in \Fcal$. \\
+    \textit{Status: \textbf{Sufficient!} (This Lecture)}
+  \end{itemize}
+\end{frame}
+%\addtocounter{framenumber}{-1}
+
+
+\begin{frame}{Fixed Design OLS (The Tool)}
+    Consider the standard linear regression setting:
+    \[
+    y_i = x_i^\top \theta^\star + \xi_i, \quad \text{with } \E[\xi_i|x_i]=0 \text{ (sub-Gaussian)}.
+    \]
+    
+    The OLS estimator is $\widehat{\theta} = \Lambda^{-1}\left(\frac{1}{N} \sum_{i=1}^N x_i y_i\right)$, where $\Lambda = \frac{1}{N}\sum_i x_i x_i^\top$.
+    
+    \begin{block}{Fixed-design OLS Bound}
+    With probability at least $1-\delta$, the prediction error is bounded in the $\Lambda$-norm:
+    \[
+    \|\widehat\theta - \theta^\star\|_{\Lambda}
+    \;\lesssim\;
+    \sigma\,\sqrt{\frac{d\log(1/\delta)}{N} }.
+    \]
+    \end{block}
+    
+    \vspace{0.2cm}
+    
+    This translates to a \textit{pointwise} bound using leverage scores:
+    \[
+    |(\widehat\theta-\theta^\star)^\top\phi(s,a)|
+    \;\le\;
+    \|\widehat\theta - \theta^\star\|_{\Lambda} \sqrt{\phi(s,a)^\top \Lambda^{-1} \phi(s,a)}
+    \]
+\end{frame}
+
+\begin{frame}{OLS review}
+
+  \vspace*{-3.4cm}
+  Consider the standard linear regression setting:
+    \[
+    y_i = x_i^\top \theta^\star + \xi_i, \quad \text{with } \E[\xi_i|x_i]=0 \text{ (sub-Gaussian)}.
+    \]
+        The OLS estimator is $\widehat{\theta} = \Lambda^{-1}\left(\frac{1}{N} \sum_{i=1}^N x_i y_i\right)$, where $\Lambda = \frac{1}{N}\sum_i x_i x_i^\top$.
+    
+\end{frame}
+
+\begin{frame}{D-optimal design: the leverage-minimizing geometry}
+To guarantee uniform bounds, we must choose our training data carefully.
+
+\vspace*{0.1cm}  
+The feature set is:
+\[
+\Phi := \{\phi(s,a):(s,a)\in\Scal\times\Acal\}\subset\R^d.
+\]
+
+\begin{block}{D-optimal design (lemma; geometric fact)}
+Suppose $\Phi$ is compact. There exists a distribution $\rho$ supported on at most $d(d+1)/2$ state--action pairs s.t.
+with
+\[
+\Sigma := \E_{(s,a)\sim\rho}\big[\phi(s,a)\phi(s,a)^\top\big],
+\]
+we have $\Sigma\succ 0$ and
+\[
+\sup_{(s,a)}\ \phi(s,a)^\top \Sigma^{-1}\phi(s,a) \;=\; d.
+\]
+Furthermore, no distirbution $\rho$ can achive a lower (worst-case)
+leverage score.
+\end{block}
+\end{frame}
+
+
+
+\begin{frame}[plain]
+  \vfill
+  \begin{center}
+    {\Huge \bfseries Today: Analysis of LSVI}
+  \end{center}
+  \vfill
+\end{frame}
+\addtocounter{framenumber}{-1}
+
 
 \section{Analysis}
 
@@ -78,15 +221,12 @@ CS 2284: Foundations of Reinforcement Learning}
     
     We will formalize this in three steps:
     \begin{enumerate}
-        \item \textbf{Regression Analysis:} Bound the error $\|\widehat{\theta}_h - \theta_h^\star\|$ using OLS and D-Optimal Design.
-        \item \textbf{Bellman Residuals:} Translate parameter error into uniform value function error $\text{Res}_h$.
-        \item \textbf{The Simulation Lemma:} Show how residuals propagate to the final policy performance $V^\star - V^{\widehat{\pi}}$.
+        \item \textbf{Regression Analysis:} Bound the error $\|\widehat{\theta}_h - \theta_h^\star\|$ using OLS.
+        \item \textbf{Bellman Residuals:} D-Optimal Design lets us translate parameter err into uniform value function error $\text{Res}_h$.
+        \item \textbf{The Simulation Lemma:} Show how residuals propagate to the final value/policy.
     \end{enumerate}
 \end{frame}
 
-% =============================================================================
-% Step 1: Fixed Design Regression
-% =============================================================================
 
 
 \begin{frame}{Step 1: The Regression at Stage $h$}
@@ -94,8 +234,12 @@ CS 2284: Foundations of Reinforcement Learning}
     
     \textbf{The Data:}
     \begin{itemize}
-        \item Dataset $D_h = \{(s_i, a_i, r_i, s_i')\}_{i=1}^N$ collected via D-optimal design $\rho$.
-        \item Design Matrix $\Lambda_h = \sum_{i=1}^N \phi(s_i, a_i) \phi(s_i, a_i)^\top$.
+        \item Dataset $D_h = \{(s_i, a_i, r_i, s_i')\}_{i=1}^N$
+          collected via D-optimal design $\rho$.
+          \\
+          %\footnotesize{(suppose $N$ is a multiple of $d(d+1)/2$)}.
+        \item Design Matrix $\Lambda_h = \frac{1}{N}\sum_{i=1}^N \phi(s_i, a_i)
+          \phi(s_i, a_i)^\top \approx \frac{1}{N} \Sigma_\rho$.
     \end{itemize}
 
     \textbf{The Target:}
@@ -113,22 +257,16 @@ CS 2284: Foundations of Reinforcement Learning}
     We apply the standard Fixed-Design OLS bound.
 
     \begin{block}{OLS Generalization Bound}
-    With probability $1-\delta'$,
+    With probability $1-\delta'$, for all $h$
     \[
-    \|\widehat{\theta}_h - \theta_h^\star\|_{\Lambda_h} \;\le\; c \cdot H \sqrt{d \log(H/\delta)}
+    \|\widehat{\theta}_h - \theta_h^\star\|_{\Lambda_h} \;\le\; c \cdot H \sqrt{\frac{d \log(H/\delta)}{N}}
     \]
     (Here the noise scale is $H$ because values are bounded by $H$).
     \end{block}
 
-    \vspace{0.3cm}
-    \textbf{Applying D-Optimal Design:}
-    Since we sampled $N$ times from $\rho$, we have $\Lambda_h \succeq N \Sigma_\rho$.
-    \[
-    \implies \Lambda_h^{-1} \preceq \frac{1}{N} \Sigma_\rho^{-1}
-    \]
 \end{frame}
 
-\begin{frame}{Step 1: From Parameters to Pointwise Error}
+\begin{frame}{Step 2: From Parameters to Pointwise Error}
     We want to bound the prediction error at \emph{any} $(s,a)$.
     
     \[
@@ -139,8 +277,8 @@ CS 2284: Foundations of Reinforcement Learning}
     \vspace{0.2cm}
     Plug in our bounds:
     \begin{itemize}
-        \item Parameter Error: $\approx H \sqrt{d}$
-        \item Leverage Score (D-Opt): $\sqrt{\phi^\top \Sigma_\rho^{-1} \phi / N} \le \sqrt{d/N}$
+        \item Parameter Error: $\approx H \sqrt{\frac{d }{N}}$
+        \item Leverage Score (D-Opt): $\sqrt{\phi^\top \Sigma_\rho^{-1} \phi } \le \sqrt{d}$
     \end{itemize}
 
     \vspace{0.2cm}
@@ -150,12 +288,7 @@ CS 2284: Foundations of Reinforcement Learning}
     \]
 \end{frame}
 
-% =============================================================================
-% Step 2: The Simulation Lemma
-% =============================================================================
-
-
-\begin{frame}{Step 2: The Simulation Lemma}
+\begin{frame}{Step 3: The Simulation Lemma}
     \textbf{Definitions:}
     \begin{itemize}
         \item Let $\widehat{V}_h(s) := \max_{a} \widehat{Q}_h(s,a)$ and $\widehat{\pi}_h(s) := \argmax_a \widehat{Q}_h(s,a)$.
@@ -203,7 +336,7 @@ CS 2284: Foundations of Reinforcement Learning}
     Thus, $\text{Error}_h \le \eta + \text{Error}_{h+1}$. Unrolling gives $\sum \eta = (H-h)\eta$. \qed
 \end{frame}
 
-\begin{frame}{Proof of Claim 2: Policy Loss}
+\begin{frame}[plain,noframenumbering]{Proof of Claim 2: Policy Loss}
     This follows the standard "Performance Difference" logic.
     
     \vspace{0.3cm}
@@ -223,7 +356,7 @@ CS 2284: Foundations of Reinforcement Learning}
     V_0^\star - V_0^{\widehat{\pi}} \;\le\; \sum_{h=0}^{H-1} 2 \underbrace{\|\widehat{Q}_h - Q_h^\star\|_\infty}_{\le (H-h)\eta} \;\le\; \sum_{h=0}^{H-1} 2(H-h)\eta \approx H^2 \eta
     \]
 \end{frame}
-
+\addtocounter{framenumber}{-1}
 
 \begin{frame}{Final Result: LSVI Sample Complexity}
     \textbf{Putting it all together:}
@@ -252,6 +385,16 @@ CS 2284: Foundations of Reinforcement Learning}
 
 \section{Offline Reinforcement Learning}
 
+\begin{frame}[plain]
+  \vfill
+  \begin{center}
+    {\Huge \bfseries Offline RL Recap}
+  \end{center}
+  \vfill
+\end{frame}
+\addtocounter{framenumber}{-1}
+
+
 \begin{frame}{Switching to Offline RL}
     \textbf{The Setting:}
     \begin{itemize}
@@ -266,7 +409,7 @@ CS 2284: Foundations of Reinforcement Learning}
     \begin{itemize}
         \item In Generative Mode, we used \emph{D-Optimal Design} to ensure:
         \[
-        \Lambda_h \succeq N \Sigma_{\rho^\star} \implies \text{Good Coverage Everywhere}
+        \Lambda_h \approx  \Sigma_{\rho^\star} \implies \text{Good Coverage Everywhere}
         \]
         \item In Offline RL, we are stuck with the behavior policy's distribution.
     \end{itemize}
@@ -276,9 +419,9 @@ CS 2284: Foundations of Reinforcement Learning}
     To guarantee success, the offline data must "cover" the feature space at least as well as the optimal design (up to a constant).
 
     \begin{block}{Assumption: Uniform Coverage}
-    There exists a constant $\kappa \ge 1$ such that for all $h$, the empirical covariance $\widehat{\Sigma}_h$ satisfies:
+    There exists a constant $\kappa \ge 1$ such that for all $h$, the empirical covariance $\Lambda_h$ satisfies:
     \[
-    \widehat{\Sigma}_h \;\succeq\; \frac{1}{\kappa} \Sigma_{\rho^\star}
+    \Lambda_h \;\succeq\; \frac{1}{\kappa} \Sigma_{\rho^\star}
     \]
     where $\Sigma_{\rho^\star}$ is the covariance of the D-optimal design.
     \end{block}
@@ -304,10 +447,10 @@ CS 2284: Foundations of Reinforcement Learning}
 
     \textbf{Offline (Coverage $\kappa$):}
     \[
-    \Lambda \approx N \widehat{\Sigma} \succeq \frac{N}{\kappa} \Sigma_{\rho^\star} \implies \Lambda^{-1} \preceq \frac{\kappa}{N} \Sigma_{\rho^\star}^{-1}
+    \Lambda \succeq \frac{1}{\kappa} \Sigma_{\rho^\star} \implies \Lambda^{-1} \preceq \kappa \Sigma_{\rho^\star}^{-1}
     \]
     \[
-    \implies \phi^\top \Lambda^{-1} \phi \;\le\; \frac{\kappa d}{N}
+    \implies \phi^\top \Lambda^{-1} \phi \;\le\; \kappa d
     \]
 
     \vspace{0.3cm}
