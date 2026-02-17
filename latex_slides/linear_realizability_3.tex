@@ -33,9 +33,141 @@ CS 2284: Foundations of Reinforcement Learning}
 \end{frame}
 \addtocounter{framenumber}{-1}
 
+\begin{frame}{Agenda}
+
+    \textbf{Announcements}
+    \begin{itemize}
+    \item more project dates coming soon
+    \item reading3 posted
+    \end{itemize}
+
+    \vfill
+
+    \textbf{Recap}
+    \begin{itemize}
+        \item Offline RL +linear BC
+    \end{itemize}
+
+    \vfill
+
+    \textbf{Today}
+    \begin{itemize}
+    \item Lower bounds!
+    \end{itemize}
+
+\end{frame}
+
 % =============================================================================
 % Part I: The Setup (Recap)
 % =============================================================================
+
+\begin{frame}[plain]
+  \vfill
+  \begin{center}
+    {\Huge \bfseries Recap}
+  \end{center}
+  \vfill
+\end{frame}
+\addtocounter{framenumber}{-1}
+
+\begin{frame}{Switching to Offline RL}
+    \textbf{The Setting:}
+    \begin{itemize}
+        \item We can no longer query the simulator.
+        \item We are given static datasets $D_0, \dots, D_{H-1}$.
+        \item \textbf{Key Question:} When does LSVI still work?
+    \end{itemize}
+
+    \vspace{0.3cm}
+
+    \textbf{The Challenge:}
+    \begin{itemize}
+        \item In Generative Mode, we used \emph{D-Optimal Design} to ensure:
+        \[
+        \Lambda_h \approx  \Sigma_{\rho^\star} \implies \text{Good Coverage Everywhere}
+        \]
+        \item In Offline RL, we are stuck with the behavior policy's distribution.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{The Coverage Assumption}
+    To guarantee success, the offline data must "cover" the feature space at least as well as the optimal design (up to a constant).
+
+    \begin{block}{Assumption: Uniform Coverage}
+    There exists a constant $\kappa \ge 1$ such that for all $h$, the empirical covariance $\Lambda_h$ satisfies:
+    \[
+    \Lambda_h \;\succeq\; \frac{1}{\kappa} \Sigma_{\rho^\star}
+    \]
+    where $\Sigma_{\rho^\star}$ is the covariance of the D-optimal design.
+    \end{block}
+
+    \vspace{0.3cm}
+    \textbf{Interpretation:}
+    \begin{itemize}
+        \item $\kappa$ is the "relative condition number."
+        \item If $\kappa=1$, our data is perfect (D-optimal).
+        \item If $\kappa$ is huge, we have missing directions (poor coverage).
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Analysis of Offline LSVI}
+    The analysis remains almost identical! We just swap the leverage bound.
+
+    \vspace{0.3cm}
+
+   \textbf{1. Generative (D-Optimal):}
+    \[
+    \phi^\top \Lambda^{-1} \phi \approx \phi^\top \Sigma_{\rho^\star}^{-1} \phi \;\le\; d
+    \]
+
+   \textbf{2. Offline (Coverage $\kappa$):}
+    \[
+    \Lambda \succeq \frac{1}{\kappa} \Sigma_{\rho^\star} \implies \Lambda^{-1} \preceq \kappa \Sigma_{\rho^\star}^{-1}
+    \]
+    \[
+    \implies \phi^\top \Lambda^{-1} \phi \;\le\; \kappa \left( \phi^\top \Sigma_{\rho^\star}^{-1} \phi \right) \;\le\; \kappa d
+    \]
+
+    \vspace{0.3cm}
+   \textbf{Result:}
+    The error scales by $\sqrt{\kappa}$. Sample complexity scales linearly with $\kappa$:
+    \[
+    \text{Error} \approx \frac{H d \sqrt{\kappa}}{\sqrt{N}} \implies N \approx \frac{\kappa H^6 d^2}{\epsilon^2}
+    \]
+\end{frame}
+
+
+% =============================================================================
+% Part V: Policy Evaluation (LSPE)
+% =============================================================================
+
+\section{Policy Evaluation (LSPE)}
+
+\begin{frame}{Task 2: Policy Evaluation}
+    Sometimes we don't want to find $\pi^\star$, but just evaluate a fixed policy $\pi$.
+
+    \vspace{0.3cm}
+
+   \textbf{Algorithm: Least-Squares Policy Evaluation (LSPE)}
+    \begin{itemize}
+        \item Same backward regression structure.
+        \item \textbf{Target Change:} Instead of $\max_{a'} \widehat{Q}_{h+1}(s', a')$, we use the value of our specific policy:
+        \[
+        y_i = r_i + \widehat{Q}_{h+1}(s_i', \pi(s_i'))
+        \]
+    \end{itemize}
+
+    \vspace{0.3cm}
+   \textbf{Weaker Assumption:}
+    \begin{itemize}
+        \item We don't need closure under $\Tcal$ (Optimality).
+        \item We only need closure under $\Tcal^\pi$ (Policy Operator).
+        \end{itemize}
+
+        \textbf{Result:}
+    Basically the same as LSVI (with slighly better $H$ dependence).
+\end{frame}
+
 
 \section{The Split Universe: Completeness vs. Realizability}
 
@@ -180,7 +312,7 @@ $D$-opt design $\Sigma_\rho :=
 \begin{frame}[plain]
   \vfill
   \begin{center}
-    {\Huge \bfseries Offline Lower Bounds with Realizatiblity+Coverage}
+    {\Huge \bfseries Offline Lower Bounds with \alert{Realizatiblity}+Coverage}
   \end{center}
   \vfill
 \end{frame}
@@ -194,9 +326,9 @@ $D$-opt design $\Sigma_\rho :=
     \textbf{The Setup:}
     \begin{itemize}
         \item \textbf{Offline Data:} Fixed datasets $D_0, \dots, D_{H-1}$.
-        \item \textbf{Assumption 1 (All-Policies Realizability):} 
+\pause        \item \textbf{Assumption 1 (All-Policies Realizability):} 
         For \emph{every} policy $\pi$, $Q^\pi_h$ is linear in $\phi$.
-        \item \textbf{Assumption 2 (Perfect Coverage):} 
+\pause        \item \textbf{Assumption 2 (Perfect Coverage):} 
         The offline data covariance is "isotropic" (perfectly conditioned):
         \[
         \Sigma_{D_h} = \frac{1}{d} I \quad \text{for all } h.
@@ -204,7 +336,7 @@ $D$-opt design $\Sigma_\rho :=
     \end{itemize}
 
     \vspace{0.3cm}
-    \textbf{The Question:} Under these ideal conditions (Realizability + Perfect Coverage), can we learn $V^\pi$ with $\poly(d, H)$ samples?
+\pause    \textbf{The Question:} Under these ideal conditions (Realizability + Perfect Coverage), can we learn $V^\pi$ with $\poly(d, H)$ samples?
 \end{frame}
 
 \begin{frame}{Theorem: Offline Hardness}
@@ -341,11 +473,11 @@ Fix $m\ge 1$, set $d=2m$, $|\Scal_h|=m+1$, $\Acal=\{a_1,a_2\}$, horizon $H$.
     \end{itemize}
 
     \vspace{0.3cm}
-    \textbf{Observed Data Distribution ($\mu_h$):}
+\pause    \textbf{Observed Data Distribution ($\mu_h$):}
     Uniform distribution over the $m$ observed states $\{s_h^i\}_{i=1}^m$ and actions.
     
     \vspace{0.3cm}
-    \textbf{Coverage Check:}
+\pause    \textbf{Coverage Check:}
     Calculate the covariance matrix of the data:
     \[
     \Sigma_{D} \;=\; \frac{1}{2m} \sum_{i=1}^m (e_i e_i^\top + e_{m+i} e_{m+i}^\top) \;=\; \frac{1}{2m} I \;=\; \frac{1}{d} I
@@ -361,7 +493,7 @@ Fix $m\ge 1$, set $d=2m$, $|\Scal_h|=m+1$, $\Acal=\{a_1,a_2\}$, horizon $H$.
     
     \vspace{0.1cm}
     
-    \textbf{1. The Observed States are Tabular:}
+\pause    \textbf{1. The Observed States are Tabular:}
     Since $\phi(s^i, a_1) = e_i$, the weights $\theta$ just memorize the values:
     \[
     \theta_i = Q(s^i, a_1) \quad \text{and} \quad \theta_{m+i} = Q(s^i, a_2)
@@ -370,7 +502,7 @@ Fix $m\ge 1$, set $d=2m$, $|\Scal_h|=m+1$, $\Acal=\{a_1,a_2\}$, horizon $H$.
     
     \vspace{0.1cm}
     
-    \textbf{2. The Aggregator is Constrained:}
+\pause    \textbf{2. The Aggregator is Constrained:}
     However, the value at $g$ is fixed by the weights $\theta$:
     \[
     Q(g, \cdot) \;=\; \theta^\top \phi(g) \;=\; \theta^\top \left( \frac{1}{\sqrt{m}} \sum_{i=1}^m e_i \right)
@@ -390,15 +522,15 @@ Fix $m\ge 1$, set $d=2m$, $|\Scal_h|=m+1$, $\Acal=\{a_1,a_2\}$, horizon $H$.
     \text{Constraint: } Q_h(g_h, \cdot) \overset{?}{=} \frac{1}{\sqrt{m}} \sum_{i=1}^m Q_h(s_h^i, a_1)
     \]
 
-    \textbf{First:}
+\pause    \textbf{First:}
     By construction, $\alpha_h = \sqrt{m} \alpha_{h+1}$.
     
-    \textbf{LHS (Actual Value at $g$):}
+\pause    \textbf{LHS (Actual Value at $g$):}
     By construction, rewards telescope so $V_h(g_h) = \alpha_h=\sqrt{m}V_{h+1}(g_{h+1})$.
     
-    \vspace{0.3cm}
+    \vspace{0.2cm}
     
-    \textbf{RHS (Sum of Values at $s$):}
+\pause    \textbf{RHS (Sum of Values at $s$):}
     Action $a_1$ at $s_h^i$ jumps to $g_{h+1}$.
     \[
     Q_h(s_h^i, a_1) = 0 + V_{h+1}(g_{h+1}) %= \alpha_{h+1}
@@ -423,13 +555,13 @@ Fix $m\ge 1$, set $d=2m$, $|\Scal_h|=m+1$, $\Acal=\{a_1,a_2\}$, horizon $H$.
     \end{itemize}
 
     \vspace{0.3cm}
-    \textbf{The Hypothesis Test:}
+\pause    \textbf{The Hypothesis Test:}
     To decide if $V^\pi(g_0)$ is 0 or 1, we must distinguish:
     \[
     r_\infty = 0 \quad \text{vs} \quad r_\infty = m^{-H/2}
     \]
     
-    \textbf{The Bottleneck:}
+\pause    \textbf{The Bottleneck:}
     We never see $g_h$. We only see the noisy leaves at $H-1$.
     \begin{itemize}
         \item Signal Gap: $\Delta = m^{-H/2}$.
@@ -447,7 +579,7 @@ Fix $m\ge 1$, set $d=2m$, $|\Scal_h|=m+1$, $\Acal=\{a_1,a_2\}$, horizon $H$.
     
     \vspace{0.2cm}
     
-    \textbf{1. Tabular Learning on Observed States (Base Case)}
+\pause    \textbf{1. Tabular Learning on Observed States (Base Case)}
     On the observed states, the features are standard basis vectors $e_i$. Thus, LSPE estimates the parameters $\widehat{Q}_{H-1}(s^i, a_1)$ purely locally:
     \[
     \widehat{Q}_{H-1}(s^i, a_1) \;\approx\; Q^\star_{H-1}(s^i, a_1) \pm \frac{\sigma}{\sqrt{N}}
@@ -455,14 +587,14 @@ Fix $m\ge 1$, set $d=2m$, $|\Scal_h|=m+1$, $\Acal=\{a_1,a_2\}$, horizon $H$.
     
     \vspace{0.1cm}
     
-    \textbf{2. The Recursive Update.}
+\pause    \textbf{2. The Recursive Update.}
     At subsequent layers, the value of jumping $Q_h(s, a_1)$ is determined by the value at the (unseen) next state $g_{h+1}$. Working out the LSPE update shows:
     \[
     \widehat{Q}_h(s, a_1) \;=\; \frac{1}{\sqrt{m}} \sum_{i=1}^m \widehat{Q}_{h+1}(s^i, a_1) 
     \;=\; \sqrt{m} \underbrace{\left(\frac{1}{m} \sum_{i=1}^m \widehat{Q}_{h+1}(s^i, a_1)\right)}_{\text{Average Estimate}}
     \]
     
-    \textbf{Variance Explosion:}
+   \textbf{Variance Explosion:}
     The estimate at $h$ is inflated by $\sqrt{m}$ times the average estimate at $h+1$.
     
     \centering
@@ -489,7 +621,7 @@ Fix $m\ge 1$, set $d=2m$, $|\Scal_h|=m+1$, $\Acal=\{a_1,a_2\}$, horizon $H$.
         \vspace{0.2cm}
         
    
-      \item \textbf{The Question:} Is there a hard instance --- where
+\pause      \item \textbf{The Question:} Is there a hard instance --- where
         the state space is huge --- where even active exploration
         fails because we can't ``find'' the hidden $\theta^\star$ direction?
       \end{itemize}
@@ -523,7 +655,7 @@ Fix $m\ge 1$, set $d=2m$, $|\Scal_h|=m+1$, $\Acal=\{a_1,a_2\}$, horizon $H$.
     
     \vspace{0.2cm}
     
-    \textbf{The Assumption (Weakening):}
+\pause    \textbf{The Assumption (Weakening):}
     Suppose \textbf{only} that $Q^\star$ is linear.
     \[
     Q^\star_h(s,a) = \langle \theta^\star_h, \phi(s,a) \rangle
@@ -532,7 +664,7 @@ Fix $m\ge 1$, set $d=2m$, $|\Scal_h|=m+1$, $\Acal=\{a_1,a_2\}$, horizon $H$.
     for all $Q$).
 
     \vspace{0.3cm}
-    \begin{block}{Theorem (Hardness of Linear $Q^\star$)}
+\pause    \begin{block}{Theorem (Hardness of Linear $Q^\star$)}
     Even with a Generative Model, any algorithm requires
     \[
     N \ge \min \{ 2^{\Omega(d)}, 2^{\Omega(H)} \}
@@ -580,14 +712,14 @@ Fix $m\ge 1$, set $d=2m$, $|\Scal_h|=m+1$, $\Acal=\{a_1,a_2\}$, horizon $H$.
         \end{itemize}
         \vspace{0.2cm}
 
-        \item \textbf{Linear $Q^\star$ Realizability:}
+\pause        \item \textbf{Linear $Q^\star$ Realizability:}
         \begin{itemize}
             \item \textbf{Result:} Hard with a Generative Model.
             \item \textbf{Status:} \textcolor{red}{Exponential Lower Bounds}.
         \end{itemize}
         \vspace{0.2cm}
 
-        \item \textbf{All-Policy Realizability:}
+\pause        \item \textbf{All-Policy Realizability:}
         \begin{itemize}
             \item \textbf{Offline (+ Coverage):} \textcolor{red}{Hard} (Variance Explosion).
             \item \textbf{Generative Model:} \textcolor{green!60!black}{Easy} (Matrix Estimation).
