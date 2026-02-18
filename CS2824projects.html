@@ -256,22 +256,30 @@ href="https://homes.cs.washington.edu/~sham/papers/rl/onlineMDP.pdf">Online
 MDPs</a> as a starting point. Also, comment on the connections to the
 NPG analysis.</br>
 
-               <br> <strong> Safe Control: </strong>  Control barrier function has been used for learning safe policies
-                (e.g., <a href="https://arxiv.org/abs/1912.10099">this paper</a>). Can we provide learning guarantees (e.g., regret analysis) for safe RL? </br>
 
-                <br> <strong> Meta Learning in RL or Imitation Learning: </strong> Can you formulate the setting of Meta-learning in RL or Imitation learning? Multitask RL has been 
-                previously studied in tabular setting (e.g., <a href="https://www.cs.cmu.edu/~ebrun/BrunskillUAI13Sample.pdf">this paper</a>) </br>
+<br><strong> Statistical Limits of Offline RL: </strong> Offline RL seeks
+to learn a near-optimal policy from a fixed dataset. Recent work such
+as <a href="https://arxiv.org/abs/2103.04947">Wang et al.</a>, <a
+href="https://arxiv.org/abs/2010.11895">Wang et al.</a>, and <a
+href="https://arxiv.org/abs/2012.08005">Zanette</a> explore the
+fundamental information-theoretic limits and instabilities in this
+setting. Can you survey offline RL methods and the estimation
+techniques used to handle distribution shift? Under what conditions
+(e.g., low noise or specific coverage) can we circumvent existing
+lower bounds? </br>
 
-                <br> <strong> Thompson Sampling for Kernelized Nonlinear Regulator: </strong> Can you think about Thompson sampling algorithms for 
-                  <a href="https://arxiv.org/pdf/2006.12466.pdf">KNRs</a>?</br>
+<br><strong> Structural Assumptions and Learnability: </strong> What
+structural properties of an MDP make RL tractable with function
+approximation? Starting from the concept of <a
+href="https://arxiv.org/abs/1610.09512">Bellman Rank</a>, recent
+research has unified these ideas into a broader framework of <a
+href="https://arxiv.org/abs/2103.10897">Bilinear Classes</a>. Survey
+the different structural assumptions (such as Bellman rank and
+Bilinear rank) and discuss how they enable provably efficient learning
+in large-scale MDPs. </br>
 
-                  <br> <strong> Hierarchical RL: </strong> when the action space is complex, and/or the planning horizon is long, it is often considered helpful to impose a hierarchy on the action space. This has been formalized in theory using frameworks such as 
-                <a href="https://people.cs.umass.edu/~barto/courses/cs687/Sutton-Precup-Singh-AIJ99.pdf">options</a>. There is some theory on the benefits of doing 
-                this <a href="https://arxiv.org/pdf/1703.08667.pdf">here</a>. For a reading project, survey these or other papers which focus on techniques for hierarchical RL.
-                For a novel project, think about how to analyze learning with options and how to formalize Hierarchical rl and its theoretical benefits. </br>
+<br><strong> Hardness of Linear Realizability: </strong> If the optimal Q-function is linear in a given feature map, is RL always efficient? Lower bounds from <a href="https://arxiv.org/abs/2010.01374">Weisz et al.</a>, <a href="https://arxiv.org/abs/2110.02195">Weisz et al.</a>, and <a href="https://arxiv.org/abs/2103.12690">Wang et al.</a> suggest otherwise, even with a constant suboptimality gap. An interesting open question is: if $Q^\pi$ is linear for all policies, is an online lower bound still possible, or does this make the problem tractable? Additionally, explore the near-deterministic case and its impact on learnability. </br>
 
-              <br> <strong> Square Root T Regret in Large Scale MDPs</strong>. Can you modify and turn the <a href="https://arxiv.org/abs/1610.09512">Bellman Rank</a> and <a href="https://arxiv.org/abs/1811.08540">Witness rank</a> papers' algorithms and analysis to a square root T regret bound?
-            </br>
 
 
             </td>
@@ -286,10 +294,7 @@ NPG analysis.</br>
         </table>
 
 
-        
-
-
-     
+            
 
 
         
