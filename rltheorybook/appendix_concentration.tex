@@ -190,7 +190,7 @@ Equivalently, squaring both sides,
 The following OLS bound above can be derived by writing
 $\hat\theta-\theta^\star = \Lambda^{-1}\sum_i x_i\epsilon_i$ and observing that
 $\|\hat\theta-\theta^\star\|_\Lambda = \|\Lambda^{-1/2}\sum_i x_i\epsilon_i\|_2$
-is the Euclidean norm of a $d$-dimensional sub-Gaussian vector (e.g. see also \citep{HsuSpectral}).
+is the Euclidean norm of a $d$-dimensional sub-Gaussian vector (e.g. see also \citep{Hsu2012RandomDA}).
 
 \begin{theorem}[OLS with a fixed design]\label{thm:ols_fixed_design}
 Consider a fixed design $\{x_i\}_{i=1}^N\subset\mathbb{R}^d$ and responses
@@ -198,23 +198,23 @@ $y_i = \langle \theta^\star, x_i\rangle + \epsilon_i$, where
 $\epsilon_1,\dots,\epsilon_N$ are independent, mean-zero, $\sigma$-sub-Gaussian
 random variables. Let
 \[
-\Lambda := \sum_{i=1}^N x_ix_i^\top
+\Lambda := \frac{1}{N}\sum_{i=1}^N x_ix_i^\top
 \]
 and assume $\Lambda$ is invertible. The ordinary least squares estimator is
 \[
-\hat\theta := \Lambda^{-1}\sum_{i=1}^N x_i y_i.
+\hat\theta := \Lambda^{-1}\left(\frac{1}{N}\sum_{i=1}^N x_i y_i\right).
 \]
 Then for any $\delta\in(0,1)$, with probability at least $1-\delta$,
 \[
 \|\hat\theta-\theta^\star\|_{\Lambda}
 \le
-\sigma\Big(\sqrt{d}+\sqrt{2\log(1/\delta)}\Big),
+\sigma \cdot \frac{\sqrt{d}+\sqrt{2\log(1/\delta)}}{\sqrt{N}},
 \]
 and hence
 \[
 \|\hat\theta-\theta^\star\|_{\Lambda}^2
 \le
-\sigma^2\Big(d + 2\sqrt{2d\log(1/\delta)} + 2\log(1/\delta)\Big).
+\sigma^2 \cdot \frac{d + 2\sqrt{2d\log(1/\delta)} + 2\log(1/\delta)}{N}.
 \]
 \end{theorem}
 
