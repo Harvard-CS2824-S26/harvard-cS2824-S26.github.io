@@ -1,6 +1,763 @@
 \chapter{Strategic Exploration in Tabular MDPs}
 \label{chap:tabular_exploration}
 
+In the generative-model setting, we could query the dynamics at any state--action
+pair and reduce reinforcement learning to estimating a collection of local
+quantities. In an \emph{online} MDP, the learner has a much more limited interface:
+it can only interact with the environment by executing trajectories. As a result,
+data are not obtained uniformly over the state space---they are biased toward
+states the learner can \emph{reach}.
+
+This makes exploration a central algorithmic challenge. To learn a near-optimal
+policy, the agent must sometimes take actions that are not immediately rewarding
+in order to gather information about parts of the MDP that are currently uncertain.
+The goal is to balance this exploration--exploitation tradeoff so that performance
+approaches that of an optimal policy as the number of episodes grows.
+
+In this chapter we focus on \emph{tabular} finite-horizon MDPs and present
+\emph{UCB Value Iteration (UCBVI)}, an optimism-based algorithm that achieves
+(sublinear) regret. The algorithm combines (i) an empirical transition model
+built from trajectory data with (ii) an explicit exploration bonus, and then
+plans greedily in the resulting optimistic model.
+
+\section{Setup and regret}
+\label{sec:tabular_setup}
+
+We consider a finite-horizon episodic MDP with horizon $H$, discrete state space
+$\Scal$ and action space $\Acal$, and a fixed start state $s_0$.
+Let $S := |\Scal|$ and $A := |\Acal|$.
+The (stage-dependent) transition kernels are $\{P_h^\star(\cdot\mid s,a)\}_{h=0}^{H-1}$.
+Rewards are bounded as $r_h(s,a)\in[0,1]$.
+For simplicity, we treat rewards as deterministic and known; the extension to unknown
+and/or stochastic rewards estimates $r_h$ by an empirical mean and adds an additional
+(Hoeffding-style) bonus term.
+
+A learning algorithm runs for $K$ episodes. In episode $k$, the learner selects
+a (possibly history-dependent) policy
+$\pi^k=\{\pi_h^k\}_{h=0}^{H-1}$ based on the past history $\Hcal_{<k}$, then executes it
+to generate a trajectory
+\[
+s_0^k=s_0,\qquad a_h^k=\pi_h^k(s_h^k),\qquad s_{h+1}^k\sim P_h^\star(\cdot\mid s_h^k,a_h^k),
+\qquad h=0,\dots,H-1.
+\]
+
+For any policy $\pi$, define the value functions in the true MDP as
+\[
+V_h^\pi(s)
+:= \E\!\left[\sum_{t=h}^{H-1} r_t(s_t,a_t)\ \middle|\ s_h=s,\ \pi,\ P^\star \right],
+\qquad
+V_h^\star(s):=\max_\pi V_h^\pi(s).
+\]
+Since rewards lie in $[0,1]$, we have $0\le V_h^\pi(s)\le H-h$ for all $(h,s,\pi)$.
+
+It will be useful later to write expectations along a trajectory using the
+\emph{stage-$h$ occupancy measure} of a policy $\pi$:
+\[
+d_h^\pi(s,a)
+\;:=\;
+\Pr\!\big(s_h=s,\ a_h=a \ \big|\ s_0,\ \pi,\ P^\star\big),
+\qquad h=0,\dots,H-1.
+\]
+
+\paragraph{Regret.}
+We measure performance using the (pseudo-)regret over $K$ episodes:
+\[
+R_K
+\;:=\;
+\E\!\left[\sum_{k=0}^{K-1} \bigl(V_0^\star(s_0)-V_0^{\pi^k}(s_0)\bigr)\right].
+\]
+Equivalently, since $\E[\sum_{h=0}^{H-1} r_h(s_h^k,a_h^k)\mid \pi^k]=V_0^{\pi^k}(s_0)$,
+we may write
+\[
+R_K
+=
+\E\!\left[ K V_0^\star(s_0) - \sum_{k=0}^{K-1}\sum_{h=0}^{H-1} r_h(s_h^k,a_h^k)\right].
+\]
+(When rewards are stochastic, one can relate pseudo-regret to realized cumulative regret
+via Hoeffding--Azuma; see Appendix~\ref{chap:concentration}.)
+
+% =========================================================
+\section{Why exploration must be strategic}
+\label{sec:tabular_need_strategic}
+
+\input{Figures/fig_chain_example}
+Consider the chain MDP in Figure~\ref{fig:chain}. From the start state $s_0$, there is a
+unique action that moves one step to the right; all other actions move left or stay.
+A uniformly random policy that picks actions uniformly from $\Acal$ at every step reaches
+the rewarding state $s_{H+1}$ only if it chooses the ``move right'' action at each of
+the $H$ steps. This happens with probability $(1/A)^H$, which is exponentially small
+in the horizon.
+
+In particular, the expected number of episodes before such a policy reaches the rewarding
+state even once is on the order of $A^H$. This illustrates a key point: in online RL,
+the learner must sometimes \emph{plan} to reach informative states. Exploration is not
+only about adding random noise to actions---it must be driven by which parts of the MDP
+are currently uncertain and how to reach them.
+
+% =========================================================
+\section{Algorithm: UCB Value Iteration (UCBVI)}
+\label{sec:tabular_ucbvi_alg}
+
+UCBVI is an ``optimism in the face of uncertainty'' algorithm, directly analogous to
+UCB for multi-armed bandits (Chapter~\ref{chap:bandits}). The learner:
+\begin{enumerate}
+\item builds an empirical transition model from the trajectory data collected so far;
+\item adds an exploration bonus to encourage actions with high uncertainty;
+\item plans optimistically in this modified model via value iteration; and
+\item executes the resulting greedy policy for one episode.
+\end{enumerate}
+
+\paragraph{Counts and empirical transitions.}
+For each stage $h\in\{0,\dots,H-1\}$ and each $(s,a,s')\in\Scal\times\Acal\times\Scal$,
+define the pre-episode-$k$ counts
+\[
+N_h^k(s,a) := \sum_{i=0}^{k-1}\mathbf{1}\{(s_h^i,a_h^i)=(s,a)\},
+\qquad
+N_h^k(s,a,s') := \sum_{i=0}^{k-1}\mathbf{1}\{(s_h^i,a_h^i,s_{h+1}^i)=(s,a,s')\}.
+\]
+Define the empirical transition model $\widehat P_h^k(\cdot\mid s,a)$ by
+\[
+\widehat P_h^k(s'\mid s,a) :=
+\begin{cases}
+\frac{N_h^k(s,a,s')}{N_h^k(s,a)} & \text{if } N_h^k(s,a)>0,\\[6pt]
+\text{any distribution on $\Scal$} & \text{if } N_h^k(s,a)=0.
+\end{cases}
+\]
+When $N_h^k(s,a)=0$, the model $\widehat P_h^k(\cdot\mid s,a)$ is arbitrary; the bonus term
+defined next ensures that such state--action pairs are treated as highly uncertain.
+
+\paragraph{Exploration bonus.}
+Fix a failure probability $\delta\in(0,1)$ and define the log factor
+\[
+L := \ln\!\Big(\frac{2SAHK}{\delta}\Big).
+\]
+For each episode $k$, stage $h$, and $(s,a)$, define
+\begin{equation}
+\label{eq:ucbvi_bonus}
+b_h^k(s,a)
+\;:=\;
+\min\left\{H-h,\; 2H\sqrt{\frac{L}{N_h^k(s,a)+1}}\right\}.
+\end{equation}
+The bonus is large when $(s,a)$ has been visited only a few times and decays like
+$1/\sqrt{N_h^k(s,a)}$ as more data are collected. The clipping by $H-h$ matches the
+maximum possible remaining return from stage $h$.
+
+\paragraph{Planning (optimistic value iteration).}
+Given the empirical model $\{\widehat P_h^k\}$ and bonuses $\{b_h^k\}$, UCBVI performs a
+backward dynamic program. Initialize $\widehat V_H^k(\cdot)\equiv 0$ and for
+$h=H-1,\dots,0$ compute
+\begin{align}
+\label{eq:ucbvi_vi}
+\widehat Q_h^k(s,a)
+&:= r_h(s,a) + b_h^k(s,a) + \sum_{s'\in\Scal}\widehat P_h^k(s'\mid s,a)\,\widehat V_{h+1}^k(s'),\\
+\widehat V_h^k(s)
+&:= \min\left\{H-h,\ \max_{a\in\Acal}\widehat Q_h^k(s,a)\right\},\qquad
+\pi_h^k(s)\in\arg\max_{a\in\Acal}\widehat Q_h^k(s,a).\nonumber
+\end{align}
+Thus $\pi^k$ is greedy with respect to the optimistic $Q$-values. The truncation
+$\widehat V_h^k(s)\le H-h$ simply enforces the natural range of values under bounded rewards.
+
+\paragraph{Execution and updates.}
+Finally, execute $\pi^k$ for one episode to obtain $(s_h^k,a_h^k,s_{h+1}^k)_{h=0}^{H-1}$,
+then update the counts and repeat.
+
+\begin{algorithm}[t]
+\begin{algorithmic}[1]
+\Require failure probability $\delta$
+\State Initialize $N_h^0(s,a)\gets 0$ and $N_h^0(s,a,s')\gets 0$ for all $h,s,a,s'$.
+\For{$k=0,1,\dots,K-1$}
+    \State Form $\widehat P_h^k(\cdot\mid s,a)$ from counts (arbitrary if $N_h^k(s,a)=0$).
+    \State Set bonuses $b_h^k(s,a)$ by \eqref{eq:ucbvi_bonus}.
+    \State Compute $(\widehat V_h^k,\widehat Q_h^k,\pi_h^k)_{h=0}^{H-1}$ by \eqref{eq:ucbvi_vi}.
+    \State Execute $\pi^k$: $s_0^k=s_0$; for $h=0,\dots,H-1$ take $a_h^k=\pi_h^k(s_h^k)$ and sample $s_{h+1}^k\sim P_h^\star(\cdot\mid s_h^k,a_h^k)$.
+    \State Update counts: $N_h^{k+1}(\cdot)\gets N_h^k(\cdot)$ then increment the visited $(s_h^k,a_h^k,s_{h+1}^k)$.
+\EndFor
+\end{algorithmic}
+\caption{UCBVI (episodic, tabular)}
+\label{alg:ucbvi_clean}
+\end{algorithm}
+
+\section{A simple regret analysis}
+\label{sec:tabular_ucbvi_analysis_simple}
+
+This section presents a warm-up regret analysis of UCBVI that yields a bound of order
+$\widetilde O(H^2 S\sqrt{AK})$. The proof illustrates a standard template that is
+useful to internalize:
+\begin{enumerate}
+\item \textbf{Concentration:} a time-uniform high-probability event controlling the empirical transitions;
+\item \textbf{Optimism:} the value functions produced by optimistic planning dominate $V^\star$;
+\item \textbf{Decomposition:} one-episode suboptimality is bounded by a sum of bonuses plus model error;
+\item \textbf{Counting:} a potential argument bounds $\sum 1/\sqrt{\text{visits}}$ along the realized trajectory.
+\end{enumerate}
+The dependence on $S$ in Theorem~\ref{thm:ucbvi_simple} is not optimal: the leading term scales like
+$S\sqrt{AK}$ rather than $\sqrt{SAK}$. A refined analysis in a later section removes this extra factor
+by bounding transition errors more sharply than $\|\widehat P-P^\star\|_1\cdot \|V\|_\infty$.
+
+\begin{theorem}[UCBVI regret bound (simple analysis)]
+\label{thm:ucbvi_simple}
+Run UCBVI (Algorithm~\ref{alg:ucbvi_clean}) with bonuses \eqref{eq:ucbvi_bonus}.
+Then for any $\delta\in(0,1)$, letting $L:=\ln\!\big(\tfrac{2SAHK}{\delta}\big)$,
+\[
+R_K
+\;\le\;
+O\!\left(H^2 S\sqrt{AK\cdot L}\right)
+\;+\;
+\delta K H.
+\]
+In particular, setting $\delta = 1/(KH)$ yields
+\[
+R_K
+\;=\;
+\widetilde O\!\left(H^2 S\sqrt{AK}\right).
+\]
+\end{theorem}
+
+\paragraph{Discussion (when is this nontrivial?).}
+Since $0\le V_0^\star(s_0)-V_0^{\pi^k}(s_0)\le H$, we always have the trivial bound $R_K\le KH$.
+Theorem~\ref{thm:ucbvi_simple} becomes smaller than $KH$ once $K\gtrsim H^2 S^2 A$ (up to logs),
+reflecting that this warm-up argument is still ``model-size'' limited.
+
+% =========================================================
+\subsection{A time-uniform transition concentration event}
+
+We first record a time-uniform $\ell_1$ concentration bound for empirical transitions.
+The key point is that $N_h^k(s,a)$ is random and adaptively chosen; to avoid stopping-time
+issues we union bound over all sample sizes $n\in\{1,\dots,K\}$.
+
+\begin{lemma}[Uniform $\ell_1$ transition concentration]
+\label{lem:ucbvi_l1}
+Fix $\delta\in(0,1)$ and let $L=\ln(2SAHK/\delta)$.
+With probability at least $1-\delta/2$, simultaneously for all $h\in[H]$, all $(s,a)\in\Scal\times\Acal$,
+and all episodes $k$ with $N_h^k(s,a)\ge 1$,
+\[
+\big\|\widehat P_h^k(\cdot\mid s,a)-P_h^\star(\cdot\mid s,a)\big\|_1
+\;\le\;
+2\sqrt{\frac{S L}{N_h^k(s,a)}}.
+\]
+Consequently, on the same event, for any (possibly data-dependent) $f:\Scal\to[0,H]$,
+\[
+\left|\big(\widehat P_h^k(\cdot\mid s,a)-P_h^\star(\cdot\mid s,a)\big)^\top f\right|
+\;\le\;
+2H\sqrt{\frac{S L}{N_h^k(s,a)}}.
+\]
+\end{lemma}
+
+\begin{proof}
+Fix $(h,s,a)$ and consider the empirical distribution after exactly $n$ i.i.d.\ samples
+from $P_h^\star(\cdot\mid s,a)$; denote it by $\widehat P_{h,n}(\cdot\mid s,a)$.
+(One can couple the online interaction to an infinite i.i.d.\ sequence for each $(h,s,a)$,
+revealing the $n$-th sample on the $n$-th visit; this makes the ``fixed-$n$'' view rigorous.)
+
+By Proposition~\ref{app:discrete} (Appendix), with probability at least $1-\delta'$,
+\[
+\big\|\widehat P_{h,n}(\cdot\mid s,a)-P_h^\star(\cdot\mid s,a)\big\|_1
+\le \sqrt{S}\left(\frac{1}{\sqrt{n}} + \sqrt{\frac{\ln(1/\delta')}{2n}}\right)
+\le 2\sqrt{\frac{S\ln(1/\delta')}{n}},
+\]
+where the last inequality uses $\ln(1/\delta')\ge \ln 2$ (since $\delta'\le 1/2$ below).
+Choose $\delta' := \delta/(2SAHK)$ and union bound over all $(h,s,a)$ and all $n\in\{1,\dots,K\}$.
+If $N_h^k(s,a)=n$, then $\widehat P_h^k(\cdot\mid s,a)=\widehat P_{h,n}(\cdot\mid s,a)$,
+so the stated bound holds simultaneously for all episodes $k$.
+
+The final display follows from H\"older:
+$|(\widehat P-P)^\top f|\le \|\widehat P-P\|_1\|f\|_\infty\le H\|\widehat P-P\|_1$.
+\end{proof}
+
+Next we need a sharper bound against the \emph{deterministic} optimal value function
+(to prove optimism without paying a $\sqrt{S}$ factor).
+
+\begin{lemma}[Model error against $V^\star$]
+\label{lem:ucbvi_vstar}
+Fix $\delta\in(0,1)$ and let $L=\ln(2SAHK/\delta)$.
+With probability at least $1-\delta/2$, simultaneously for all $h\in[H]$, all $(s,a)$,
+and all episodes $k$ with $N_h^k(s,a)\ge 1$,
+\[
+\left|\big(\widehat P_h^k(\cdot\mid s,a)-P_h^\star(\cdot\mid s,a)\big)^\top V_{h+1}^\star\right|
+\;\le\;
+H\sqrt{\frac{L}{N_h^k(s,a)}}.
+\]
+\end{lemma}
+
+\begin{proof}
+Fix $(h,s,a)$ and consider $n$ i.i.d.\ samples $s'_1,\dots,s'_n\sim P_h^\star(\cdot\mid s,a)$.
+Let $Y_i := V_{h+1}^\star(s'_i)\in[0,H]$, so $\E[Y_i]=P_h^\star(\cdot\mid s,a)^\top V_{h+1}^\star$.
+By Hoeffding's inequality (Lemma~\ref{lem:hoeffding}),
+\[
+\Pr\!\left(\left|\frac{1}{n}\sum_{i=1}^n Y_i - \E[Y_i]\right|\ge \epsilon\right)
+\le 2\exp\!\left(-\frac{2n\epsilon^2}{H^2}\right).
+\]
+Choosing $\epsilon = H\sqrt{\ln(4SAHK/\delta)/(2n)}$ makes the RHS at most $\delta/(2SAHK)$.
+Since $\ln(4SAHK/\delta)\le 2\ln(2SAHK/\delta)=2L$ (using $L\ge \ln 2$), this $\epsilon$
+is at most $H\sqrt{L/n}$.
+Union bound over all $(h,s,a)$ and $n\in\{1,\dots,K\}$, and translate from $n$ to the
+random count $N_h^k(s,a)$ as in Lemma~\ref{lem:ucbvi_l1}.
+\end{proof}
+
+Let $\mathcal{E}_{\mathrm{model}}$ denote the intersection of the events in
+Lemmas~\ref{lem:ucbvi_l1} and~\ref{lem:ucbvi_vstar}.
+Then $\Pr(\mathcal{E}_{\mathrm{model}})\ge 1-\delta$.
+
+% =========================================================
+\subsection{Optimism}
+
+\begin{lemma}[Optimism]
+\label{lem:ucbvi_optimism}
+On $\mathcal{E}_{\mathrm{model}}$, for every episode $k$, every stage $h$, and every state $s$,
+\[
+\widehat V_h^k(s)\ \ge\ V_h^\star(s).
+\]
+In particular, $\widehat V_0^k(s_0)\ge V_0^\star(s_0)$ for all $k$.
+\end{lemma}
+
+\begin{proof}
+We prove by backward induction on $h$.
+At $h=H$, $\widehat V_H^k\equiv 0=V_H^\star$.
+
+Assume $\widehat V_{h+1}^k(s)\ge V_{h+1}^\star(s)$ for all $s$.
+Fix a state $s$ at stage $h$.
+
+If $\widehat V_h^k(s)=H-h$, then $\widehat V_h^k(s)\ge V_h^\star(s)$ holds since $V_h^\star(s)\le H-h$.
+
+Otherwise, $\widehat V_h^k(s)<H-h$. In this case the truncation in \eqref{eq:ucbvi_vi} is inactive,
+so $\widehat V_h^k(s)=\max_a \widehat Q_h^k(s,a)$ and therefore $\widehat Q_h^k(s,a)<H-h$ for all $a$.
+In particular, no action has a clipped bonus at $(h,s)$, so for every $a$ we have
+\[
+b_h^k(s,a)=2H\sqrt{\frac{L}{N_h^k(s,a)+1}}
+\qquad\text{and hence } N_h^k(s,a)\ge 1.
+\]
+Let $a\in\Acal$ be arbitrary. Using Lemma~\ref{lem:ucbvi_vstar} and the induction hypothesis,
+\begin{align*}
+Q_h^\star(s,a)
+&= r_h(s,a) + P_h^\star(\cdot\mid s,a)^\top V_{h+1}^\star\\
+&\le r_h(s,a) + \widehat P_h^k(\cdot\mid s,a)^\top V_{h+1}^\star
+      + H\sqrt{\frac{L}{N_h^k(s,a)}}\\
+&\le r_h(s,a) + \widehat P_h^k(\cdot\mid s,a)^\top \widehat V_{h+1}^k
+      + H\sqrt{\frac{L}{N_h^k(s,a)}}\\
+&\le r_h(s,a) + \widehat P_h^k(\cdot\mid s,a)^\top \widehat V_{h+1}^k
+      + b_h^k(s,a)
+= \widehat Q_h^k(s,a),
+\end{align*}
+where the third line uses $\widehat V_{h+1}^k\ge V_{h+1}^\star$ and $\widehat P_h^k$ being a distribution,
+and the fourth line uses $b_h^k(s,a)\ge H\sqrt{L/N_h^k(s,a)}$ since $N_h^k(s,a)+1\le 2N_h^k(s,a)$.
+
+Taking maxima over $a$ yields
+\[
+V_h^\star(s)=\max_a Q_h^\star(s,a)\ \le\ \max_a \widehat Q_h^k(s,a)=\widehat V_h^k(s),
+\]
+completing the induction.
+\end{proof}
+
+% =========================================================
+\subsection{A one-episode decomposition}
+
+Recall the stage-$h$ occupancy measure of a policy $\pi$ in the true MDP:
+\[
+d_h^\pi(s,a) := \Pr(s_h=s,a_h=a\mid s_0,\pi,P^\star).
+\]
+
+\begin{lemma}[One-episode decomposition]
+\label{lem:ucbvi_decomp}
+For any episode $k$, the policy $\pi^k$ returned by UCBVI satisfies
+\[
+\widehat V_0^k(s_0) - V_0^{\pi^k}(s_0)
+\le
+\sum_{h=0}^{H-1}\E_{(s_h,a_h)\sim d_h^{\pi^k}}\!\left[
+b_h^k(s_h,a_h) + \big(\widehat P_h^k(\cdot\mid s_h,a_h)-P_h^\star(\cdot\mid s_h,a_h)\big)^\top \widehat V_{h+1}^k
+\right].
+\]
+\end{lemma}
+
+\begin{proof}
+Fix episode $k$ and abbreviate $\pi=\pi^k$, $\widehat V_h=\widehat V_h^k$, $\widehat P_h=\widehat P_h^k$, $b_h=b_h^k$.
+Define $\Delta_h(s):=\widehat V_h(s)-V_h^\pi(s)$, so $\Delta_H\equiv 0$.
+
+For any state $s$ at stage $h$, since $\pi_h(s)\in\arg\max_a \widehat Q_h(s,a)$ and
+$\widehat V_h(s)=\min\{H-h,\max_a \widehat Q_h(s,a)\}\le \widehat Q_h(s,\pi_h(s))$, we have
+\[
+\widehat V_h(s)
+\le
+r_h(s,\pi_h(s)) + b_h(s,\pi_h(s)) + \widehat P_h(\cdot\mid s,\pi_h(s))^\top \widehat V_{h+1}.
+\]
+On the other hand,
+\[
+V_h^\pi(s) = r_h(s,\pi_h(s)) + P_h^\star(\cdot\mid s,\pi_h(s))^\top V_{h+1}^\pi.
+\]
+Subtracting gives
+\[
+\Delta_h(s)
+\le
+b_h(s,\pi_h(s))
++ \big(\widehat P_h(\cdot\mid s,\pi_h(s)) - P_h^\star(\cdot\mid s,\pi_h(s))\big)^\top \widehat V_{h+1}
++ P_h^\star(\cdot\mid s,\pi_h(s))^\top \Delta_{h+1}.
+\]
+Taking expectations under the trajectory distribution induced by $\pi$ in the true MDP
+and unrolling (tower property) from $h=0$ to $H-1$, using $\Delta_H\equiv 0$,
+yields the stated bound for $\Delta_0(s_0)=\widehat V_0(s_0)-V_0^\pi(s_0)$.
+\end{proof}
+
+% =========================================================
+\subsection{A counting lemma}
+
+\begin{lemma}[Counting / potential bound]
+\label{lem:ucbvi_counting}
+For any sequence of $K$ trajectories $\{(s_h^k,a_h^k)\}_{h=0}^{H-1}$, we have
+\[
+\sum_{k=0}^{K-1}\sum_{h=0}^{H-1}\frac{1}{\sqrt{N_h^k(s_h^k,a_h^k)+1}}
+\;\le\;
+2H\sqrt{SAK}.
+\]
+\end{lemma}
+
+\begin{proof}
+Fix a stage $h$ and a state--action pair $(s,a)$. Let $n:=N_h^K(s,a)$ be the total number of visits to $(s,a)$ at stage $h$ over all $K$ episodes.
+Each time $(s,a)$ is visited, the denominator takes values $\sqrt{1},\sqrt{2},\dots,\sqrt{n}$, so
+\[
+\sum_{\substack{k:\ (s_h^k,a_h^k)=(s,a)}}\frac{1}{\sqrt{N_h^k(s,a)+1}}
+\le \sum_{i=1}^{n}\frac{1}{\sqrt{i}} \le 2\sqrt{n}.
+\]
+Summing over all $(s,a)$ and using Cauchy--Schwarz,
+\[
+\sum_{k=0}^{K-1}\frac{1}{\sqrt{N_h^k(s_h^k,a_h^k)+1}}
+\le
+2\sum_{s,a}\sqrt{N_h^K(s,a)}
+\le
+2\sqrt{SA\sum_{s,a}N_h^K(s,a)}
+=
+2\sqrt{SA\cdot K}.
+\]
+Finally sum over $h=0,\dots,H-1$ to get $2H\sqrt{SAK}$.
+\end{proof}
+
+% =========================================================
+\subsection{Proof of Theorem~\ref{thm:ucbvi_simple}}
+
+\begin{proof}
+Fix $\delta\in(0,1)$ and let $\mathcal{E}_{\mathrm{model}}$ be as above, with
+$\Pr(\mathcal{E}_{\mathrm{model}})\ge 1-\delta$.
+
+\paragraph{Step 1: reduce regret to the optimistic planning gap.}
+On $\mathcal{E}_{\mathrm{model}}$, optimism (Lemma~\ref{lem:ucbvi_optimism}) implies
+\[
+V_0^\star(s_0) - V_0^{\pi^k}(s_0)
+\le
+\widehat V_0^k(s_0) - V_0^{\pi^k}(s_0).
+\]
+
+\paragraph{Step 2: decompose one episode and bound the model error term.}
+Apply Lemma~\ref{lem:ucbvi_decomp} and upper bound the model error term by absolute value:
+\[
+\widehat V_0^k(s_0) - V_0^{\pi^k}(s_0)
+\le
+\sum_{h=0}^{H-1}\E_{(s_h,a_h)\sim d_h^{\pi^k}}\!\left[
+b_h^k(s_h,a_h) + \left|\big(\widehat P_h^k(\cdot\mid s_h,a_h)-P_h^\star(\cdot\mid s_h,a_h)\big)^\top \widehat V_{h+1}^k\right|
+\right].
+\]
+Since $\|\widehat V_{h+1}^k\|_\infty\le H$, Lemma~\ref{lem:ucbvi_l1} gives (for $N_h^k(s_h,a_h)\ge 1$)
+\[
+\left|\big(\widehat P_h^k-P_h^\star\big)^\top \widehat V_{h+1}^k\right|
+\le
+2H\sqrt{\frac{S L}{N_h^k(s_h,a_h)}}
+\le
+2\sqrt{2}\,H\sqrt{\frac{S L}{N_h^k(s_h,a_h)+1}},
+\]
+where we used $N+1\le 2N$ for $N\ge 1$.
+If $N_h^k(s_h,a_h)=0$, then trivially
+$\left|\big(\widehat P_h^k-P_h^\star\big)^\top \widehat V_{h+1}^k\right|\le \|\widehat V_{h+1}^k\|_\infty\le H$,
+and since $L\ge \ln 2$ we still have
+$H\le 2\sqrt{2}\,H\sqrt{SL/(0+1)}$.
+Thus, in all cases,
+\[
+\left|\big(\widehat P_h^k(\cdot\mid s_h,a_h)-P_h^\star(\cdot\mid s_h,a_h)\big)^\top \widehat V_{h+1}^k\right|
+\le
+2\sqrt{2}\,H\sqrt{\frac{S L}{N_h^k(s_h,a_h)+1}}.
+\]
+Also, by the bonus definition \eqref{eq:ucbvi_bonus} and $S\ge 1$,
+\[
+b_h^k(s_h,a_h)\le 2H\sqrt{\frac{L}{N_h^k(s_h,a_h)+1}}
+\le 2H\sqrt{\frac{S L}{N_h^k(s_h,a_h)+1}}.
+\]
+Combining the last two displays yields, on $\mathcal{E}_{\mathrm{model}}$,
+\[
+V_0^\star(s_0) - V_0^{\pi^k}(s_0)
+\le
+(2+2\sqrt{2})H\sqrt{SL}\cdot
+\E\!\left[\sum_{h=0}^{H-1}\frac{1}{\sqrt{N_h^k(s_h^k,a_h^k)+1}}\ \middle|\ \Hcal_{<k}\right].
+\]
+
+\paragraph{Step 3: sum over episodes using the counting lemma.}
+Summing over $k$ and taking total expectation, then applying Lemma~\ref{lem:ucbvi_counting}, gives
+\[
+\E\!\left[\mathbf{1}\{\mathcal{E}_{\mathrm{model}}\}\sum_{k=0}^{K-1}\big(V_0^\star(s_0)-V_0^{\pi^k}(s_0)\big)\right]
+\le
+(2+2\sqrt{2})H\sqrt{SL}\cdot
+\E\!\left[\sum_{k,h}\frac{1}{\sqrt{N_h^k(s_h^k,a_h^k)+1}}\right]
+\le
+O\!\left(H^2 S\sqrt{AK\cdot L}\right).
+\]
+On the complement $\overline{\mathcal{E}}_{\mathrm{model}}$, use $0\le V_0^\star(s_0)-V_0^{\pi^k}(s_0)\le H$ to obtain
+\[
+\E\!\left[\mathbf{1}\{\overline{\mathcal{E}}_{\mathrm{model}}\}\sum_{k=0}^{K-1}\big(V_0^\star(s_0)-V_0^{\pi^k}(s_0)\big)\right]
+\le
+\Pr(\overline{\mathcal{E}}_{\mathrm{model}})\cdot KH
+\le
+\delta K H.
+\]
+Combining completes the proof.
+\end{proof}
+
+
+\section{An Improved Regret Bound}
+\label{sec:refined_ucbvi}
+
+The simple analysis in Theorem~\ref{thm:ucbvi_simple} bounds the model error term
+$\big(\widehat P_h^k-P_h^\star\big)^\top \widehat V_{h+1}^k$ by
+$\|\widehat P_h^k-P_h^\star\|_1\cdot \|\widehat V_{h+1}^k\|_\infty$, which introduces an
+extraneous $\sqrt S$ factor.
+This section sketches a refined argument that improves the leading dependence to
+$\widetilde O\!\big(H^2\sqrt{SAK}\big)$, at the cost of an additional lower-order term.
+
+\begin{theorem}[UCBVI regret bound (refined analysis; proof sketch)]
+\label{thm:ucbvi_refined}
+Run UCBVI (Algorithm~\ref{alg:ucbvi_clean}) with bonuses \eqref{eq:ucbvi_bonus}.
+There exists a universal constant $c>0$ such that for any $\delta\in(0,1)$,
+letting $L:=\ln\!\big(\tfrac{2S^2AHK}{\delta}\big)$,\footnote{Compared with the log factor
+used in the bonus, this only adds an extra $\ln S$, coming from a union bound over next states.}
+\[
+R_K
+\;\le\;
+O\!\left(
+H^2\sqrt{SAK\cdot L}
+\;+\;
+H^3 S^2A\cdot L\cdot \ln(1+K)
+\right)
+\;+\;
+\delta K H.
+\]
+In particular, setting $\delta=1/(KH)$ yields
+$
+R_K=\widetilde O\!\big(H^2\sqrt{SAK}+H^3S^2A\big).
+$
+\end{theorem}
+
+\paragraph{Roadmap.}
+We reuse the same high-level template as in Section~\ref{sec:tabular_ucbvi_analysis_simple}:
+optimism + one-episode decomposition + counting. The only new ingredient is a
+Bernstein/Freedman-style bound that controls
+$\big(\widehat P_h^k-P_h^\star\big)^\top(\widehat V_{h+1}^k-V_{h+1}^\star)$
+without paying $\sqrt S$ in the leading term.
+
+% =========================================================
+\subsection{A Bernstein-style transition bound}
+
+The starting point is a pointwise empirical Bernstein bound for each next-state probability.
+It follows by applying Freedman's inequality (Lemma~\ref{lem:freedman}) to the bounded
+martingale differences associated with indicator variables.
+
+\begin{lemma}[Pointwise empirical Bernstein bound (sketch)]
+\label{lem:ucbvi_pointwise_bern}
+Fix $\delta\in(0,1)$ and let $L=\ln(2S^2AHK/\delta)$.
+With probability at least $1-\delta$, simultaneously for all $h\in[H]$, all $(s,a)\in\Scal\times\Acal$,
+all $s'\in\Scal$, and all episodes $k$,
+\[
+\big|\widehat P_h^k(s'\mid s,a)-P_h^\star(s'\mid s,a)\big|
+\;\le\;
+\sqrt{\frac{2P_h^\star(s'\mid s,a)\,L}{N_h^k(s,a)+1}}
+\;+\;
+\frac{2L}{N_h^k(s,a)+1}.
+\]
+\end{lemma}
+
+A convenient corollary is a \emph{self-bounding} inequality for linear functionals of the form
+$(\widehat P-P^\star)^\top f$ when $f$ is nonnegative.
+This is the key step that ultimately yields the improved $\sqrt{SAK}$ dependence.
+
+\begin{lemma}[Self-bounding transition error (sketch)]
+\label{lem:ucbvi_self_bounding}
+On the event of Lemma~\ref{lem:ucbvi_pointwise_bern}, for all $h,k,s,a$ and all functions
+$f:\Scal\to[0,H]$,
+\[
+\left|\big(\widehat P_h^k(\cdot\mid s,a)-P_h^\star(\cdot\mid s,a)\big)^\top f\right|
+\;\le\;
+\frac{P_h^\star(\cdot\mid s,a)^\top f}{H}
+\;+\;
+\xi_h^k(s,a),
+\qquad
+\xi_h^k(s,a):=\frac{c\,H^2SL}{N_h^k(s,a)+1},
+\]
+for a universal constant $c$.
+\end{lemma}
+
+\begin{proof}[Proof sketch]
+Using Lemma~\ref{lem:ucbvi_pointwise_bern} and $f\ge 0$,
+\[
+\big|(\widehat P-P^\star)^\top f\big|
+\le \sum_{s'} f(s')\big|\widehat P(s')-P^\star(s')\big|
+\le T_1 + T_2,
+\]
+where
+\[
+T_1 := \sum_{s'} f(s')\sqrt{\frac{2P^\star(s')L}{N+1}},
+\qquad
+T_2 := \sum_{s'} f(s')\frac{2L}{N+1}.
+\]
+For the linear term, $T_2\le \frac{2SHL}{N+1}\le \frac{2H^2SL}{N+1}$ (since $H\ge 1$).
+For the square-root term,
+\[
+T_1
+\le
+\sqrt{\frac{2L}{N+1}}\sum_{s'}\sqrt{P^\star(s')\,f(s')^2}
+\le
+\sqrt{\frac{2SL}{N+1}}\sqrt{P^\star f^2}
+\le
+\sqrt{\frac{2HSL}{N+1}}\sqrt{P^\star f},
+\]
+where we used Cauchy--Schwarz and $f^2\le Hf$.
+Finally, apply $\sqrt{uv}\le \tfrac{u+v}{2}$ with
+$u=(P^\star f)/H$ and $v=2H^2SL/(N+1)$ to get
+$T_1\le (P^\star f)/H + H^2SL/(N+1)$ up to constants, and combine with $T_2$.
+\end{proof}
+
+% =========================================================
+\subsection{A recursive control of the optimistic gap}
+
+Define the (episode-$k$) optimistic gap
+\[
+\Delta_h^k(s) := \widehat V_h^k(s)-V_h^\star(s)\ \ge\ 0,
+\]
+where nonnegativity holds on $\mathcal{E}_{\mathrm{model}}$ by Lemma~\ref{lem:ucbvi_optimism}.
+The next lemma states that $\Delta_h^k$ satisfies a recursion whose ``noise''
+is exactly the bonus and the lower-order term $\xi$.
+
+\begin{lemma}[Gap recursion (sketch)]
+\label{lem:ucbvi_gap_recursion}
+Assume $\mathcal{E}_{\mathrm{model}}$ holds (so $\widehat V^k\ge V^\star$) and
+Lemma~\ref{lem:ucbvi_self_bounding} holds.
+Then for every episode $k$, stage $h$, and state $s$, letting $a=\pi_h^k(s)$,
+\[
+\Delta_h^k(s)
+\;\le\;
+2b_h^k(s,a) + \xi_h^k(s,a)
+\;+\;
+\Big(1+\frac{1}{H}\Big)\,
+\E_{s'\sim P_h^\star(\cdot\mid s,a)}\!\big[\Delta_{h+1}^k(s')\big].
+\]
+Consequently, unrolling the recursion gives for any $h$,
+\[
+\E\big[\Delta_{h+1}^k(s_{h+1})\mid s_{h+1},\pi^k\big]
+\;\le\;
+e\cdot
+\E\!\left[\sum_{\tau=h+1}^{H-1}\big(2b_\tau^k(s_\tau,a_\tau)+\xi_\tau^k(s_\tau,a_\tau)\big)\ \middle|\ s_{h+1},\pi^k\right].
+\]
+\end{lemma}
+
+\begin{proof}[Proof sketch]
+Fix $(k,h,s)$ and let $a=\pi_h^k(s)$.
+Using $\widehat V_h^k(s)\le \widehat Q_h^k(s,a)$ and $V_h^\star(s)\ge Q_h^\star(s,a)$,
+\[
+\Delta_h^k(s)\le \widehat Q_h^k(s,a)-Q_h^\star(s,a)
+= b_h^k(s,a) + \widehat P_h^k{}^\top \widehat V_{h+1}^k - P_h^\star{}^\top V_{h+1}^\star.
+\]
+Write $\widehat V_{h+1}^k=V_{h+1}^\star+\Delta_{h+1}^k$ and expand:
+\[
+\Delta_h^k(s)\le b_h^k(s,a)
++ \big(\widehat P_h^k-P_h^\star\big)^\top V_{h+1}^\star
++ \widehat P_h^k{}^\top \Delta_{h+1}^k.
+\]
+The $V^\star$ term is controlled by Lemma~\ref{lem:ucbvi_vstar} and absorbed by $b_h^k$
+(up to constants), yielding another $+b_h^k(s,a)$.
+For the remaining term,
+\[
+\widehat P_h^k{}^\top \Delta_{h+1}^k
+=
+P_h^\star{}^\top \Delta_{h+1}^k
++
+\big(\widehat P_h^k-P_h^\star\big)^\top \Delta_{h+1}^k,
+\]
+and we bound the last inner product using Lemma~\ref{lem:ucbvi_self_bounding} with $f=\Delta_{h+1}^k$.
+Since $P_h^\star{}^\top \Delta_{h+1}^k = \E[\Delta_{h+1}^k(s_{h+1})\mid s_h=s,a_h=a]$,
+this gives the stated one-step recursion.
+Unrolling it multiplies future terms by at most $(1+1/H)^m\le e$.
+\end{proof}
+
+% =========================================================
+\subsection{Per-episode regret bound and summation}
+
+The refined recursion lets us bound the one-episode regret by the \emph{same} terms
+$2b+\xi$ (up to a constant factor), without ever using $\|\widehat P-P^\star\|_1\cdot \|\widehat V\|_\infty$.
+
+\begin{lemma}[Per-episode refined bound (sketch)]
+\label{lem:ucbvi_refined_episode}
+Assume $\mathcal{E}_{\mathrm{model}}$ and Lemmas~\ref{lem:ucbvi_self_bounding}--\ref{lem:ucbvi_gap_recursion} hold.
+Then for every episode $k$,
+\[
+V_0^\star(s_0)-V_0^{\pi^k}(s_0)
+\;\le\;
+e\sum_{h=0}^{H-1}\E_{(s_h,a_h)\sim d_h^{\pi^k}}\!\left[2b_h^k(s_h,a_h)+\xi_h^k(s_h,a_h)\right].
+\]
+\end{lemma}
+
+\begin{proof}[Proof sketch]
+Start from the one-episode decomposition (Lemma~\ref{lem:ucbvi_decomp}):
+\[
+\widehat V_0^k(s_0)-V_0^{\pi^k}(s_0)
+\le
+\sum_{h=0}^{H-1}\E_{d_h^{\pi^k}}\!\left[b_h^k + (\widehat P_h^k-P_h^\star)^\top \widehat V_{h+1}^k\right].
+\]
+Split $\widehat V_{h+1}^k=V_{h+1}^\star+\Delta_{h+1}^k$:
+\[
+(\widehat P_h^k-P_h^\star)^\top \widehat V_{h+1}^k
+=
+(\widehat P_h^k-P_h^\star)^\top V_{h+1}^\star
++
+(\widehat P_h^k-P_h^\star)^\top \Delta_{h+1}^k.
+\]
+The first term is bounded by $b_h^k$ using Lemma~\ref{lem:ucbvi_vstar}.
+The second term is controlled by Lemma~\ref{lem:ucbvi_self_bounding} with $f=\Delta_{h+1}^k$,
+and Lemma~\ref{lem:ucbvi_gap_recursion} turns the resulting $P^\star\Delta_{h+1}^k/H$ term into
+an $e$-weighted sum of future $(2b+\xi)$ terms.
+Collecting like terms yields the stated inequality.
+\end{proof}
+
+\begin{proof}[Proof sketch of Theorem~\ref{thm:ucbvi_refined}]
+Let $\mathcal{E}$ be the intersection of $\mathcal{E}_{\mathrm{model}}$ (from Section~\ref{sec:tabular_ucbvi_analysis_simple})
+and the events of Lemmas~\ref{lem:ucbvi_pointwise_bern}--\ref{lem:ucbvi_self_bounding}.
+Then $\Pr(\mathcal{E})\ge 1-\delta$.
+
+On $\mathcal{E}$, Lemma~\ref{lem:ucbvi_refined_episode} gives
+\[
+\sum_{k=0}^{K-1}\big(V_0^\star(s_0)-V_0^{\pi^k}(s_0)\big)
+\le
+e\sum_{k,h}\big(2b_h^k(s_h^k,a_h^k)+\xi_h^k(s_h^k,a_h^k)\big).
+\]
+For the bonus term, using $b_h^k(s,a)\le 2H\sqrt{L/(N_h^k(s,a)+1)}$ and the counting lemma
+(Lemma~\ref{lem:ucbvi_counting}),
+\[
+\sum_{k,h}2b_h^k(s_h^k,a_h^k)
+\le
+4H\sqrt{L}\sum_{k,h}\frac{1}{\sqrt{N_h^k(s_h^k,a_h^k)+1}}
+\le
+8H^2\sqrt{SAK\cdot L}.
+\]
+For the $\xi$ term, since $\xi_h^k(s,a)=\frac{cH^2SL}{N_h^k(s,a)+1}$,
+\[
+\sum_{k,h}\xi_h^k(s_h^k,a_h^k)
+=
+cH^2SL\sum_{h=0}^{H-1}\sum_{s,a}\sum_{i=1}^{N_h^K(s,a)}\frac{1}{i}
+\le
+cH^2SL\cdot (HSA)\cdot \ln(1+K)
+=
+O\!\big(H^3S^2A\cdot L\cdot \ln(1+K)\big).
+\]
+Finally, on $\overline{\mathcal{E}}$ we use the trivial bound
+$0\le V_0^\star(s_0)-V_0^{\pi^k}(s_0)\le H$ to get an additional $\delta KH$ term.
+Combining yields the theorem.
+\end{proof}
+
+\newpage
+
+\chapter{old ucbvi chapter}
+
+
 %\newcommand*{\one}{{\textbf 1}}
 
 We now turn to how an agent acting in an unknown MDP can obtain a
@@ -32,8 +789,7 @@ environment and, possibly,  any randomness of the agent's strategy.
 
 This chapter considers tabular MDPs, where $\Scal$ and $\Acal$ are discrete.
 We will now present a (nearly) sublinear regret algorithm,
-UCB-Value Iteration. This chapter follows the proof in
-~\cite{pmlr-v70-azar17a}. We first give a simplified analysis of UCB-VI that gives a regret bound in the order of $H^2 S\sqrt{AK}$, followed by a more refined analysis that gives a $H^2 \sqrt{SAK} + H^3 S^2 A$ regret bound.   
+UCB-Value Iteration. 
 
 %\sk{We don't use the $\mu$ in this chapter, right? Also can we just
 %  always write $V^{\pi}(s_0)$ and not $V^{\pi}$, as let's try to keep
@@ -462,6 +1218,9 @@ Using Lemma~\ref{lem:potential}, we have that:
 \emph{to be added}
 
 \section{Bibliographic Remarks and Further Readings}\label{ch5:bib}
+
+This chapter follows the proof in
+~\cite{pmlr-v70-azar17a}. We first give a simplified analysis of UCB-VI that gives a regret bound in the order of $H^2 S\sqrt{AK}$, followed by a more refined analysis that gives a $H^2 \sqrt{SAK} + H^3 S^2 A$ regret bound.   
 
 The first provably correct PAC algorithm for reinforcement learning
 (which finds a near optimal policy) was due to
