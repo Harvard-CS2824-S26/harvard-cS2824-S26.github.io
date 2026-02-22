@@ -5,68 +5,68 @@
   <script async src=""></script>
   <script>
     window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
+    function gtag() { dataLayer.push(arguments); }
     gtag('js', new Date());
 
     gtag('config', 'UA-46766886-4');
   </script>
 
 
-<script type="text/javascript">
-  function visibility_on(id) {
-       var e = document.getElementById(id+"_text");
-       if(e.style.display == 'none')
-           e.style.display = 'block';
-       var e = document.getElementById(id+"_img");
-       if(e.style.display == 'none')
-           e.style.display = 'block';
-  }
-  function visibility_off(id) {
-       var e = document.getElementById(id+"_text");
-       if(e.style.display == 'block')
-           e.style.display = 'none';
-       var e = document.getElementById(id+"_img");
-       if(e.style.display == 'block')
-           e.style.display = 'none';
-  }
-  function toggle_visibility(id) {
-      var e = document.getElementById(id+"_text");
-      if(e.style.display == 'inline')
-         e.style.display = 'block';
+  <script type="text/javascript">
+    function visibility_on(id) {
+      var e = document.getElementById(id + "_text");
+      if (e.style.display == 'none')
+        e.style.display = 'block';
+      var e = document.getElementById(id + "_img");
+      if (e.style.display == 'none')
+        e.style.display = 'block';
+    }
+    function visibility_off(id) {
+      var e = document.getElementById(id + "_text");
+      if (e.style.display == 'block')
+        e.style.display = 'none';
+      var e = document.getElementById(id + "_img");
+      if (e.style.display == 'block')
+        e.style.display = 'none';
+    }
+    function toggle_visibility(id) {
+      var e = document.getElementById(id + "_text");
+      if (e.style.display == 'inline')
+        e.style.display = 'block';
       else
-         e.style.display = 'inline';
-      var e = document.getElementById(id+"_img");
-      if(e.style.display == 'inline')
-         e.style.display = 'block';
+        e.style.display = 'inline';
+      var e = document.getElementById(id + "_img");
+      if (e.style.display == 'inline')
+        e.style.display = 'block';
       else
-         e.style.display = 'inline';
-  }
-  function toggle_vis(id) {
+        e.style.display = 'inline';
+    }
+    function toggle_vis(id) {
       var e = document.getElementById(id);
       if (e.style.display == 'none')
-          e.style.display = 'inline';
+        e.style.display = 'inline';
       else
-          e.style.display = 'none';
-  }
-</script>
+        e.style.display = 'none';
+    }
+  </script>
 
 
   <meta name=viewport content="width=800">
   <meta name="generator" content="HTML Tidy for Linux/x86 (vers 11 February 2007), see www.w3.org">
   <style type="text/css">
     /* Color scheme stolen from Sergey Karayev */
-    
+
     a {
       color: #1772d0;
       text-decoration: none;
     }
-    
+
     a:focus,
     a:hover {
       color: #f09228;
       text-decoration: none;
     }
-    
+
     body,
     td,
     th,
@@ -76,34 +76,34 @@
       font-family: 'Lato', Verdana, Helvetica, sans-serif;
       font-size: 14px
     }
-    
+
     strong {
       font-family: 'Lato', Verdana, Helvetica, sans-serif;
       font-size: 14px;
     }
-    
+
     heading {
       font-family: 'Lato', Verdana, Helvetica, sans-serif;
       font-size: 22px;
     }
-    
+
     papertitle {
       font-family: 'Lato', Verdana, Helvetica, sans-serif;
       font-size: 14px;
       font-weight: 700
     }
-    
+
     name {
       font-family: 'Lato', Verdana, Helvetica, sans-serif;
       font-size: 32px;
     }
-    
+
     .one {
       width: 160px;
       height: 160px;
       position: relative;
     }
-    
+
     .two {
       width: 160px;
       height: 160px;
@@ -112,13 +112,13 @@
       -moz-transition: opacity .2s ease-in-out;
       -webkit-transition: opacity .2s ease-in-out;
     }
-    
+
     .fade {
       transition: opacity .2s ease-in-out;
       -moz-transition: opacity .2s ease-in-out;
       -webkit-transition: opacity .2s ease-in-out;
     }
-    
+
     span.highlight {
       background-color: #ffffd0;
     }
@@ -126,7 +126,8 @@
   <link rel="icon" type="image/png" href="images/seal_icon.png">
   <title>CS 6789 Foundations of RL</title>
   <meta http-equiv="Content-Type" content="text/html; charset=us-ascii">
-  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic' rel='stylesheet'
+    type='text/css'>
 </head>
 
 
@@ -134,21 +135,33 @@
   <table width="800" border="0" align="center" cellspacing="0" cellpadding="0">
     <tr>
       <td>
-        
+
 
         <table width="100%" align="center" border="0" cellspacing="0" cellpadding="20">
           <tr>
             <td width="100%" valign="middle">
               <p align="center">
-                <name>Important Dates</name>
+                <name>Project Guidelines and Important Dates</name>
               </p>
-	      <p>
-                <br><strong>Project proposal due: </strong> TBD</br>	      
-                <br><strong>Midterm report due: </strong> TBD</br>
-                <br><strong>Project Presentations: </strong> TBD</br>
-                <br><strong> Final report due: </strong> TBD </br>
-              </br>
+              <p>
+                Projects should be driven by an open-ended question (theory or
+                implementation), with a clearly
+                stated objective and a well-scoped plan, and must be completed in groups of three; students should
+                consult the project page for suggested project ideas and clearly communicate the intended deliverables
+                in the proposal (as best as possible). Both the project proposal and the final report must be uploaded
+                on Gradescope, and presentations will be in-person in the lecture hall.
               </p>
+
+              <p><strong>Dates</strong></p>
+              <ul>
+                <li><strong>3/25:</strong> Project proposal due (upload to Gradescope)</li>
+                <li><strong>4/17:</strong> Midterm report due (upload to Gradescope)</li>
+                <li><strong>Student Project Presentation slots:</strong> See course dates</li>
+                <li><strong>5/8:</strong> Final report due (upload to Gradescope)</li>
+              </ul>
+
+              Note that presenting the projects in person is mandatory. Students that are going to ICLR should plan out
+              their presentations for the 04/21 slot.
             </td>
           </tr>
         </table>
@@ -163,7 +176,7 @@
                 <br><strong>Midterm report: </strong> 5%</br>
                 <br><strong>Project Presentations: </strong> 10%</br>
                 <br><strong> Final report due: </strong> 15% </br>
-              </br>
+                </br>
               </p>
             </td>
           </tr>
@@ -179,15 +192,25 @@
               <p>
                 <strong>Presentations</strong>: Details forthcoming.
               </p>
-              <p> <strong>Report Format</strong>: we use <a href="https://neurips.cc/Conferences/2020/CallForPapers">NeurIPS format</a>. You must use the NeurIPS LaTex format. 
-              <p><strong>Midterm Report</strong>: Your report should be 2 pages maximum (not including references). Your midterm report should include title, team members, abstract, related works, problem formulation and goals. 
+              <p> <strong>Report Format</strong>: we use <a
+                  href="https://neurips.cc/Conferences/2020/CallForPapers">NeurIPS format</a>. You must use the NeurIPS
+                LaTex format.
+              <p><strong>Midterm Report</strong>: Your report should be 2 pages maximum (not including references). Your
+                midterm report should include title, team members, abstract, related works, problem formulation and
+                goals.
               </p>
-              <p><strong>Final Report</strong>: Your report should be 9 pages maximum (not including references). Your final report will be evaluated by the following criteria:
-                <ul>
-                <li> Merit: Do you have sound reasoning for the approach? Is the question well motivated and are you taking a justifiably simple approach or, if you are choosing a more complicated method, do you have sound reasoning for doing this?</li>
-                <li>Technical depth: How technically challenging was what you did? Did you use a package or write your own code? It is fine if you use a package, though this means other aspects of your project must be more ambitious.</li>
-                <li>Presentation: How well did you explain what you did, your results, and interpret the outcomes? Did you use good graphs and visualizations? How clear was the writing? Did you justify your approach?</li>
-                </ul>
+              <p><strong>Final Report</strong>: Your report should be 9 pages maximum (not including references). Your
+                final report will be evaluated by the following criteria:
+              <ul>
+                <li> Merit: Do you have sound reasoning for the approach? Is the question well motivated and are you
+                  taking a justifiably simple approach or, if you are choosing a more complicated method, do you have
+                  sound reasoning for doing this?</li>
+                <li>Technical depth: How technically challenging was what you did? Did you use a package or write your
+                  own code? It is fine if you use a package, though this means other aspects of your project must be
+                  more ambitious.</li>
+                <li>Presentation: How well did you explain what you did, your results, and interpret the outcomes? Did
+                  you use good graphs and visualizations? How clear was the writing? Did you justify your approach?</li>
+              </ul>
               </p>
             </td>
           </tr>
@@ -198,87 +221,104 @@
             <td width="67%" valign="middle">
               <p align="center">
                 <name>Project Ideas</name>
-                
+
               </p>
 
-              <p> We provide a few project ideas below. Studying existing RL theory papers and reproducing proofs is also a good option for the course project. Experiments
-                for verifying  conclusions and testing conjectures are also welcome.
+              <p> We provide a few project ideas below. Studying existing RL theory papers and reproducing proofs is
+                also a good option for the course project. Experiments
+                for verifying conclusions and testing conjectures are also welcome.
               </p>
-              
-              <br> <strong> Refined analysis in Tabular MDPs: </strong> Conduct a survey on a family of tabular MDP papers with tight regret bounds, e.g., <a href="https://arxiv.org/abs/1703.05449"> Azar et.al </a>, 
-              <a
-              href="http://papers.nips.cc/paper/7735-is-q-learning-provably-efficient">Jin
-	      et.al</a>, 
-	      <a href="https://arxiv.org/abs/2005.00527">Wang et.al</a>
-	      </br>
 
-              <br> <strong> Comparison between variants of linear MDP models: </strong> Conduct a survey on papers with some kind of linear structures, e.g., <a href="https://arxiv.org/abs/1905.10389"> Yang and Wang </a>, 
+              <br> <strong> Refined analysis in Tabular MDPs: </strong> Conduct a survey on a family of tabular MDP
+              papers with tight regret bounds, e.g., <a href="https://arxiv.org/abs/1703.05449"> Azar et.al </a>,
+              <a href="http://papers.nips.cc/paper/7735-is-q-learning-provably-efficient">Jin
+                et.al</a>,
+              <a href="https://arxiv.org/abs/2005.00527">Wang et.al</a>
+              </br>
+
+              <br> <strong> Comparison between variants of linear MDP models: </strong> Conduct a survey on papers with
+              some kind of linear structures, e.g., <a href="https://arxiv.org/abs/1905.10389"> Yang and Wang </a>,
               <a href="http://proceedings.mlr.press/v125/jin20a/jin20a.pdf">Jin et.al</a> </br>
 
-              <br> <strong> Thompson Sampling in RL: </strong> Survey Thompson sampling techniques used in RL. <a href="https://djrusso.github.io/docs/TS_Tutorial.pdf">This</a> is a good starting point. 
+              <br> <strong> Thompson Sampling in RL: </strong> Survey Thompson sampling techniques used in RL. <a
+                href="https://djrusso.github.io/docs/TS_Tutorial.pdf">This</a> is a good starting point.
               </br>
 
               <br> <strong> Gittins Index: </strong> Understand and survey the
               Gittins index method. This is a framework for Bayes
               optimal learning for multi-armed
               bandits. Think about open questions and why extensions
-              are difficult. <a href="https://www.mit.edu/~jnt/Papers/J048-94-jnt-gittins.pdf">This</a> is a good starting point. 
+              are difficult. <a href="https://www.mit.edu/~jnt/Papers/J048-94-jnt-gittins.pdf">This</a> is a good
+              starting point.
               </br>
-	      
-              <br> <strong> RL with Constraints: </strong>  RL with convex and knapsack constraints is studied <a href="https://arxiv.org/pdf/2006.05051.pdf">here</a> for tabular settings. 
-               Can you extend it to non-tabular setting such as linear MDPs? </br>
 
-               <br> <strong> RL with Adversarial Corruption: </strong>  Exploration in RL with corruption is studied <a href="https://arxiv.org/abs/1911.08689">here</a>. 
-               Can you think about different attack models and study attack/defense in other RL frameworks such as policy gradient or batch RL? </br>
+              <br> <strong> RL with Constraints: </strong> RL with convex and knapsack constraints is studied <a
+                href="https://arxiv.org/pdf/2006.05051.pdf">here</a> for tabular settings.
+              Can you extend it to non-tabular setting such as linear MDPs? </br>
 
-               <br> <strong> Policy Gradient: </strong> Starting from <a href="https://arxiv.org/abs/1908.00261"> the analysis of PG/NPG</a>, can you think about how to do 
-               data-reuse in policy optimization to potentially improve its sample complexity?  </br>
+              <br> <strong> RL with Adversarial Corruption: </strong> Exploration in RL with corruption is studied <a
+                href="https://arxiv.org/abs/1911.08689">here</a>.
+              Can you think about different attack models and study attack/defense in other RL frameworks such as policy
+              gradient or batch RL? </br>
 
-               <br> <strong> Policy Gradient with Exploration: </strong> Starting from <a href="https://arxiv.org/abs/2007.08459">PC-PG</a>, can you think about ways to improve
-               its sample complexity?   </br>
+              <br> <strong> Policy Gradient: </strong> Starting from <a href="https://arxiv.org/abs/1908.00261"> the
+                analysis of PG/NPG</a>, can you think about how to do
+              data-reuse in policy optimization to potentially improve its sample complexity? </br>
 
-               <br> <strong> Policy Gradient: </strong> Starting from <a href="https://arxiv.org/abs/1912.05830"> this paper</a>, can you think about how to extend the algorithm here 
-               to other linear MDP models? </br>
+              <br> <strong> Policy Gradient with Exploration: </strong> Starting from <a
+                href="https://arxiv.org/abs/2007.08459">PC-PG</a>, can you think about ways to improve
+              its sample complexity? </br>
 
-<br> <strong> Reward Free Exploration: </strong>
-Conduct a survey on a MDP methods, which do not use a
-reward signal. See <a
-href="https://arxiv.org/abs/1812.02690">Max-Ent
-exploration</a> as a starting point.</br>
+              <br> <strong> Policy Gradient: </strong> Starting from <a href="https://arxiv.org/abs/1912.05830"> this
+                paper</a>, can you think about how to extend the algorithm here
+              to other linear MDP models? </br>
 
-               <br> <strong> Imitation Learning from many experts: </strong>  <a href="https://arxiv.org/pdf/2007.00795.pdf"> This paper </a> shows learning from 
-               multiple  experts in the interactive learning setting. Can we do learning from multiple experts in non-interactive settings? </br>
+              <br> <strong> Reward Free Exploration: </strong>
+              Conduct a survey on a MDP methods, which do not use a
+              reward signal. See <a href="https://arxiv.org/abs/1812.02690">Max-Ent
+                exploration</a> as a starting point.</br>
 
-<br> <strong> Online MDPs with expert advice.</strong>
-Sometimes RL can be done in adversarial contexts. Conduct a survey of
-online MDP methods (in adversarial settings). See <a
-href="https://homes.cs.washington.edu/~sham/papers/rl/onlineMDP.pdf">Online
-MDPs</a> as a starting point. Also, comment on the connections to the
-NPG analysis.</br>
+              <br> <strong> Imitation Learning from many experts: </strong> <a
+                href="https://arxiv.org/pdf/2007.00795.pdf"> This paper </a> shows learning from
+              multiple experts in the interactive learning setting. Can we do learning from multiple experts in
+              non-interactive settings? </br>
+
+              <br> <strong> Online MDPs with expert advice.</strong>
+              Sometimes RL can be done in adversarial contexts. Conduct a survey of
+              online MDP methods (in adversarial settings). See <a
+                href="https://homes.cs.washington.edu/~sham/papers/rl/onlineMDP.pdf">Online
+                MDPs</a> as a starting point. Also, comment on the connections to the
+              NPG analysis.</br>
 
 
-<br><strong> Statistical Limits of Offline RL: </strong> Offline RL seeks
-to learn a near-optimal policy from a fixed dataset. Recent work such
-as <a href="https://arxiv.org/abs/2103.04947">Wang et al.</a>, <a
-href="https://arxiv.org/abs/2010.11895">Wang et al.</a>, and <a
-href="https://arxiv.org/abs/2012.08005">Zanette</a> explore the
-fundamental information-theoretic limits and instabilities in this
-setting. Can you survey offline RL methods and the estimation
-techniques used to handle distribution shift? Under what conditions
-(e.g., low noise or specific coverage) can we circumvent existing
-lower bounds? </br>
+              <br><strong> Statistical Limits of Offline RL: </strong> Offline RL seeks
+              to learn a near-optimal policy from a fixed dataset. Recent work such
+              as <a href="https://arxiv.org/abs/2103.04947">Wang et al.</a>, <a
+                href="https://arxiv.org/abs/2010.11895">Wang et al.</a>, and <a
+                href="https://arxiv.org/abs/2012.08005">Zanette</a> explore the
+              fundamental information-theoretic limits and instabilities in this
+              setting. Can you survey offline RL methods and the estimation
+              techniques used to handle distribution shift? Under what conditions
+              (e.g., low noise or specific coverage) can we circumvent existing
+              lower bounds? </br>
 
-<br><strong> Structural Assumptions and Learnability: </strong> What
-structural properties of an MDP make RL tractable with function
-approximation? Starting from the concept of <a
-href="https://arxiv.org/abs/1610.09512">Bellman Rank</a>, recent
-research has unified these ideas into a broader framework of <a
-href="https://arxiv.org/abs/2103.10897">Bilinear Classes</a>. Survey
-the different structural assumptions (such as Bellman rank and
-Bilinear rank) and discuss how they enable provably efficient learning
-in large-scale MDPs. </br>
+              <br><strong> Structural Assumptions and Learnability: </strong> What
+              structural properties of an MDP make RL tractable with function
+              approximation? Starting from the concept of <a href="https://arxiv.org/abs/1610.09512">Bellman Rank</a>,
+              recent
+              research has unified these ideas into a broader framework of <a
+                href="https://arxiv.org/abs/2103.10897">Bilinear Classes</a>. Survey
+              the different structural assumptions (such as Bellman rank and
+              Bilinear rank) and discuss how they enable provably efficient learning
+              in large-scale MDPs. </br>
 
-<br><strong> Hardness of Linear Realizability: </strong> If the optimal Q-function is linear in a given feature map, is RL always efficient? Lower bounds from <a href="https://arxiv.org/abs/2010.01374">Weisz et al.</a>, <a href="https://arxiv.org/abs/2110.02195">Weisz et al.</a>, and <a href="https://arxiv.org/abs/2103.12690">Wang et al.</a> suggest otherwise, even with a constant suboptimality gap. An interesting open question is: if $Q^\pi$ is linear for all policies, is an online lower bound still possible, or does this make the problem tractable? Additionally, explore the near-deterministic case and its impact on learnability. </br>
+              <br><strong> Hardness of Linear Realizability: </strong> If the optimal Q-function is linear in a given
+              feature map, is RL always efficient? Lower bounds from <a href="https://arxiv.org/abs/2010.01374">Weisz et
+                al.</a>, <a href="https://arxiv.org/abs/2110.02195">Weisz et al.</a>, and <a
+                href="https://arxiv.org/abs/2103.12690">Wang et al.</a> suggest otherwise, even with a constant
+              suboptimality gap. An interesting open question is: if $Q^\pi$ is linear for all policies, is an online
+              lower bound still possible, or does this make the problem tractable? Additionally, explore the
+              near-deterministic case and its impact on learnability. </br>
 
 
 
@@ -286,20 +326,20 @@ in large-scale MDPs. </br>
           </tr>
         </table>
 
-       
 
 
-            </td>
-          </tr>
-        </table>
 
-
-            
-
-
-        
-        </td>
+      </td>
     </tr>
+  </table>
+
+
+
+
+
+
+  </td>
+  </tr>
   </table>
 </body>
 
