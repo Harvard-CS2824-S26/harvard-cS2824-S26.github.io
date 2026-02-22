@@ -520,7 +520,7 @@ extraneous $\sqrt S$ factor. This section refines the argument and improves the 
 dependence to $\widetilde O\!\big(H^2\sqrt{SAK}\big)$, at the cost of an additional lower-order term.
 The leading dependence on $(S,A,K)$ is optimal up to factors depending on $H$ (see Chapter~\ref{chap:generative}
 for related sample-complexity results with a generative model). We discuss minimax regret rates and
-sharper bounds in Section~\ref{ch5:bib}.
+sharper bounds in Section~\ref{ucbvi:bib}.
 
 \begin{theorem}[UCBVI regret bound (refined analysis)]
 \label{thm:ucbvi_refined}
@@ -860,54 +860,52 @@ On $\overline{\mathcal{E}}$, we use the trivial bound $0\le V_0^\star(s_0)-V_0^{
 Combining the bounds proves the theorem.
 \end{proof}
 
+\section{Bibliographic Remarks and Further Readings}\label{ucbvi:bib}
 
-\section{Bibliographic Remarks and Further Readings}\label{ch5:bib}
-
-\iffalse
-SK: I need some help with the related work. here is rought outline and what I know:
-
-chapter is based on Azar.
-
-history and notable papers:
-E3/rmax/kakade thesis. basically fine.
-
-then maybe also mention Q-learning:
-the first result was Littman to get sublinear in model size. this was the phased Q-learning. it had suboptimal for K and H. Then Chi Jin paper (overblown claims for novelty but nice paper) go the optimal root(K) regret rate and with sublinear.
-
-as for optimal rates (leading order and O(SA)):
-the first was Azar  and then maybe Brunksill/Dann comparable.
-then there was bunch trying to get the H dependence right? maybe Simon Du had the tightest version?  can you check what it is. what is the optimal rate in the finite horizon?
-
-maybe also give a ref to thompson sampling with RL? think Dan Russo or Osband had a paper
-\fi
+This chapter studies strategic exploration in finite-horizon episodic tabular MDPs
+under the regret criterion. The main algorithmic template is \emph{optimism + planning}:
+construct an empirical MDP from trajectory data, add an exploration bonus to encourage
+visiting uncertain state--action pairs, and plan in the resulting optimistic model.
+Our presentation and proofs follow \citet{pmlr-v70-azar17a} (see also the related
+treatment of \citet{DBLP:conf/nips/DannLB17}). We first give a simplified
+analysis of UCBVI yielding a regret bound of order $H^2 S\sqrt{AK}$ (up to logarithmic
+factors), and then sketch a refined analysis that improves the leading dependence on
+$S$ to obtain $H^2\sqrt{SAK}$ (again up to logarithmic factors), at the cost of an
+additional lower-order term.
 
 
-This chapter follows the proof in
-~\cite{pmlr-v70-azar17a}. We first give a simplified analysis of UCB-VI that gives a regret bound in the order of $H^2 S\sqrt{AK}$, followed by a more refined analysis that gives a $H^2 \sqrt{SAK} + H^3 S^2 A$ regret bound.   
+The first provably sample-efficient exploration algorithms for finite MDPs were
+developed under the PAC criterion. Classic examples include E$^3$ \citep{kearns2002optimal}
+and R-max \citep{brafman2002r}, which formalize optimism via either explicit
+``known/unknown'' reasoning or optimistic models. The thesis of \citep{kakade2003sample}
+gives a broader treatment and refinements, including improved sample complexity bounds in
+the tabular setting.
 
-The first provably correct PAC algorithm for reinforcement learning
-(which finds a near optimal policy) was due to
-\citet{kearns2002optimal}, which  provided the E$^3$ algorithm; it achieves polynomial sample complexity
-in tabular MDPs. \citet{brafman2002r} presents the Rmax algorithm
-which provides a refined PAC analysis over
-E$^3$. Both are model based approaches \cite{kakade2003sample}
-improves the sample complexity to be $O(S^2A)$. Both E$^3$ and Rmax
-uses the concept of absorbing MDPs to achieve optimism and balance
-exploration and exploitation.  
+In the regret framework, an influential starting point for continuing (average-reward)
+MDPs is UCRL2 \citep{jaksch2010optimal}, which established $\tilde O(\sqrt{T})$ regret as a
+function of the time horizon $T$ (with additional dependence on structural parameters such
+as the diameter). The $\sqrt{T}$ scaling is minimax-optimal in $T$, while sharpening the
+dependence on other problem parameters has motivated substantial follow-up work.
 
-\citet{jaksch2010optimal} provides the first $O(\sqrt(T))$ regret
-bound, where $T$ is the number of timesteps in the MDP ($T$ is
-proportional to $K$ in our setting); this dependence on $T$ is optimal.
-Subsequently, 
-\citet{pmlr-v70-azar17a,dann2017unifying} provide algorithms that, asymptotically,
-achieve minimax regret bound in tabular MDPs. By this, we mean that
-for sufficiently large $T$ (for $T\geq \Omega(|\Scal|^2)$), the results in
-\citet{pmlr-v70-azar17a,dann2017unifying} obtain optimal dependencies
-on $|\Scal|$ and $|\Acal|$. The requirement that $T\geq
-\Omega(|\Scal|^2)$ before these bounds hold is essentially the
-requirement that non-trivial model accuracy is required. It is an
-opent question to remove this dependence.
+For episodic finite-horizon MDPs (the setting of this chapter), \citet{pmlr-v70-azar17a}
+gives near-minimax regret guarantees for UCBVI-type algorithms. A complementary perspective
+that unifies PAC and regret analyses via \emph{Uniform-PAC} guarantees is developed by
+\citet{DBLP:conf/nips/DannLB17}.
 
-Lower bounds are provided in~\cite{dann2015sample,osband2016on,pmlr-v70-azar17a}.
+There is also a long line of work on model-free learning. Early finite-sample analyses of
+Q-learning and related ``indirect'' methods appear in \citet{DBLP:conf/nips/KearnsS98a} (in a generative model setting).
+On the PAC side, \citet{strehl2006pac} provides a model-free exploration algorithm with
+provable sample-efficiency guarantees. For regret guarantees in episodic MDPs with
+model-free learning, \citet{jin2018qlearning} shows that Q-learning with UCB-style
+exploration achieves $\tilde O(\sqrt{H^3 S A T})$ regret (where $T=KH$), matching the
+optimal $\sqrt{T}$ dependence and coming within a $\sqrt{H}$ factor (up to logs) of the
+best-known model-based rates.
 
+An alternative to optimism is posterior sampling (Thompson sampling) for MDPs.
+Posterior Sampling for RL (PSRL) was studied by \citet{osband2013psrl}, and further
+finite-horizon analyses and comparisons between posterior sampling and optimism are given
+by \citet{pmlr-v70-osband17a}.
+
+Lower bounds for regret in tabular reinforcement learning, and further discussion of the
+minimax benchmark, can be found in \citet{pmlr-v70-azar17a,osband2016on}. We also refer to \citet{dann2015sample} for lower bounds in closely related finite-horizon settings.
 
