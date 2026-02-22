@@ -1,4 +1,5 @@
 \documentclass{book}
+\usepackage{bookmark}
 
 % Load centralized package file and custom definitions
 \usepackage{rl_packages}
@@ -78,10 +79,17 @@
 \include{il_learning}
 \include{LQR}
 
-
+% --- Appendix ---
+\part{Appendix}
 \appendix
 \include{appendix_concentration}
 \include{appendix_linQstar}
+
+
+% --- This "closes" the Part for the PDF Bookmarks ---
+\cleardoublepage
+\bookmarksetup{startatroot}
+
 
 \backmatter
 \bibliographystyle{plainnat}
