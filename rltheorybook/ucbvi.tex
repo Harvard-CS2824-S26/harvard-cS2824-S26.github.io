@@ -98,7 +98,24 @@ are currently uncertain and how to reach them.
 \section{Algorithm: UCB Value Iteration (UCBVI)}
 \label{sec:tabular_ucbvi_alg}
 
-UCBVI is an ``optimism in the face of uncertainty'' algorithm, directly analogous to
+\begin{algorithm}[t]
+\begin{algorithmic}[1]
+\Require failure probability $\delta$
+\State Initialize $N_h^0(s,a)\gets 0$ and $N_h^0(s,a,s')\gets 0$ for all $h,s,a,s'$.
+\For{$k=0,1,\dots,K-1$}
+    \State Form $\widehat P_h^k(\cdot\mid s,a)$ from counts (arbitrary if $N_h^k(s,a)=0$).
+    \State Set bonuses $b_h^k(s,a)$ by \eqref{eq:ucbvi_bonus}.
+    \State Compute $(\widehat V_h^k,\widehat Q_h^k,\pi_h^k)_{h=0}^{H-1}$ by \eqref{eq:ucbvi_vi}.
+    \State Execute $\pi^k$: $s_0^k=s_0$; for $h=0,\dots,H-1$ take $a_h^k=\pi_h^k(s_h^k)$ and sample $s_{h+1}^k\sim P_h^\star(\cdot\mid s_h^k,a_h^k)$.
+    \State Update counts: $N_h^{k+1}(\cdot)\gets N_h^k(\cdot)$ then increment the visited $(s_h^k,a_h^k,s_{h+1}^k)$.
+\EndFor
+\end{algorithmic}
+\caption{UCBVI (episodic, tabular)}
+\label{alg:ucbvi_clean}
+\end{algorithm}
+
+
+UCBVI (see Algorithm~\ref{alg:ucbvi_clean}) is an ``optimism in the face of uncertainty'' algorithm, directly analogous to
 UCB for multi-armed bandits (Chapter~\ref{chap:bandits}). The learner:
 \begin{enumerate}
 \item builds an empirical transition model from the trajectory data collected so far;
@@ -161,21 +178,6 @@ $\widehat V_h^k(s)\le H-h$ simply enforces the natural range of values under bou
 Finally, execute $\pi^k$ for one episode to obtain $(s_h^k,a_h^k,s_{h+1}^k)_{h=0}^{H-1}$,
 then update the counts and repeat.
 
-\begin{algorithm}[t]
-\begin{algorithmic}[1]
-\Require failure probability $\delta$
-\State Initialize $N_h^0(s,a)\gets 0$ and $N_h^0(s,a,s')\gets 0$ for all $h,s,a,s'$.
-\For{$k=0,1,\dots,K-1$}
-    \State Form $\widehat P_h^k(\cdot\mid s,a)$ from counts (arbitrary if $N_h^k(s,a)=0$).
-    \State Set bonuses $b_h^k(s,a)$ by \eqref{eq:ucbvi_bonus}.
-    \State Compute $(\widehat V_h^k,\widehat Q_h^k,\pi_h^k)_{h=0}^{H-1}$ by \eqref{eq:ucbvi_vi}.
-    \State Execute $\pi^k$: $s_0^k=s_0$; for $h=0,\dots,H-1$ take $a_h^k=\pi_h^k(s_h^k)$ and sample $s_{h+1}^k\sim P_h^\star(\cdot\mid s_h^k,a_h^k)$.
-    \State Update counts: $N_h^{k+1}(\cdot)\gets N_h^k(\cdot)$ then increment the visited $(s_h^k,a_h^k,s_{h+1}^k)$.
-\EndFor
-\end{algorithmic}
-\caption{UCBVI (episodic, tabular)}
-\label{alg:ucbvi_clean}
-\end{algorithm}
 
 \section{A simple regret analysis}
 \label{sec:tabular_ucbvi_analysis_simple}
