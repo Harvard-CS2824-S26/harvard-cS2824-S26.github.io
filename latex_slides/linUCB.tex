@@ -37,6 +37,33 @@
 
 %\section{Recap}
 
+\begin{frame}\frametitle{Recap: The ``Assumption Ladder'' for Linear RL}
+
+\begin{itemize}
+\item \textbf{Linear Feature Assumptions:} We explored a hierarchy of conditions for RL:
+  \begin{itemize}
+    \item Bellman completeness
+    \item All-policy realizability
+    \item Linear $Q^\star$ realizability
+  \end{itemize}
+  
+\vspace{0.4cm}
+\pause
+\item \textbf{The Core Goal:} Can we achieve sample complexities that are $\text{poly}(d, H)$?
+  \begin{itemize}
+    \item \alert{Crucially:} No dependence on the sizes of the state or action spaces ($|S|$ or $|A|$).
+  \end{itemize}
+
+\vspace{0.4cm}
+\pause
+\item \textbf{Today:} We strip away the horizon complexity and focus on the $H=1$ case. 
+  \begin{itemize}
+    \item \textbf{Linear Bandits:} How do we explore efficiently in large/infinite action spaces?
+  \end{itemize}
+\end{itemize}
+
+\end{frame}
+
 \begin{frame}\frametitle{Previously: the ``assumption ladder'' for linear RL}
   
 \begin{itemize}
