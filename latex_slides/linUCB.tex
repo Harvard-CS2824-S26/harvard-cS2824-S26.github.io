@@ -14,7 +14,7 @@
 \usetheme{Madrid}
 \usecolortheme{default}
 
-\include{macros} % Assuming you have this file
+\include{macros} 
 
 
 \title[LinUCB]{Linear Bandits}
@@ -37,19 +37,14 @@
 
 %\section{Recap}
 
-\begin{frame}\frametitle{Generalization in RL}
-
-SK: say we had ``the ladder''. this was problematic for $H>1$.
+\begin{frame}\frametitle{Previously: the ``assumption ladder'' for linear RL}
   
 \begin{itemize}
-\item (distribution free) Agnostic learning is not possible in RL:\\
-we showed that to get $O(\log |\Pi|)$ sample complexity we need either:
-\begin{itemize}
-\item $\textrm{poly}(|\Scal|)$ samples OR
-\item $\textrm{exp}(H)$ samples.
-\end{itemize}
-in order to learn the best policy in some policy class.
-\item  upshot: we need stronger  assumptions for RL analysis.
+\item we considered a few assumption for RL with lienar features.\\
+  Bellman completeness, all policies realizibility, linear $Q^\star$ realiability
+\item goal: we can we have get results are are $\poly(d,H$, with no
+  $|S|$ or $|A|$ dependencies.
+\item Today: let's look at the $H=1$ case and linear bandits.
 \end{itemize}
 
 \end{frame}
@@ -110,8 +105,8 @@ After $t$ rounds, define our uncertainty region
 $\textsc{Ball}_t$: with center, $\widehat{\mu}_t$, and shape,
 $\Sigma_t$, using the $\lambda$-regularized least squares solution:
 \begin{align*}%\label{eq:regression}
-\widehat{\mu}_t &= \arg\min_{\mu} \sum_{\tau = 0}^{t-1}
-\| \mu \cdot x_\tau - r_\tau \|_2^2 + \lambda\|\mu\|_2^2\\
+\widehat{\mu}_t &= \argmin_{\mu} \sum_{\tau = 0}^{t-1}
+( \mu \cdot x_\tau - r_\tau )^2 + \lambda\|\mu\|_2^2\\
 &= \Sigma_t^{-1}\sum_{\tau = 0}^{t-1}r_\tau x_\tau,\\
 \Sigma_t &= \lambda I + \sum_{\tau = 0}^{t-1}x_\tau x_\tau^\top,
 \, \mathrm{with } \, \, \, \Sigma_0 = \lambda I.
@@ -132,39 +127,38 @@ where $\beta_t$ is a parameter of the algorithm.
 \end{frame}
 
 \begin{frame}
+  
 \frametitle{LinUCB (the algo)}
 
-SK: maybe show upading the params like in the chapter. I like showing
-both decision rules if possible (though maybe one can be ``in the text'').
 \begin{enumerate}
 \item Input: $\lambda$, $\beta_t$
+\item Initialize: $\Sigma_0 = \lambda I$, $b_0 = 0$
   \item For $t=0,1, \ldots$
     \begin{enumerate} 
-  \item Execute 
+    \item Compute $\widehat{\mu}_t = \Sigma_t^{-1} b_t$
+    \item Execute 
     \[
     x_t = \argmax_{x\in D}\max_{\mu\in \textsc{Ball}_t} \mu\cdot x 
     \]
     and observe the reward $r_t$.
-    Equivalently,
+    \pause    Equivalently,
     \[
     x_t \in \argmax_{x\in D}\ \Big( \widehat{\mu}_t\cdot x \;+\; \sqrt{\beta_t}\,\sqrt{x^\top \Sigma_t^{-1}x}\Big)
     \]   
-  \item Update $\textsc{Ball}_{t+1}$.
+  \pause \item Update: $\Sigma_{t+1} = \Sigma_t + x_t x_t^\top$ and $b_{t+1} = b_t + r_t x_t$.
   \end{enumerate}
 \end{enumerate}
 
 \end{frame}
 
+
+
 \subsection{An Optimal Regret Bound}
 
 \begin{frame}\frametitle{LinUCB Regret Bound}
 
-
 Sublinear regret: $R_T \leq O^\star(d \sqrt{T})$ \\
 \alert{poly dependence on $d$} , no dependence on the cardinality $|D|$.
-
-SK: maybe the below could be simplified? I still want to see the log
-factors. but no need to see cosntants. and $2+4$ is irrelevant.
 
 \pause
 \begin{theorem}~\label{theorem:sqrtregret}
@@ -173,18 +167,16 @@ D$; that the noise is $\sigma^2$ sub-Gaussian; and that
 $\|\mu^\star\|\leq W$. Set
 $\lambda =\sigma^2/W^2$ and
 \[
-\beta_t := \sigma^2\Big(2
-+ 4 d\log\left( 1 + \frac{tB^2W^2}{ d} \right)
-+8   \log(4/ \delta)\Big).
+\beta_t := c \ \left( \sigma^2 d \log\left( 1 + \frac{tB^2W^2}{d\sigma^2} \right) + \sigma^2 \log(1/\delta) \right)
 \]
 With probability greater than $1-\delta$, that for all $T\geq 0$, 
 \[
-R_T \leq c \sigma \sqrt{T} \left( d\log\left( 1 + \frac{TB^2W^2}{ d\sigma^2} \right)
+R_T \leq c' \ \sigma \sqrt{T} \left( d\log\left( 1 + \frac{TB^2W^2}{ d\sigma^2} \right)
 +   \log(4/ \delta) \right)
 \]
-where $c$ is an absolute constant. 
+where $c,c'$ are absolute constants. 
 \end{theorem}
-{\small due to Dani, Hayes, K. '09 }
+
 
 \end{frame}
 
@@ -210,7 +202,13 @@ confidence region is valid.
 \[
 \Pr(\forall t, \, \mu^\star \in \textsc{Ball}_t ) \ge 1 - \delta.
 \]
+Equivalently, for all $t \ge 0$:
+\[
+(\widehat{\mu}_t - \mu^\star)^\top \Sigma_t (\widehat{\mu}_t - \mu^\star) \le \beta_t
+\]
 \end{proposition}
+
+
 
 \end{frame}
 
@@ -290,49 +288,35 @@ where the last inequality holds since $\mu \in \textsc{Ball}_t$.
 
 \begin{frame}\frametitle{Instantaneous Regret Lemma}
 
-Define
-\[
-w_t := \sqrt{x_t^\top  \Sigma_t^{-1} x_t}
-\]
-which is the ``normalized width'' at time $t$ in the direction of our decision.
+\textbf{Normalized width} at time $t$ for decision $x_t$: \quad $w_t := \sqrt{x_t^\top \Sigma_t^{-1} x_t}$
 
-\pause
+\vspace*{-0.1cm}
 \begin{lemma} \label{lem:regretvswidth}
-Fix $t\le T$. If $\mu^\star  \in \textsc{Ball}_t$, then
+Fix $t\le T$. If $\mu^\star \in \textsc{Ball}_t$, then
 \[
-\mathrm{regret}_t \le 2\min{(\sqrt{\beta_t} w_t , 1)}
-\le 2 \sqrt{\beta_T}\min{(w_t , 1)}
+\mathrm{regret}_t \le 2\min(\sqrt{\beta_t} w_t , 1) \le 2 \sqrt{\beta_T}\min(w_t , 1)
 \]
 \end{lemma}
 
 \pause
-Proof:
-Let $\mutilde\in \textsc{Ball}_t$ denote the vector which  maximizes
-the dot product $\mutilde^\top  x_t$.  By the choice of
-$x_t$, we have
+\textbf{Proof:} Let $\tilde{\mu} \in \arg\max_{\mu \in \textsc{Ball}_t} \mu^\top x_t$.
+By the choice of $x_t$ and the assumption $\mu^\star \in \textsc{Ball}_t$, we have \textbf{optimism}:
 \[
-\mutilde^\top x_t 
-=\max_{\mu \in \textsc{Ball}_t} \mu^\top  x_t
-= \max_{x\in D}\max_{\mu \in \textsc{Ball}_t} \mu^\top  x
-\ge (\mu^\star)^\top  x^{*},
-%\mutilde^\top x_t = \max_{\mu \in \textsc{Ball}_t} \max_{x\in D} \mu^\top  x
-%\ge (\mu^\star)^\top  x^{*},
+\tilde{\mu}^\top x_t = \max_{x\in D}\max_{\mu \in \textsc{Ball}_t} \mu^\top x \ge (\mu^\star)^\top x^\star
 \]
-where the inequality used the hypothesis $\mu^\star  \in \textsc{Ball}_t$.
-Hence, 
-\begin{align*}
-&\mathrm{regret}_t =  (\mu^\star)^\top  x^{*} -(\mu^\star)^\top  x_t
-\le ( \mutilde - \mu^\star   )^\top  x_t \\
-&\quad \quad =  (\mutilde-\muhat_t )^\top x_t + (\muhat_t-\mu^\star)^\top x_t 
-\le 2\sqrt{\beta_t} w_t
-\end{align*}
-where the last step follows from Lemma~\ref{lemma:width}
-since $\mutilde$ and $\mu^\star $ are in $\textsc{Ball}_t$. Since $r_t \in [-1, 1]$,
-$\mathrm{regret}_t$ is always at most $2$ and the first inequality follows. 
-The final inequality is due to that $\beta_t$ is increasing and larger than $1$.
-\end{proof}
 
+\pause
+\vspace{0.1cm}
+We can decompose the regret by adding and subtracting $\hat{\mu}_t$:
+\begin{align*}
+\mathrm{regret}_t &= (\mu^\star)^\top x^\star - (\mu^\star)^\top x_t \le (\tilde{\mu} - \mu^\star)^\top x_t \\
+&= (\tilde{\mu} - \hat{\mu}_t)^\top x_t + (\hat{\mu}_t - \mu^\star)^\top x_t \le 2\sqrt{\beta_t}w_t
+\end{align*}
+
+\pause
+{\footnotesize \textit{Note: Since rewards $r_t \in [-1,1]$, $\mathrm{regret}_t$ is trivially bounded by $2$, yielding the ``min''.}}
 \end{frame}
+
 
 
 \begin{frame}\frametitle{Geometric Argument: Part 1}
@@ -349,7 +333,7 @@ We have:
 \end{lemma}
 
 \pause
-\begin{proof}
+Proof:
 By the definition of $\Sigma_{t+1}$, we have
 \begin{align*}
 &\det \Sigma_{t+1}  = \det (\Sigma_t + x_t x_t^\top )
@@ -358,78 +342,61 @@ By the definition of $\Sigma_{t+1}$, we have
  = \det(\Sigma_t) \det(I + v_t v_t^\top ),
 \end{align*}
 where $v_t := \Sigma_t^{-1/2}x_t$. 
-Now observe that $v_t^\top v_t = w_t^2$ and $\ldots$
-\iffalse
-\[
-(I  + v_t v_t^\top  ) v_t = v_t + v_t(v_t^\top v_t) = (1+ w_t^2) v_t
-\]
-Hence $(1+ w_t^2)$ is an eigenvalue of $I  + v_t v_t^\top $. Since
-$v_tv_t^\top $ is a rank one matrix, all other eigenvalues 
-of $I + v_t v_t^\top $ equal 1.
-Hence, $\det (I  + v_t v_t^\top  )$ is $(1+ w_t^2)$, 
-implying
-$\det \Sigma_{t+1} = (1 + w_t^2) \det \Sigma_t$.
-%Recalling that $\Sigma_{1}$ is the identity matrix, 
-The result follows by induction.
-\fi
-\end{proof}
+Now observe that $v_t^\top v_t = w_t^2$.
 
 \end{frame}
-
 
 \begin{frame}\frametitle{Geometric Argument: Part 2}
 \vspace*{-0.1cm}
 \begin{lemma}\label{lem:detA}
-For any sequence $x_0, \ldots x_{T-1}$ such that, for $t<T$,
-$\|x_t\|_2 \leq B$, we have: 
-\begin{align*}
-\log\Big(\det \Sigma_{T-1}/\det \Sigma_{0}\Big) = \log\det\left( I + \frac{1}{\lambda} \sum_{t=0}^{T-1}x_t x_t^{\top}\right)
-\leq  d\log\left( 1 + \frac{TB^2}{ d \lambda } \right).
-\end{align*}
+For any sequence where $\|x_t\|_2 \leq B$, we have: 
+\[
+\log\left(\frac{\det \Sigma_{T-1}}{\det \Sigma_{0}}\right) = \log\det\left( I + \frac{1}{\lambda} \sum_{t=0}^{T-1}x_t x_t^{\top}\right) \leq d\log\left( 1 + \frac{TB^2}{ d \lambda } \right)
+\]
 \end{lemma}
-\vspace*{-0.1cm}
+
 \pause
 {\small 
-\begin{proof}
-Denote the eigenvalues of $ \sum_{t=0}^{T-1}x_t x_t^{\top}$ as
-$\sigma_1, \dots \sigma_d$, and note:
+\textbf{Proof:}
+Let $\sigma_1, \dots, \sigma_d$ be the eigenvalues of
+$\sum_{t=0}^{T-1}x_t x_t^{\top}$.  We have:
+
+%\vspace{0.1cm}
+%First, bound the sum of the eigenvalues via the trace:
+\[
+\sum_{i=1}^d \sigma_i = \mathrm{Tr}\Big( \sum_{t=0}^{T-1}x_t x_t^{\top} \Big) = \sum_{t=0}^{T-1}\|x_t\|_2^2 \leq T B^2
+\]
+
+\pause
+%\vspace{0.1cm}
+Next, apply the AM-GM inequality to the log-determinant:
 \begin{align*}
-\sum_{i=1}^d \sigma_i = \mathrm{Trace}\Big( \sum_{t=0}^{T-1}x_t x_t^{\top}  \Big) 
-= \sum_{t=0}^{T-1}\|x_t\|^2 \leq T B^2.
-\end{align*} 
-Using the AM-GM inequality,
-\begin{align*}
-&\log\det\Big( I + \frac{1}{\lambda} \sum_{t=0}^{T-1}x_t x_t^{\top}\Big) = \log\Big( \prod_{i=1}^d \left(1 + \sigma_i / \lambda \right) \Big) \\
-&= d\log\Big( \prod_{i=1}^d \left(1 + \sigma_i / \lambda \Big)
-  \right)^{1/d} 
-\leq d\log\Big( \frac{1}{d}\sum_{i=1}^d \left(1 + \sigma_i / \lambda \right) \Big) 
-\leq d \log\Big( 1 + \frac{ TB^2  }{d\lambda}  \Big)
-\end{align*} 
-which concludes the proof. 
-\end{proof}
+\log\det\Big( I + \frac{1}{\lambda} \sum_{t=0}^{T-1}x_t x_t^{\top}\Big) = \sum_{i=1}^d \log\Big(1 + \frac{\sigma_i}{\lambda}\Big) 
+\leq d\log\left( 1 + \frac{1}{d}\sum_{i=1}^d\frac{\sigma_i}{\lambda} \right) \leq d \log\Big( 1 + \frac{ TB^2 }{d\lambda} \Big)
+\end{align*}
 }
 \end{frame}
 
-\begin{frame}\frametitle{Proving ``sum of squares
-    regret'' Proposition}
+\begin{frame}\frametitle{Proving ``Sum of Squares Regret''}
 
-\begin{proof}[Proof of Proposition~\ref{proposition:l2regretbd}]
-Assume $\mu^\star  \in \textsc{Ball}_t$ for all $t$. We have:
+Proof of Proposition~\ref{proposition:l2regretbd}:
+
+Assume $\mu^\star \in \textsc{Ball}_t$ for all $t$. We have:
 \begin{align*}
-&\sum_{t=0}^{T-1} \mathrm{regret}_t^2 
-\le \sum_{t=0}^{T-1} 4\beta_t \min (w_t^2, 1)
-\le 4\beta_T \sum_{t=0}^{T-1}  \min (w_t^2, 1)\\
-&\quad \le 8\beta_T \sum_{t=0}^{T-1}  \ln(1+w_t^2) 
-\le 8\beta_T \log\Big(\det \Sigma_{T-1}/\det \Sigma_{0}\Big)\\
-&\quad=8\beta_T d\log\left( 1 + \frac{TB^2}{ d \lambda } \right)
+\onslide<1->{ \sum_{t=0}^{T-1} \mathrm{regret}_t^2 
+&\le \sum_{t=0}^{T-1} 4\beta_t \min (w_t^2, 1) \le 4\beta_T \sum_{t=0}^{T-1} \min (w_t^2, 1) \\ }
+\onslide<2->{ &\le 8\beta_T \sum_{t=0}^{T-1} \ln(1+w_t^2) \le 8\beta_T \log\left(\frac{\det \Sigma_{T-1}}{\det \Sigma_{0}}\right) \\ }
+\onslide<3->{ &= 8\beta_T d\log\left( 1 + \frac{TB^2}{ d \lambda } \right) }
 \end{align*}
-where the first inequality follow from by
-Lemma~\ref{lem:regretvswidth}; the second from that $\beta_t$ is an
-increasing function of $t$; the third uses that for $0 \le y \le 1$,
-$\ln(1 + y) \ge y/2$; the final two inequalities follow by
-Lemmas~\ref{lem:volumechange} and~\ref{lem:detA}. 
-\end{proof}
+
+\onslide<4->{
+\vspace{0.2cm}
+{\small
+where the first inequality follows from Lemma~\ref{lem:regretvswidth}; the second from that $\beta_t$ is an increasing function of $t$; the third uses that for $0 \le y \le 1$, $\ln(1 + y) \ge y/2$; and the final two follow from Lemmas~\ref{lem:volumechange} and~\ref{lem:detA}. 
+}
+}
 \end{frame}
+
 
 \subsection{Confidence Analysis}
  \begin{frame}[noframenumbering]
@@ -437,81 +404,65 @@ Lemmas~\ref{lem:volumechange} and~\ref{lem:detA}.
     \tableofcontents[currentsubsection]
   \end{frame}
 
+\begin{frame}\frametitle{Confidence [Proof of Proposition~\ref{proposition:confidence}]}
+\small
 
-
-\begin{frame}\frametitle{Confidence [Proof of Proposition~\ref{proposition:confidence}] }
-
-\begin{proof}
-Since $r_\tau=x_\tau \cdot\mu^\star +\eta_\tau $, we have:
+\vspace*{-0.1cm}
+Since $r_\tau=x_\tau \cdot\mu^\star +\eta_\tau $, we decompose the error:
+\vspace{-0.2cm}
 \begin{align*}
-&\widehat \mu_t - \mu^\star 
-= \Sigma_t^{-1}\sum_{\tau = 0}^{t-1}r_\tau x_\tau- \mu^\star 
-= \Sigma_t^{-1}\sum_{\tau = 0}^{t-1} x_\tau (x_\tau \cdot\mu^\star +\eta_\tau)- \mu^\star \\
-&= \Sigma_t^{-1}\left( \sum_{\tau = 0}^{t-1} x_\tau (x_\tau)^\top  \right) \mu^\star 
-- \mu^\star 
-+\Sigma_t^{-1}\sum_{\tau = 0}^{t-1} \eta_\tau x_\tau\\
-&= \lambda \Sigma_t^{-1}\mu^\star 
-+\Sigma_t^{-1}\sum_{\tau = 0}^{t-1} \eta_\tau x_\tau
+\widehat \mu_t - \mu^\star 
+&= \Sigma_t^{-1}\sum_{\tau = 0}^{t-1} x_\tau (x_\tau^\top \mu^\star +\eta_\tau) - \mu^\star \\
+&= \Sigma_t^{-1}\left( \Sigma_t - \lambda I \right) \mu^\star - \mu^\star +\Sigma_t^{-1}\sum_{\tau = 0}^{t-1} \eta_\tau x_\tau\\
+&= -\lambda \Sigma_t^{-1}\mu^\star +\Sigma_t^{-1}\sum_{\tau = 0}^{t-1} \eta_\tau x_\tau
 \end{align*}
 
 \pause
-\vspace*{-0.2cm} By the triangle inequality, 
+\vspace*{-0.2cm}
+Using the norm $\|z\|_{\Sigma_t} := \sqrt{z^\top \Sigma_t z}$, the triangle inequality gives:
+\vspace{-0.2cm}
 \begin{align*}
-% \left\| \widehat \mu_t - \mu^\star    \right\|_{\Sigma_t^{-1}}
-\sqrt{(\widehat \mu_t - \mu^\star)^\top\Sigma_t(\widehat \mu_t - \mu^\star)}
-&\leq \left\| \lambda \Sigma_t^{-1/2}\mu^\star  \right\|
-+ \left\| \Sigma_t^{-1/2}\sum_{\tau = 0}^{t-1} \eta_\tau x_\tau \right\| \\
-& \leq \sqrt{\lambda}\|\mu^\star\| 
-\quad\quad \quad + \quad\quad \quad??.
-%+ \sqrt{2 \sigma^2\log\left(\det(\Sigma_t)\det(\Sigma^0)^{-1} / \delta_t \right) }.
+\|\widehat \mu_t - \mu^\star\|_{\Sigma_t} 
+&\leq \left\| \lambda \Sigma_t^{-1}\mu^\star \right\|_{\Sigma_t} + \left\| \Sigma_t^{-1}\sum_{\tau = 0}^{t-1} \eta_\tau x_\tau \right\|_{\Sigma_t} \\
+&\leq \sqrt{\lambda}\|\mu^\star\|_2 + \underbrace{\left\| \sum_{\tau = 0}^{t-1} \eta_\tau x_\tau \right\|_{\Sigma_t^{-1}}}_{\text{??}}
 \end{align*} 
-How can we bound ``??''
-To be continued...
-\end{proof}
+
 \end{frame}
 
 \begin{frame}\frametitle{Self-Normalizing Sum}
 
 \begin{lemma}[Self-Normalized Bound for Vector-Valued Martingales]
-Suppose $\{\varepsilon_i\}_{i=1}^{\infty}$ are mean zero random
-variables (
-bounded by $\sigma$). Let
-$\{X_i\}_{i=1}^{\infty}$ be a stochastic process. 
-Define $\Sigma_t = \Sigma_0 + \sum_{i=1}^{t} X_iX_i^{\top}$. With probability
-at least $1-\delta$, we have for all $t\geq 1$: 
-\begin{align*}
-\left\|  \sum_{i=1}^{t} X_i \varepsilon_i \right\|^2_{\Sigma_t^{-1}} \leq \sigma^2 \log\left(\frac{ \det( \Sigma_t) \det(\Sigma_0)^{-1} }{ \delta^2  }\right).
-\end{align*}
+Suppose $\{\varepsilon_i\}_{i=1}^{\infty}$ is a real-valued, mean-zero, $\sigma$-sub-Gaussian stochastic process. Let $\{X_i\}_{i=1}^{\infty}$ be an $\mathbb{R}^d$-valued stochastic process. 
+
+\vspace{0.2cm}
+Define $\Sigma_t = \Sigma_0 + \sum_{i=1}^{t} X_i X_i^{\top}$. With probability at least $1-\delta$, we have for all $t\geq 1$: 
+\[
+\left\| \sum_{i=1}^{t} X_i \varepsilon_i \right\|^2_{\Sigma_t^{-1}} \leq \sigma^2 \log\left(\frac{ \det( \Sigma_t) \det(\Sigma_0)^{-1} }{ \delta^2 }\right).
+\]
 \end{lemma}
 
 \end{frame}
 
 
-\begin{frame}\frametitle{Continued... [Proof of Proposition~\ref{proposition:confidence}] }
+\begin{frame}\frametitle{Completing the Confidence Bound}
 
-\begin{proof}
+For all $t$, with probability at least $1-\delta$, we plug the lemma back into our triangle inequality bound:
 \begin{align*}
-(\widehat \mu_t - \mu^\star)^\top \Sigma_t (\widehat \mu_t - \mu^\star)
-&\leq \left\| \lambda \Sigma_t^{-1/2}\mu^\star  \right\|
-+ \left\| \Sigma_t^{-1/2}\sum_{\tau = 0}^{t-1} \eta_\tau x_\tau \right\| \\
-& \leq \sqrt{\lambda}\|\mu^\star\| 
-+ \sqrt{2 \sigma^2\log\left(\det(\Sigma_t)\det(\Sigma^0)^{-1} / \delta_t \right) }.
+\|\widehat \mu_t - \mu^\star\|_{\Sigma_t} 
+&\leq \sqrt{\lambda}\|\mu^\star\|_2 + \left\| \sum_{\tau = 0}^{t-1} \eta_\tau x_\tau \right\|_{\Sigma_t^{-1}} \\
+&\leq \sqrt{\lambda}\|\mu^\star\|_2 + \sqrt{\sigma^2\log\left(\frac{\det(\Sigma_t)}{\det(\Sigma_0) \delta^2} \right) }.
 \end{align*} 
 
-We seek to lower bound $\Pr(\forall t, \, \mu^\star \in
-\textsc{Ball}_t )$. Assign failure probability $\delta_t=(3/\pi^2)/t^2$ for the
-$t$-th event, which gives us:
-\begin{align*}
-&1-\Pr(\forall t, \, \mu^\star \in \textsc{Ball}_t ) 
-= \Pr(\exists t, \, \mu^\star \notin \textsc{Ball}_t )
-\leq \sum_{t=1}^{\infty} \mathrm{Pr}( \mu^\star \notin \textsc{Ball}_t) \\
-&\quad <\sum_{t=1}^{\infty} (1/t^2)
-(3/\pi^2) = 1/2.
-\end{align*}
-This along with Lemma~\ref{lem:detA}  completes the proof.
-\end{proof}
-\end{frame}
+\pause
+\vspace{0.4cm}
+Substitute our log-determinant bound (Lemma~\ref{lem:detA}) into the term above:
+\[
+\log\left(\frac{\det(\Sigma_t)}{\det(\Sigma_0)}\right) \leq d\log\left( 1 + \frac{t B^2}{ d \lambda } \right)
+\]
 
+\vspace{0.2cm}
+This matches our definition of $\sqrt{\beta_t}$, concluding that $\mu^\star \in \textsc{Ball}_t$.
+\end{frame}
 
 
 \end{document}
