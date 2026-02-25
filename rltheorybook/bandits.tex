@@ -96,7 +96,7 @@ from the exploration pulls. \qed
 We now turn to an adaptive method (UCB) which automatically balances exploration
 and exploitation and achieves both a distribution-free $\tilde O(\sqrt{KT})$
 regret bound and a gap-dependent $O(\sum_{a\neq a^\star}\tfrac{\log T}{\Delta_a})$
-bound. Note that, for the gap depdent case, this bound improves upon
+bound. Note that, for the gap dependent case, this bound improves upon
 ECT by, roughly, a $1/\Delta_{\min}$ factor.
 
 \subsection{The Upper Confidence Bound (UCB) Algorithm}
@@ -692,7 +692,8 @@ $\delta_t := \frac{6}{\pi^2}\frac{\delta}{(t+1)^2}$ for $t\ge 0$, so that
 $\sum_{t=0}^\infty \delta_t \le \delta$.
 A union bound then implies that with probability at least $1-\delta$, the above
 inequality holds simultaneously for all $t\ge 0$.
-With our choice of $\beta_t$ (as in Theorem~\ref{theorem:sqrtregret}), this is
+With our choice of $\beta_t$ (as in Theorem~\ref{theorem:sqrtregret})
+and using the log determinant bound (Lemma~\ref{lem:detA}), this is
 equivalent to $\mu^\star\in \textsc{Ball}_t$ for all $t$, proving the proposition.
 \end{proof}
 
@@ -707,7 +708,7 @@ UCB were developed in \citet{Auer02} (see also the exposition in
 \citet{lattimore2020bandit}).
 
 
-The stochastic linear bandit model was oringinally introduced by \citet{abelong}.
+The stochastic linear bandit model was originally introduced by \citet{abelong}.
 For stochastic linear bandits, our presentation of LinUCB follows the original
 $\sqrt{T}$-regret analysis of \citet{dani2008stochastic}. The confidence-set argument we use is
 based on the self-normalized concentration framework of

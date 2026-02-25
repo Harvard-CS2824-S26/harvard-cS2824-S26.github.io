@@ -35,9 +35,11 @@
 \end{frame}
 
 
-\section{Recap}
+%\section{Recap}
 
 \begin{frame}\frametitle{Generalization in RL}
+
+SK: say we had ``the ladder''. this was problematic for $H>1$.
   
 \begin{itemize}
 \item (distribution free) Agnostic learning is not possible in RL:\\
@@ -65,23 +67,17 @@ in order to learn the best policy in some policy class.
 \begin{frame}\frametitle{Handling Large Actions Spaces}
 
 \begin{itemize}
-\item On each round, we must choose a decision $x_t \in D\subset R^d$. 
-\item \pause Obtain a reward $r_t \in [-1, 1]$, where
-%for all $x \in D$,
-\alert{\[
-\E[r_t|x_t=x] = \mu^\star \cdot x \in [-1, 1],
-\]}
- \pause 
-\begin{itemize}
-\item so the the conditional expectation of $r_t$ is linear)
-\item Also, we have the \emph{noise sequence},
+\item On each round, we must \alert{choose a decision $x_t \in D\subset R^d$}. 
+\item \pause Obtain a reward $r_t \in [-1, 1]$ , where
 \[
-\eta_t = r_t - \mu^\star \cdot x_t  
+r_t =  \mu^\star \cdot x_t + \eta_t
 \]
-is i.i.d noise.
+with i.i.d noise $\eta_t$.
+\item \pause the conditional expectation of $r_t$ is linear,
+\alert{\[
+\E[r_t|x_t=x] = \mu^\star \cdot x 
+\]}
 \end{itemize}
-\end{itemize}
-{\small model due to Abe \& Long '99}
 \end{frame}
 
 \begin{frame}\frametitle{Our Objective}
@@ -138,6 +134,8 @@ where $\beta_t$ is a parameter of the algorithm.
 \begin{frame}
 \frametitle{LinUCB (the algo)}
 
+SK: maybe show upading the params like in the chapter. I like showing
+both decision rules if possible (though maybe one can be ``in the text'').
 \begin{enumerate}
 \item Input: $\lambda$, $\beta_t$
   \item For $t=0,1, \ldots$
@@ -147,6 +145,10 @@ where $\beta_t$ is a parameter of the algorithm.
     x_t = \argmax_{x\in D}\max_{\mu\in \textsc{Ball}_t} \mu\cdot x 
     \]
     and observe the reward $r_t$.
+    Equivalently,
+    \[
+    x_t \in \argmax_{x\in D}\ \Big( \widehat{\mu}_t\cdot x \;+\; \sqrt{\beta_t}\,\sqrt{x^\top \Sigma_t^{-1}x}\Big)
+    \]   
   \item Update $\textsc{Ball}_{t+1}$.
   \end{enumerate}
 \end{enumerate}
@@ -160,6 +162,9 @@ where $\beta_t$ is a parameter of the algorithm.
 
 Sublinear regret: $R_T \leq O^\star(d \sqrt{T})$ \\
 \alert{poly dependence on $d$} , no dependence on the cardinality $|D|$.
+
+SK: maybe the below could be simplified? I still want to see the log
+factors. but no need to see cosntants. and $2+4$ is irrelevant.
 
 \pause
 \begin{theorem}~\label{theorem:sqrtregret}
@@ -200,7 +205,7 @@ which the upper bounds follow. The first is in showing that the
 confidence region is valid. 
 
 \begin{proposition} \label{proposition:confidence} 
-(Confidence) Let $\delta>0$.  We have that
+(Confidence) Let $\delta>0$.  We have that for our choice of $\beta_t$,
 %\item For ConfidenceBall$_2$,
 \[
 \Pr(\forall t, \, \mu^\star \in \textsc{Ball}_t ) \ge 1 - \delta.
@@ -209,13 +214,11 @@ confidence region is valid.
 
 \end{frame}
 
-\begin{frame}\frametitle{Sum of Squares Regret Bound}
 
+  \begin{frame}\frametitle{Sum of Squares Regret Bound}
 
 Assuming the confidence event holds,
 the following controls on the growth of the regret.  
-
-
 
 \begin{proposition}\label{proposition:l2regretbd}
 (Sum of Squares Regret Bound) Define:
@@ -235,7 +238,7 @@ Suppose $\mu^\star \in \textsc{Ball}_t$ for all $t$, then
 
 \begin{frame}\frametitle{Completing the Proof}
  
-\begin{proof}[Proof of Theorem~\ref{theorem:sqrtregret}]
+Proof of Theorem~\ref{theorem:sqrtregret}:
 With the two previous Propositions,  along with
 the Cauchy-Schwarz 
 inequality, we have, with probability at least $1-\delta$,
@@ -246,7 +249,7 @@ inequality, we have, with probability at least $1-\delta$,
 \end{align*}
 The remainder of the proof follows from using our chosen value of
 $\beta_T$ and algebraic manipulations.
-\end{proof}
+
 
 \end{frame}
 
@@ -255,6 +258,7 @@ $\beta_T$ and algebraic manipulations.
     \frametitle{Outline}
     \tableofcontents[currentsubsection]
   \end{frame}
+
 
 \begin{frame}\frametitle{``Width'' of Confidence Ball}
 
@@ -266,20 +270,19 @@ Let $x \in D$. If $\mu \in \textsc{Ball}_t$ and $x \in D$. Then
 \end{lemma}
 
 \pause
-\begin{proof}  
+Proof:  
 By
 Cauchy-Schwarz, we have:
 \begin{align*}
 &|(\mu - \muhat_t)^\top x| = 
-|(\mu - \muhat_t)^\top  \Sigma_t^{1/2}\Sigma_t^{-1/2}x| 
-= |(\Sigma_t^{1/2}(\mu - \muhat_t))^\top \Sigma_t^{-1/2}x| \\
+|(\mu - \muhat_t)^\top  \Sigma_t^{1/2}\Sigma_t^{-1/2}x| \\
+%= |(\Sigma_t^{1/2}(\mu - \muhat_t))^\top \Sigma_t^{-1/2}x| \\
 & \le \| \Sigma_t^{1/2}(\mu - \muhat_t) \| \|\Sigma_t^{-1/2}x\| 
 = \|\Sigma_t^{1/2}(\mu - \muhat_t)\| 
 \sqrt{x^\top  \Sigma_t^{-1} x} 
 \le \sqrt{\beta_t x^\top \Sigma_t^{-1}x} 
 \end{align*}
 where the last inequality holds since $\mu \in \textsc{Ball}_t$. 
-\end{proof}
 
 
 \end{frame}
@@ -292,8 +295,6 @@ Define
 w_t := \sqrt{x_t^\top  \Sigma_t^{-1} x_t}
 \]
 which is the ``normalized width'' at time $t$ in the direction of our decision.
-%We now see that the width, $2 \sqrt{\beta_t} w_t$, 
-%is an upper bound for the instantaneous regret.
 
 \pause
 \begin{lemma} \label{lem:regretvswidth}
@@ -305,7 +306,7 @@ Fix $t\le T$. If $\mu^\star  \in \textsc{Ball}_t$, then
 \end{lemma}
 
 \pause
-\begin{proof}
+Proof:
 Let $\mutilde\in \textsc{Ball}_t$ denote the vector which  maximizes
 the dot product $\mutilde^\top  x_t$.  By the choice of
 $x_t$, we have
@@ -430,7 +431,6 @@ Lemmas~\ref{lem:volumechange} and~\ref{lem:detA}.
 \end{proof}
 \end{frame}
 
-
 \subsection{Confidence Analysis}
  \begin{frame}[noframenumbering]
     \frametitle{Outline}
@@ -455,7 +455,7 @@ Since $r_\tau=x_\tau \cdot\mu^\star +\eta_\tau $, we have:
 \end{align*}
 
 \pause
-By the triangle inequality, 
+\vspace*{-0.2cm} By the triangle inequality, 
 \begin{align*}
 % \left\| \widehat \mu_t - \mu^\star    \right\|_{\Sigma_t^{-1}}
 \sqrt{(\widehat \mu_t - \mu^\star)^\top\Sigma_t(\widehat \mu_t - \mu^\star)}
@@ -473,10 +473,9 @@ To be continued...
 \begin{frame}\frametitle{Self-Normalizing Sum}
 
 \begin{lemma}[Self-Normalized Bound for Vector-Valued Martingales]
-(Abassi et. al '11)
 Suppose $\{\varepsilon_i\}_{i=1}^{\infty}$ are mean zero random
-variables (can be generalized to martingales), and $\varepsilon_i$ is
-bounded by $\sigma$. Let
+variables (
+bounded by $\sigma$). Let
 $\{X_i\}_{i=1}^{\infty}$ be a stochastic process. 
 Define $\Sigma_t = \Sigma_0 + \sum_{i=1}^{t} X_iX_i^{\top}$. With probability
 at least $1-\delta$, we have for all $t\geq 1$: 
@@ -512,6 +511,7 @@ $t$-th event, which gives us:
 This along with Lemma~\ref{lem:detA}  completes the proof.
 \end{proof}
 \end{frame}
+
 
 
 \end{document}
