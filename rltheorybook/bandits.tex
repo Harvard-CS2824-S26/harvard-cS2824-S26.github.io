@@ -71,7 +71,7 @@ knowledge, fixed exploration can be suboptimal in the worst case.
 Fix $\delta\in(0,1)$. Suppose ETC explores each arm $m$ times, and then commits.
 If
 \[
-m \;\ge\; \frac{2}{\Delta_{\min}^2}\,\ln\!\Big(\frac{2K}{\delta}\Big),
+m \;\ge\; \frac{8}{\Delta_{\min}^2}\,\ln\!\Big(\frac{2K}{\delta}\Big),
 \qquad\text{where}\quad
 \Delta_{\min}:=\min_{a\neq a^\star}\Delta_a,
 \]
@@ -79,7 +79,7 @@ then with probability at least $1-\delta$, ETC selects $\widehat a=a^\star$ and
 \[
 R_T \;\le\; m\sum_{a\neq a^\star}\Delta_a
 \;=\;
-\frac{2 \sum_{a\neq a^\star}\Delta_a}{\Delta_{\min}^2}\,\ln\!\Big(\frac{2K}{\delta}\Big).
+\frac{8 \sum_{a\neq a^\star}\Delta_a}{\Delta_{\min}^2}\,\ln\!\Big(\frac{2K}{\delta}\Big).
 \]
 \end{proposition}
 
@@ -87,7 +87,8 @@ R_T \;\le\; m\sum_{a\neq a^\star}\Delta_a
 \emph{Proof sketch.} After $m$ pulls of each arm, Hoeffding's inequality
 (Lemma~\ref{lem:hoeffding}) implies that simultaneously for all $a\in[K]$,
 $|\widehat\mu(a)-\mu_a|\le \sqrt{2\ln(2K/\delta)/m}$ with probability $\ge 1-\delta$.
-If this deviation is at most $\Delta_{\min}/2$, then $\widehat\mu(a^\star)>\widehat\mu(a)$
+Using our choice of $m$ ensures that this deviation is at most
+$\Delta_{\min}/2$. With this, we have that $\widehat\mu(a^\star)>\widehat\mu(a)$
 for all $a\neq a^\star$, so the algorithm commits to $a^\star$ and regret comes only
 from the exploration pulls. \qed
 
@@ -96,7 +97,7 @@ from the exploration pulls. \qed
 We now turn to an adaptive method (UCB) which automatically balances exploration
 and exploitation and achieves both a distribution-free $\tilde O(\sqrt{KT})$
 regret bound and a gap-dependent $O(\sum_{a\neq a^\star}\tfrac{\log T}{\Delta_a})$
-bound. Note that, for the gap depdent case, this bound improves upon
+bound. Note that, for the gap dependent case, this bound improves upon
 ECT by, roughly, a $1/\Delta_{\min}$ factor.
 
 \subsection{The Upper Confidence Bound (UCB) Algorithm}
@@ -374,7 +375,7 @@ Set
 \lambda = \sigma^2/W^2,
 \qquad
 \beta_t := \sigma^2\Big(2
-+ 4 d\log\Big( 1 + \tfrac{tB^2W^2}{ d} \Big)
++ 4 d\log\Big( 1 + \tfrac{tB^2W^2}{ d\sigma^2} \Big)
 + 8\log(4/\delta)\Big).
 \]
 Then with probability at least $1-\delta$, simultaneously for all $T\ge 1$,
@@ -672,27 +673,23 @@ $\|\mu^\star\|_{\Sigma_t^{-1}}\le \|\mu^\star\|/\lambda^{1/2}$.
 
 Now apply the self-normalized bound (Lemma~\ref{lemma:self_norm}) with
 $V_0=\Sigma_0=\lambda I$ and $X_{\tau+1}=x_\tau$.
-For any $\delta_t\in(0,1)$, with probability at least $1-\delta_t$,
+For any $\delta \in (0,1)$, with probability at least $1-\delta$, simultaneously for all $t \ge 0$,
 \[
 \left\|\sum_{\tau=0}^{t-1}\eta_\tau x_\tau\right\|_{\Sigma_t^{-1}}
 \le
-\sigma\sqrt{2\log\!\left(\frac{\det(\Sigma_t)^{1/2}\det(\Sigma_0)^{-1/2}}{\delta_t}\right)}.
+\sigma\sqrt{2\log\!\left(\frac{\det(\Sigma_t)^{1/2}\det(\Sigma_0)^{-1/2}}{\delta}\right)}.
 \]
-Combining the last two displays yields that, with probability at least $1-\delta_t$,
+Combining the last two displays yields that, with probability at least $1-\delta$, simultaneously for all $t \ge 0$,
 \[
 \|\widehat{\mu}_t-\mu^\star\|_{\Sigma_t}
 \le
 \sqrt{\lambda}\,\|\mu^\star\|
 +
-\sigma\sqrt{2\log\!\left(\frac{\det(\Sigma_t)^{1/2}\det(\Sigma_0)^{-1/2}}{\delta_t}\right)}.
+\sigma\sqrt{2\log\!\left(\frac{\det(\Sigma_t)^{1/2}\det(\Sigma_0)^{-1/2}}{\delta}\right)}.
 \]
 
-Choose a summable failure schedule, e.g.
-$\delta_t := \frac{6}{\pi^2}\frac{\delta}{(t+1)^2}$ for $t\ge 0$, so that
-$\sum_{t=0}^\infty \delta_t \le \delta$.
-A union bound then implies that with probability at least $1-\delta$, the above
-inequality holds simultaneously for all $t\ge 0$.
-With our choice of $\beta_t$ (as in Theorem~\ref{theorem:sqrtregret}), this is
+With our choice of $\beta_t$ (as in Theorem~\ref{theorem:sqrtregret})
+and using the log determinant bound (Lemma~\ref{lem:detA}), this is
 equivalent to $\mu^\star\in \textsc{Ball}_t$ for all $t$, proving the proposition.
 \end{proof}
 
@@ -707,7 +704,7 @@ UCB were developed in \citet{Auer02} (see also the exposition in
 \citet{lattimore2020bandit}).
 
 
-The stochastic linear bandit model was oringinally introduced by \citet{abelong}.
+The stochastic linear bandit model was originally introduced by \citet{abelong}.
 For stochastic linear bandits, our presentation of LinUCB follows the original
 $\sqrt{T}$-regret analysis of \citet{dani2008stochastic}. The confidence-set argument we use is
 based on the self-normalized concentration framework of
