@@ -49,10 +49,9 @@
   
 \vspace{0.4cm}
 \pause
-\item \textbf{The Core Goal:} Can we achieve sample complexities that are $\text{poly}(d, H)$?
-  \begin{itemize}
-    \item \alert{Crucially:} No dependence on the sizes of the state or action spaces ($|S|$ or $|A|$).
-  \end{itemize}
+\item \textbf{The Goal:} Can we achieve sample complexities that are $\text{poly}(d, H)$?\\
+\alert{Crucially,} we sought no dependence on the sizes of the state/action spaces ($|S|$ or $|A|$).
+
 
 \vspace{0.4cm}
 \pause
@@ -60,18 +59,6 @@
   \begin{itemize}
     \item \textbf{Linear Bandits:} How do we explore efficiently in large/infinite action spaces?
   \end{itemize}
-\end{itemize}
-
-\end{frame}
-
-\begin{frame}\frametitle{Previously: the ``assumption ladder'' for linear RL}
-  
-\begin{itemize}
-\item we considered a few assumption for RL with lienar features.\\
-  Bellman completeness, all policies realizibility, linear $Q^\star$ realiability
-\item goal: we can we have get results are are $\poly(d,H$, with no
-  $|S|$ or $|A|$ dependencies.
-\item Today: let's look at the $H=1$ case and linear bandits.
 \end{itemize}
 
 \end{frame}
@@ -86,7 +73,7 @@
 
 \subsection{Setting}
 
-\begin{frame}\frametitle{Handling Large Actions Spaces}
+\begin{frame}\frametitle{Handling Large Action Spaces}
 
 \begin{itemize}
 \item On each round, we must \alert{choose a decision $x_t \in D\subset R^d$}. 
@@ -196,7 +183,7 @@ $\lambda =\sigma^2/W^2$ and
 \[
 \beta_t := c \ \left( \sigma^2 d \log\left( 1 + \frac{tB^2W^2}{d\sigma^2} \right) + \sigma^2 \log(1/\delta) \right)
 \]
-With probability greater than $1-\delta$, that for all $T\geq 0$, 
+With probability greater than $1-\delta$, for all $T\geq 0$, 
 \[
 R_T \leq c' \ \sigma \sqrt{T} \left( d\log\left( 1 + \frac{TB^2W^2}{ d\sigma^2} \right)
 +   \log(4/ \delta) \right)
@@ -248,7 +235,7 @@ the following controls on the growth of the regret.
 \begin{proposition}\label{proposition:l2regretbd}
 (Sum of Squares Regret Bound) Define:
 \[
-\mathrm{regret}_t = \mu^\star \cdot x^{*} - \mu^\star \cdot x_t 
+\mathrm{regret}_t = \mu^\star \cdot x^\star - \mu^\star \cdot x_t 
 \]
 Suppose $\|x\|\leq B$ for $x\in
 D$. Suppose $\beta_t$ is increasing and larger than $1$.
@@ -288,9 +275,9 @@ $\beta_T$ and algebraic manipulations.
 \begin{frame}\frametitle{``Width'' of Confidence Ball}
 
 \begin{lemma} \label{lemma:width}
-Let $x \in D$. If $\mu \in \textsc{Ball}_t$ and $x \in D$. Then 
+If $\mu \in \textsc{Ball}_t$ and $x \in D$, then 
 \[
-|(\mu - \muhat_t)^\top x| \le \sqrt{\beta_t x^\top \Sigma_t^{-1}x}
+|(\mu - \widehat{\mu}_t)^\top x| \le \sqrt{\beta_t x^\top \Sigma_t^{-1}x}
 \]
 \end{lemma}
 
@@ -299,11 +286,11 @@ Proof:
 By
 Cauchy-Schwarz, we have:
 \begin{align*}
-&|(\mu - \muhat_t)^\top x| = 
-|(\mu - \muhat_t)^\top  \Sigma_t^{1/2}\Sigma_t^{-1/2}x| \\
-%= |(\Sigma_t^{1/2}(\mu - \muhat_t))^\top \Sigma_t^{-1/2}x| \\
-& \le \| \Sigma_t^{1/2}(\mu - \muhat_t) \| \|\Sigma_t^{-1/2}x\| 
-= \|\Sigma_t^{1/2}(\mu - \muhat_t)\| 
+&|(\mu - \widehat{\mu}_t)^\top x| = 
+|(\mu - \widehat{\mu}_t)^\top  \Sigma_t^{1/2}\Sigma_t^{-1/2}x| \\
+%= |(\Sigma_t^{1/2}(\mu - \widehat{\mu}_t))^\top \Sigma_t^{-1/2}x| \\
+& \le \| \Sigma_t^{1/2}(\mu - \widehat{\mu}_t) \| \|\Sigma_t^{-1/2}x\| 
+= \|\Sigma_t^{1/2}(\mu - \widehat{\mu}_t)\| 
 \sqrt{x^\top  \Sigma_t^{-1} x} 
 \le \sqrt{\beta_t x^\top \Sigma_t^{-1}x} 
 \end{align*}
@@ -326,7 +313,7 @@ Fix $t\le T$. If $\mu^\star \in \textsc{Ball}_t$, then
 \end{lemma}
 
 \pause
-\textbf{Proof:} Let $\tilde{\mu} \in \arg\max_{\mu \in \textsc{Ball}_t} \mu^\top x_t$.
+\textbf{Proof:} Let $\tilde{\mu} \in \argmax_{\mu \in \textsc{Ball}_t} \mu^\top x_t$.
 By the choice of $x_t$ and the assumption $\mu^\star \in \textsc{Ball}_t$, we have \textbf{optimism}:
 \[
 \tilde{\mu}^\top x_t = \max_{x\in D}\max_{\mu \in \textsc{Ball}_t} \mu^\top x \ge (\mu^\star)^\top x^\star
@@ -348,7 +335,8 @@ We can decompose the regret by adding and subtracting $\hat{\mu}_t$:
 
 \begin{frame}\frametitle{Geometric Argument: Part 1}
 
-The next two lemmas give us 'geometric' potential function argument, where can bound the sum of widths independently of
+The next two lemmas give us a 'geometric' potential function argument,
+where we can bound the sum of widths independently of
 the choices made by the algorithm. 
 
 \pause
