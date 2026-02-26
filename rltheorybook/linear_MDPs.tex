@@ -8,8 +8,6 @@
 In this chapter, we consider learning and exploration in linearly parameterized MDPs---the linear MDP. Linear MDP generalizes tabular MDPs into MDPs with potentially infinitely many state and action pairs. 
 
 
-This chapter largely follows the model and analysis first provided in~\cite{jin2020provably}.
-
 \section{Setting}
  
 
@@ -37,9 +35,6 @@ The model essentially says that the transition matrix $P_h\in\mathbb{R}^{|\Scal|
 
 %In the literature,  MDPs that has low-rank structure in its transition is called low-rank MDP (e.g., see \cite{jiang2017contextual}). Note that linear MDP is a  stronger assumption than Low-rank MDP: in linear MDP we assume $\phi$---the right hand side of the low-rank decomposition is known, while low rank MDP just assumes that the rank $d$ is known to the learner.   Simultaneously learning both sides $\mu$ and $\phi$ has recently been studied by \cite{agarwal2020flambe}.
 
-
-\paragraph{Linear Algebra Notations} For real-valued matrix $A$, we denote $\|A\|_2 = \sup_{x:\|x\|_2 = 1} \|Ax\|_2$ which denotes the maximum singular value of $A$. We denote $\|A\|_F$ as the Frobenius norm $\|A\|_F^2 = \sum_{i,j} A_{i,j}^2$ where $A_{i,j}$ denotes the $i,j$'th entry of $A$. For any Positive Definite matrix $\Lambda$, we denote $x^{\top} \Lambda x  = \|x\|^2_{\Lambda}$. We denote $\det(A)$ as the determinant of the matrix $A$.  For a PD matrix $\Lambda$, we note that $\det(\Lambda) = \prod_{i=1}^d \sigma_i$ where $\sigma_i$ is the eigenvalues of $\Lambda$. 
-For notation simplicity, during inequality derivation, we will use $\lesssim, \eqsim$ to suppress all absolute constants. We will use $\widetilde{O}$ to suppress all absolute constants and log terms. 
 
 \section{Planning in Linear MDPs }
 
@@ -459,6 +454,8 @@ Recall that $\beta = \widetilde{O}( H d)$. This concludes the proof.
 
 
 \section{Bibliographic Remarks and Further Readings}
+
+This chapter largely follows the model and analysis first provided in~\cite{jin2020provably}.
 
 There are number of ways to linearly parameterize an
 MDP such that it permits for efficient reinforcement learning (both

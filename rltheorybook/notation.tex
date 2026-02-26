@@ -30,8 +30,13 @@ This section collects notation and conventions that will be used throughout the 
 
 \item For a vector $v$, we refer to its $j$-th component as either $v(j)$ or $[v]_j$.
 
+\item For real-valued matrix $A$, we denote $\|A\|_2 = \sup_{x:\|x\|_2
+    = 1} \|Ax\|_2$ which denotes the maximum singular value of $A$.
+  We denote $\|A\|_F$ as the Frobenius norm $\|A\|_F^2 = \sum_{i,j} A_{i,j}^2$ where $A_{i,j}$ denotes the $i,j$'th entry of $A$.
+  
 \item For a vector $x$ and a matrix $M$, unless stated otherwise, $\|x\|$ and $\|M\|$
-  denote the Euclidean and spectral norms, respectively. We use $\|x\|_M :=
+  denote the Euclidean and spectral norms, respectively. For a
+  positive semi-definite matrix $M$, we use $\|x\|_M :=
   \sqrt{x^\top M x}$ (with dimensions understood from context).
 
 \item We denote the $\ell_\infty$-norm (max norm) by $\|x\|_\infty := \max_i |x_i|$.
