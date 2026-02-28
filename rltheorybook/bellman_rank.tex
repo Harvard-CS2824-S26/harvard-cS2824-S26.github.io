@@ -1,5 +1,5 @@
 % !TEX root = rltheorybook_AJKS.tex
-\chapter{Generalization with \\Bounded Bilinear Rank}
+\chapter{Generalization with \\Bounded Bellman Rank}
 \label{chap:Bellman_rank}
 
 Our previous lecture  on linear bandits and linear MDPs gave examples of statistically
@@ -394,6 +394,7 @@ We consider the following hypothesis class. Define a representation class $\Phi$
 %& = \sum_{i\in\mathcal{K}^\star} \E_{\tilde{s},\tilde{a}\sim d^{\pi_f}_{h-1}} [\phi_{h-1, i }^\star(\tilde{s},\tilde{a})  ]  \int_{s} \mu^\star_{h-1,i}(s)\left[  V_{h,g}(s) - r(s, \pi_{h,g}(s) ) - \E_{s'\sim P_h(\cdot | s, \pi_{h,g}(s))} [V_{h+1,g}(s')]  \right], 
 %\end{align*} namely, the inner product only needs to use entries whose index is in $\mathcal{K}^\star$. Thus we have demonstrated that the $V$-Bellman rank is $s$. 
 
+SK: I think we should move this to the appendix.
 \section{Bilinear Classes}
 
 The Bilinear class model generalizes both the $Q$-Bellman rank and

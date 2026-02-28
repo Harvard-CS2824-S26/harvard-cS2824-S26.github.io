@@ -591,7 +591,7 @@ Using $\Sigma_{t+1}=\Sigma_t+x_tx_t^\top$ and the matrix determinant lemma,
 Iterating from $t=0$ to $T-1$ gives the claim.
 \end{proof}
 
-\begin{lemma}[Potential function bound]\label{lem:detA}
+\begin{lemma}[Elliptical potential function bound]\label{lem:detA}
 For any sequence $x_0,\dots,x_{T-1}$ with $\|x_t\|\le B$,
 \[
 \log\frac{\det(\Sigma_T)}{\det(\Sigma_0)}
@@ -599,6 +599,11 @@ For any sequence $x_0,\dots,x_{T-1}$ with $\|x_t\|\le B$,
 \log\det\!\left(I+\frac{1}{\lambda}\sum_{t=0}^{T-1}x_tx_t^\top\right)
 \le
 d\log\!\left(1+\frac{TB^2}{d\lambda}\right).
+\]
+Consequently,
+\[
+  \sum_{t=0}^{T-1}\min\{w_t^2,1\}
+\leq 2\, d\log\!\left(1+\frac{TB^2}{d\lambda}\right).
 \]
 \end{lemma}
 
@@ -615,18 +620,7 @@ d\log\!\left(1+\frac{1}{d\lambda}\sum_{i=1}^d\sigma_i\right)
 \le
 d\log\!\left(1+\frac{TB^2}{d\lambda}\right).
 \]
-\end{proof}
-
-\begin{proof}[Proof of Proposition~\ref{proposition:l2regretbd}]
-Using Lemma~\ref{lem:regretvswidth} and that $\beta_t$ is nondecreasing,
-\[
-\sum_{t=0}^{T-1}\mathrm{regret}_t^2
-\le
-\sum_{t=0}^{T-1} 4\beta_t \min\{w_t^2,1\}
-\le
-4\beta_T \sum_{t=0}^{T-1}\min\{w_t^2,1\}.
-\]
-Next, for all $u\ge 0$ one has $\min\{u,1\}\le 2\log(1+u)$ (check separately for $u\le 1$ and $u\ge 1$),
+For the second claim, note for all $u\ge 0$ one has $\min\{u,1\}\le 2\log(1+u)$,
 so
 \[
 \sum_{t=0}^{T-1}\min\{w_t^2,1\}
@@ -636,12 +630,22 @@ so
 2\log\frac{\det(\Sigma_T)}{\det(\Sigma_0)},
 \]
 where the last equality uses Lemma~\ref{lem:volumechange}.
-Finally apply Lemma~\ref{lem:detA} to conclude
+Combining with the first claim in the lemma
+yields the second claim.
+\end{proof}
+
+\begin{proof}[Proof of Proposition~\ref{proposition:l2regretbd}]
+Using Lemma~\ref{lem:regretvswidth} and that $\beta_t$ is nondecreasing,
 \[
 \sum_{t=0}^{T-1}\mathrm{regret}_t^2
 \le
-8\beta_T\, d\log\!\left(1+\frac{TB^2}{d\lambda}\right).
+\sum_{t=0}^{T-1} 4\beta_t \min\{w_t^2,1\}
+\le
+4\beta_T \sum_{t=0}^{T-1}\min\{w_t^2,1\}
+\le
+8\beta_T\, d\log\!\left(1+\frac{TB^2}{d\lambda}\right),
 \]
+where the last step uses Lemma~\ref{lem:detA}.
 \end{proof}
 
 \subsection{Confidence Analysis}\label{sec:confidence}

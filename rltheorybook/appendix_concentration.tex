@@ -322,9 +322,369 @@ Finally,
 which completes the proof.
 \end{proof}
 
-
-
 \section{Other Bounds}
+
+\subsection{Covering numbers and uniformization via $\epsilon$-nets}
+\label{app:covering_uniformization}
+
+This section collects a few $\epsilon$-net bounds used in
+Chapter~\ref{chap:linear_MDPs}.  We work with the sup norm
+$\|f\|_\infty := \sup_{s\in\Scal} |f(s)|$ for functions $f:\Scal\to\R$, the Euclidean norm
+$\|\cdot\|_2$ for vectors, and the Frobenius norm $\|\cdot\|_F$ for matrices.
+
+\begin{definition}[$\epsilon$-net and covering number]
+Let $(\mathcal{X},d)$ be a metric space and let $\mathcal{F}\subseteq\mathcal{X}$.
+A set $\mathcal{N}\subseteq \mathcal{F}$ is an $\epsilon$-net of $\mathcal{F}$ if for every
+$f\in\mathcal{F}$ there exists $\tilde f\in\mathcal{N}$ such that $d(f,\tilde f)\le \epsilon$.
+The (internal) covering number is
+\[
+\mathcal{N}(\mathcal{F},\epsilon,d)
+:=
+\min\Big\{|\mathcal{N}|:\ \mathcal{N}\subseteq \mathcal{F}\ \text{is an $\epsilon$-net of $\mathcal{F}$}\Big\}.
+\]
+\end{definition}
+
+\begin{lemma}[Volumetric bound for Euclidean balls]\label{lem:volumetric_cover_ball}
+Let $\mathcal{B}_2^m(R):=\{x\in\R^m:\ \|x\|_2\le R\}$.
+For any $\epsilon\in(0,2R]$,
+\[
+\mathcal{N}\big(\mathcal{B}_2^m(R),\epsilon,\|\cdot\|_2\big)
+\ \le\
+\left(1+\frac{2R}{\epsilon}\right)^m.
+\]
+\end{lemma}
+
+\begin{proof}
+Let $\mathcal{S}\subseteq \mathcal{B}_2^m(R)$ be a maximal $\epsilon$-separated set:
+$\|x-y\|_2>\epsilon$ for all distinct $x,y\in\mathcal{S}$.
+Maximality implies $\mathcal{S}$ is an $\epsilon$-net.
+
+The Euclidean balls $\{x + (\epsilon/2)\mathcal{B}_2^m(1): x\in\mathcal{S}\}$ are disjoint and lie
+inside $(R+\epsilon/2)\mathcal{B}_2^m(1)$. Comparing volumes gives
+$|\mathcal{S}| \le \big(\frac{R+\epsilon/2}{\epsilon/2}\big)^m = (1+2R/\epsilon)^m$.
+\end{proof}
+
+\begin{lemma}[Max and clipping are $\|\cdot\|_\infty$ contractions]\label{lem:max_clip_contraction_app}
+Let $\{g_a\}_{a\in\Acal}$ and $\{\tilde g_a\}_{a\in\Acal}$ be real-valued functions on $\Scal$ and
+define $G(s):=\max_{a} g_a(s)$ and $\tilde G(s):=\max_{a}\tilde g_a(s)$.
+Then
+\[
+\|G-\tilde G\|_\infty \le \sup_{a\in\Acal}\|g_a-\tilde g_a\|_\infty.
+\]
+Moreover, for any $M>0$, the clipping map $\mathrm{clip}_{[0,M]}(x):=\min\{M,\max\{0,x\}\}$ satisfies
+\[
+\|\mathrm{clip}_{[0,M]}\circ u - \mathrm{clip}_{[0,M]}\circ \tilde u\|_\infty \le \|u-\tilde u\|_\infty.
+\]
+\end{lemma}
+
+\begin{proof}
+For any $s$,
+\[
+G(s)-\tilde G(s)=\max_a g_a(s)-\max_a\tilde g_a(s)
+\le \max_a (g_a(s)-\tilde g_a(s))
+\le \sup_a \|g_a-\tilde g_a\|_\infty,
+\]
+and swapping the roles of $g$ and $\tilde g$ yields the two-sided bound.
+The clipping bound holds because $\mathrm{clip}_{[0,M]}$ is $1$-Lipschitz on $\R$.
+\end{proof}
+
+\begin{lemma}[Covering number for an optimistic value-function class]\label{lem:cover_optimistic_value_class_app}
+Assume $\sup_{s,a}\|\phi(s,a)\|_2\le 1$.
+Fix parameters $L>0$, $B>0$, $\lambda>0$, and $H\ge 1$.
+For $(w,\beta,\Lambda)$ with $\|w\|_2\le L$, $\beta\in[0,B]$, and $\Lambda\succeq \lambda I$,
+define $f_{w,\beta,\Lambda}:\Scal\to[0,H]$ by
+\[
+f_{w,\beta,\Lambda}(s)
+:=
+\mathrm{clip}_{[0,H]}\!\left(
+\max_{a\in\Acal}\left(
+w^\top\phi(s,a)\ +\ \beta\sqrt{\phi(s,a)^\top \Lambda^{-1}\phi(s,a)}
+\right)
+\right).
+\]
+Let
+\[
+\Fcal
+:=
+\{f_{w,\beta,\Lambda}:\ \|w\|_2\le L,\ \beta\in[0,B],\ \Lambda\succeq \lambda I\}.
+\]
+Then for any $\epsilon\in(0,1]$,
+\[
+\log \mathcal{N}(\Fcal,\epsilon,\|\cdot\|_\infty)
+\ \le\
+d\log\!\left(1+\frac{6L}{\epsilon}\right)
++\log\!\left(1+\frac{6B}{\sqrt{\lambda}\,\epsilon}\right)
++\frac{d(d+1)}{2}\log\!\left(1+\frac{18B^2\sqrt d}{\lambda\,\epsilon^2}\right).
+\]
+
+\smallskip
+\noindent
+\emph{Remark (adding a known offset).}
+If one replaces $w^\top\phi(s,a)$ inside the max by $u(s,a)+w^\top\phi(s,a)$ for any
+fixed bounded function $u:\Scal\times\Acal\to\R$, the same covering bound holds:
+$u$ cancels in pairwise differences, and Lemma~\ref{lem:max_clip_contraction_app} still applies.
+\end{lemma}
+
+\begin{proof}
+Fix two triples $(w,\beta,\Lambda)$ and $(\tilde w,\tilde\beta,\tilde\Lambda)$.
+For $(s,a)$ define
+\[
+g(s,a):=w^\top\phi(s,a)+\beta\sqrt{\phi(s,a)^\top\Lambda^{-1}\phi(s,a)},
+\qquad
+\tilde g(s,a):=\tilde w^\top\phi(s,a)+\tilde\beta\sqrt{\phi(s,a)^\top\tilde\Lambda^{-1}\phi(s,a)}.
+\]
+By Lemma~\ref{lem:max_clip_contraction_app},
+\[
+\|f_{w,\beta,\Lambda}-f_{\tilde w,\tilde\beta,\tilde\Lambda}\|_\infty
+\le
+\sup_{s,a}|g(s,a)-\tilde g(s,a)|.
+\]
+For fixed $(s,a)$,
+\begin{align*}
+|g(s,a)-\tilde g(s,a)|
+&\le |(w-\tilde w)^\top\phi(s,a)|
++|\beta-\tilde\beta|\cdot \sqrt{\phi(s,a)^\top\Lambda^{-1}\phi(s,a)} \\
+&\quad
++\tilde\beta\cdot\left|\sqrt{\phi(s,a)^\top\Lambda^{-1}\phi(s,a)}
+-\sqrt{\phi(s,a)^\top\tilde\Lambda^{-1}\phi(s,a)}\right|.
+\end{align*}
+The first term is at most $\|w-\tilde w\|_2$ since $\|\phi(s,a)\|_2\le 1$.
+For the second term, $\Lambda\succeq \lambda I$ implies
+$\phi^\top\Lambda^{-1}\phi \le 1/\lambda$, so it is at most $|\beta-\tilde\beta|/\sqrt{\lambda}$.
+For the third term, use $|\sqrt{u}-\sqrt{v}|\le \sqrt{|u-v|}$ for $u,v\ge 0$ and
+\[
+\left|\phi^\top(\Lambda^{-1}-\tilde\Lambda^{-1})\phi\right|
+\le \|\Lambda^{-1}-\tilde\Lambda^{-1}\|_2\|\phi\|_2^2
+\le \|\Lambda^{-1}-\tilde\Lambda^{-1}\|_F.
+\]
+Thus
+\[
+\sup_{s,a}|g(s,a)-\tilde g(s,a)|
+\le
+\|w-\tilde w\|_2\ +\ \frac{|\beta-\tilde\beta|}{\sqrt{\lambda}}
+\ +\ B\sqrt{\|\Lambda^{-1}-\tilde\Lambda^{-1}\|_F}.
+\]
+
+It suffices to build:
+(i) an $(\epsilon/3)$-net for $\{w:\|w\|_2\le L\}$ in $\|\cdot\|_2$;
+(ii) a $(\sqrt{\lambda}\epsilon/3)$-net for $[0,B]$ in absolute value; and
+(iii) a $(\epsilon/(3B))^2$-net for $\{\Lambda^{-1}:\ \Lambda\succeq \lambda I\}$ in $\|\cdot\|_F$.
+
+For (i), Lemma~\ref{lem:volumetric_cover_ball} with $m=d$ gives size at most $(1+6L/\epsilon)^d$.
+For (ii), an interval cover gives size at most $1+6B/(\sqrt{\lambda}\epsilon)$.
+For (iii), note that $\Lambda^{-1}$ is symmetric and $\Lambda\succeq \lambda I$ implies
+$\|\Lambda^{-1}\|_F\le \sqrt d/\lambda$. The set lies in a Frobenius ball of radius
+$\sqrt d/\lambda$ inside the $\frac{d(d+1)}{2}$-dimensional vector space of symmetric matrices.
+Applying Lemma~\ref{lem:volumetric_cover_ball} with
+$m=\frac{d(d+1)}{2}$ and $\epsilon_\Lambda=(\epsilon/(3B))^2$ yields a net of size at most
+\[
+\left(1+\frac{2(\sqrt d/\lambda)}{(\epsilon/(3B))^2}\right)^{\frac{d(d+1)}{2}}
+=
+\left(1+\frac{18B^2\sqrt d}{\lambda\,\epsilon^2}\right)^{\frac{d(d+1)}{2}}.
+\]
+Taking the product net gives an $\epsilon$-net of $\Fcal$.
+\end{proof}
+
+\begin{lemma}[Uniform self-normalized bound via an $\epsilon$-net]\label{lem:uniform_self_norm_cover_app}
+Let $(\mathcal{F}_t)_{t\ge 0}$ be a filtration and let $(x_t)_{t\ge 0}$ be an adapted sequence
+in $\R^d$ with $\|x_t\|_2\le 1$.  Fix $\lambda>0$ and define
+\[
+\Lambda_n := \lambda I+\sum_{t=0}^{n-1} x_tx_t^\top.
+\]
+
+Let $\mathcal{F}$ be a class of functions $f:\Scal\to[0,H]$, and for each $f\in\mathcal{F}$ let
+$(\varepsilon_t(f))_{t\ge 0}$ be a sequence such that $\varepsilon_t(f)$ is
+$\mathcal{F}_{t+1}$-measurable, $\E[\varepsilon_t(f)\mid \mathcal{F}_t]=0$, and
+$|\varepsilon_t(f)|\le H$ almost surely.
+Assume moreover that for all $f,g\in\mathcal{F}$,
+\begin{equation}\label{eq:eps_lipschitz}
+|\varepsilon_t(f)-\varepsilon_t(g)| \le 2\|f-g\|_\infty
+\qquad\text{almost surely for all }t.
+\end{equation}
+
+Fix $\epsilon\in(0,1]$ and let $\mathcal{N}_\epsilon\subseteq\mathcal{F}$ be an $\epsilon$-net in $\|\cdot\|_\infty$.
+Then for any $\delta\in(0,1)$, with probability at least $1-\delta$, simultaneously for all $n\ge 1$
+and all $f\in\mathcal{F}$,
+\[
+\left\|\sum_{t=0}^{n-1} x_t\,\varepsilon_t(f)\right\|_{\Lambda_n^{-1}}
+\le
+H\sqrt{2\log\!\left(\frac{\det(\Lambda_n)^{1/2}\det(\lambda I)^{-1/2}\,|\mathcal{N}_\epsilon|}{\delta}\right)}
+\;+\;
+2\epsilon\sqrt{n}.
+\]
+\end{lemma}
+
+\begin{proof}
+Apply Lemma~\ref{lemma:self_norm} (Appendix~\ref{chap:concentration}) to each fixed $\tilde f\in\mathcal{N}_\epsilon$
+with $V_0=\lambda I$ and failure probability $\delta/|\mathcal{N}_\epsilon|$.
+Since $|\varepsilon_t(\tilde f)|\le H$, each sequence is conditionally $H$-sub-Gaussian.
+A union bound implies that with probability at least $1-\delta$, for all $n\ge 1$ and all $\tilde f\in\mathcal{N}_\epsilon$,
+\[
+\left\|\sum_{t=0}^{n-1} x_t\,\varepsilon_t(\tilde f)\right\|_{\Lambda_n^{-1}}
+\le
+H\sqrt{2\log\!\left(\frac{\det(\Lambda_n)^{1/2}\det(\lambda I)^{-1/2}\,|\mathcal{N}_\epsilon|}{\delta}\right)}.
+\]
+
+Fix any $f\in\mathcal{F}$ and choose $\tilde f\in\mathcal{N}_\epsilon$ with $\|f-\tilde f\|_\infty\le \epsilon$.
+Write
+\[
+\sum_{t=0}^{n-1} x_t\,\varepsilon_t(f)
+=
+\sum_{t=0}^{n-1} x_t\,\varepsilon_t(\tilde f)
++
+\sum_{t=0}^{n-1} x_t\big(\varepsilon_t(f)-\varepsilon_t(\tilde f)\big).
+\]
+For the second term, define $u_t:=\varepsilon_t(f)-\varepsilon_t(\tilde f)$.
+By \eqref{eq:eps_lipschitz}, $|u_t|\le 2\epsilon$, hence $\|u\|_2\le 2\epsilon\sqrt{n}$
+for $u=(u_0,\dots,u_{n-1})\in\R^n$.
+Let $X=[x_0,\dots,x_{n-1}]\in\R^{d\times n}$ so that $\Lambda_n=\lambda I+XX^\top$ and $\sum_{t=0}^{n-1}x_tu_t=Xu$.
+Then
+\[
+\|Xu\|_{\Lambda_n^{-1}}^2
+=
+u^\top X^\top (\lambda I+XX^\top)^{-1} X u.
+\]
+By the Woodbury identity,
+$X^\top (\lambda I+XX^\top)^{-1}X = M(I+M)^{-1}$ with $M:=\lambda^{-1}X^\top X\succeq 0$,
+so $M(I+M)^{-1}\preceq I$. Therefore $\|Xu\|_{\Lambda_n^{-1}}^2\le \|u\|_2^2$ and
+$\|Xu\|_{\Lambda_n^{-1}}\le 2\epsilon\sqrt{n}$.
+Combine with the triangle inequality.
+\end{proof}
+
+\medskip
+We now package the $\epsilon$-net machinery into a single stage-wise uniform confidence statement
+tailored to Chapter~\ref{chap:linear_MDPs}.
+
+\begin{corollary}[Uniform confidence over an optimistic value-function class]
+\label{cor:uniform_model_conf_bonus_class}
+Fix a stage $h$ and an episode budget $K\ge 2$.  Let $(\mathcal{F}_i)_{i\ge 0}$ be the filtration
+generated by the interaction up to (and including) $(s_h^i,a_h^i)$ at stage $h$ of episode $i$.
+Define
+\[
+x_i := \phi(s_h^i,a_h^i)\in\R^d,
+\qquad
+s_{i+1} := s_{h+1}^i\in\Scal,
+\qquad
+\Lambda_k := \lambda I + \sum_{i=0}^{k-1} x_i x_i^\top,
+\]
+with $\lambda\ge 1$ and $\|x_i\|_2\le 1$.
+
+Let $\Fcal$ be the optimistic value-function class from Lemma~\ref{lem:cover_optimistic_value_class_app},
+so $\Fcal\subseteq\{f:\Scal\to[0,H]\}$.  Assume a linear conditional expectation model at stage $h$:
+for every $f\in\Fcal$ there exists $w_f^\star\in\R^d$ such that
+\begin{equation}\label{eq:linear_model_stage_h}
+\E\!\left[f(s_{i+1})\mid \mathcal{F}_i\right] = x_i^\top w_f^\star
+\qquad\text{for all }i\ge 0,
+\end{equation}
+and $\|w_f^\star\|_2\le H\sqrt d$ for all $f\in\Fcal$.
+
+For each $k\ge 1$ and $f\in\Fcal$, define the ridge estimator
+\[
+\widehat w_f^k := (\Lambda_k)^{-1}\sum_{i=0}^{k-1} x_i\,f(s_{i+1}),
+\qquad
+(\widehat P^k f)(s,a) := \phi(s,a)^\top \widehat w_f^k,
+\qquad
+(P^\star f)(s,a) := \phi(s,a)^\top w_f^\star.
+\]
+
+Fix $\delta\in(0,1)$ and set $\epsilon := 1/\sqrt{K}$.
+Then with probability at least $1-\delta$, simultaneously for all $k\in\{1,\dots,K\}$,
+all $f\in\Fcal$, and all $(s,a)\in\Scal\times\Acal$,
+\[
+\big|(\widehat P^k f)(s,a) - (P^\star f)(s,a)\big|
+\ \le\
+\beta_{K,\delta}\;\|\phi(s,a)\|_{(\Lambda_k)^{-1}},
+\]
+where one may take
+\[
+\beta_{K,\delta}
+:=
+H\sqrt{
+d\log\!\left(1+\frac{K}{\lambda}\right)
++
+2\log\!\left(\frac{\mathcal{N}(\Fcal,\epsilon,\|\cdot\|_\infty)}{\delta}\right)
+}
+\;+\;
+2
+\;+\;
+\sqrt{\lambda}\,H\sqrt d.
+\]
+Moreover, by Lemma~\ref{lem:cover_optimistic_value_class_app} and $\epsilon=1/\sqrt K$,
+\[
+\log \mathcal{N}\!\big(\Fcal,\epsilon,\|\cdot\|_\infty\big)
+\le
+d\log(1+6L\sqrt K)
++\log\!\Big(1+\frac{6B\sqrt K}{\sqrt{\lambda}}\Big)
++\frac{d(d+1)}{2}\log\!\Big(1+\frac{18B^2\sqrt d\,K}{\lambda}\Big),
+\]
+so for polynomially bounded $(L,B)$ one has $\beta_{K,\delta}=\widetilde O(Hd)$ as a function
+of $(K,1/\delta)$.
+\end{corollary}
+
+\begin{proof}
+For $f\in\Fcal$, define the noise sequence
+\[
+\varepsilon_i(f) := f(s_{i+1}) - \E[f(s_{i+1})\mid \mathcal{F}_i].
+\]
+Then $(\varepsilon_i(f))_{i\ge 0}$ is a martingale difference sequence and
+$|\varepsilon_i(f)|\le H$ almost surely.
+For any $f,g\in\Fcal$,
+\[
+|\varepsilon_i(f)-\varepsilon_i(g)|
+\le |f(s_{i+1})-g(s_{i+1})|
++ \Big|\E[f(s_{i+1})-g(s_{i+1})\mid \mathcal{F}_i]\Big|
+\le 2\|f-g\|_\infty,
+\]
+so \eqref{eq:eps_lipschitz} holds.
+
+Apply Lemma~\ref{lem:uniform_self_norm_cover_app} to the class $\Fcal$ with this choice of
+$\varepsilon_i(\cdot)$ and with $\epsilon=1/\sqrt K$.  On its high-probability event (probability
+at least $1-\delta$), for all $k\le K$ and all $f\in\Fcal$,
+\[
+\left\|\sum_{i=0}^{k-1} x_i\,\varepsilon_i(f)\right\|_{\Lambda_k^{-1}}
+\le
+H\sqrt{2\log\!\left(\frac{\det(\Lambda_k)^{1/2}\det(\lambda I)^{-1/2}\,\mathcal{N}(\Fcal,\epsilon,\|\cdot\|_\infty)}{\delta}\right)}
++
+2\epsilon\sqrt{k}.
+\]
+Since $\Lambda_k \preceq (\lambda+k)I$, we have
+$\det(\Lambda_k)\det(\lambda I)^{-1}\le (1+k/\lambda)^d \le (1+K/\lambda)^d$ and
+$2\epsilon\sqrt{k}\le 2$. Hence the above is at most
+\[
+H\sqrt{d\log\!\left(1+\frac{K}{\lambda}\right)
++
+2\log\!\left(\frac{\mathcal{N}(\Fcal,\epsilon,\|\cdot\|_\infty)}{\delta}\right)}
+\;+\;2.
+\]
+
+Next, using \eqref{eq:linear_model_stage_h}, write $f(s_{i+1}) = x_i^\top w_f^\star + \varepsilon_i(f)$ and compute
+\[
+\widehat w_f^k - w_f^\star
+=
+\Lambda_k^{-1}\sum_{i=0}^{k-1} x_i\varepsilon_i(f) \;-\; \lambda\,\Lambda_k^{-1} w_f^\star.
+\]
+Therefore, for any $(s,a)$,
+\begin{align*}
+|(\widehat P^k f - P^\star f)(s,a)|
+&=
+|\phi(s,a)^\top(\widehat w_f^k - w_f^\star)| \\
+&\le
+\|\phi(s,a)\|_{\Lambda_k^{-1}}\cdot
+\left\|\sum_{i=0}^{k-1} x_i\varepsilon_i(f)\right\|_{\Lambda_k^{-1}}
+\;+\;
+\lambda\,|\phi(s,a)^\top \Lambda_k^{-1}w_f^\star|.
+\end{align*}
+Since $\Lambda_k\succeq \lambda I$,
+\[
+\lambda\,|\phi^\top \Lambda_k^{-1}w_f^\star|
+\le
+\sqrt{\lambda}\,\|\phi\|_{\Lambda_k^{-1}}\,\|w_f^\star\|_2.
+\]
+Combine the bounds and use $\|w_f^\star\|_2\le H\sqrt d$.
+\end{proof}
+
+
+\subsection{Bellman error bounds}
 
 \begin{lemma}[Uniform convergence for Bellman error under linear function hypothesis class ]  \label{lem:b_error_linear_uniform_conv}
 Given a feature $\phi:\Scal\times\Acal\mapsto \mathbb{R}^d$ with $\| \phi(s,a) \|_2 \leq 1, \forall s,a$. Define $\Hcal_h = \{ w^{\top} \phi(s,a) : \|w\|_2 \leq W, w\in\mathbb{R}^d, \|w^{\top}\phi(\cdot,\cdot)\|_{\infty} \leq H \}$. Given $g\in\Hcal$, denote $\ell(s,a,s', g)$ as follows:
