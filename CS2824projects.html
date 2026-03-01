@@ -310,15 +310,20 @@
                 href="https://arxiv.org/abs/2103.10897">Bilinear Classes</a>. Survey
               the different structural assumptions (such as Bellman rank and
               Bilinear rank) and discuss how they enable provably efficient learning
-              in large-scale MDPs. </br>
+in large-scale MDPs. </br>
 
-              <br><strong> Hardness of Linear Realizability: </strong> If the optimal Q-function is linear in a given
-              feature map, is RL always efficient? Lower bounds from <a href="https://arxiv.org/abs/2010.01374">Weisz et
-                al.</a>, <a href="https://arxiv.org/abs/2110.02195">Weisz et al.</a>, and <a
-                href="https://arxiv.org/abs/2103.12690">Wang et al.</a> suggest otherwise, even with a constant
-              suboptimality gap. An interesting open question is: if $Q^\pi$ is linear for all policies, is an online
-              lower bound still possible, or does this make the problem tractable? Additionally, explore the
-              near-deterministic case and its impact on learnability. </br>
+               <br><strong> Hardness of Linear Realizability: </strong> If the optimal Q-function is linear in a given
+feature map, is RL always efficient? Lower bounds from <a href="https://arxiv.org/abs/2010.01374">Weisz et
+  al.</a>, <a href="https://arxiv.org/abs/2110.02195">Weisz et al.</a>, and <a
+  href="https://arxiv.org/abs/2103.12690">Wang et al.</a> suggest otherwise, even with a constant
+suboptimality gap. Additionally, explore the near-deterministic case and its impact on
+learnability. The Wang et al. paper shows that in the low-noise case, things can be learnable.</br>
+
+               <br><strong> All Policy Linear Realizability: </strong> If $Q^\pi$ is linear for all policies (in a given feature map),
+what changes? Offline lower bounds show this can still be
+exponentially hard (with coverage), but in the online episodic setting
+there are polynomial learnability results; see <a href="https://proceedings.neurips.cc/paper_files/paper/2023/file/b973a107336177a274069cefb011244c-Paper-Conference.pdf">Weisz, Gy&ouml;rgy, and Szepesv&aacute;ri</a>
+and <a href="https://arxiv.org/pdf/2409.04840?">Mhammedi</a>. </br>
 
 
 
