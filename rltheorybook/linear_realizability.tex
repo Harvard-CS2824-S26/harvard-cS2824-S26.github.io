@@ -116,9 +116,14 @@ for each $\pi$ and each stage $h$, there exists $\theta_h^\pi$ such that
 Q_h^\pi(s,a) = (\theta_h^\pi)^\top \phi(s,a)\qquad \forall (s,a).
 \]
 This assumption is substantially stronger than (B).
-Nevertheless, it still does \emph{not} guarantee sample-efficient offline policy
+This assumtion is sutle. It
+does permit polynomial sample complexity both with a generative model (via
+adaptive, on-policy rollouts) and in an episodic setting (see the discussion in
+Section~\ref{chapterBC_bib}). However, as we see in this chapter, (C)
+it still does \emph{not} guarantee sample-efficient \emph{offline} policy
 evaluation: even with extremely strong feature coverage, any estimator can require
-exponentially many samples.
+exponentially many samples (Section~\ref{sec:linear_Qvalues}).
+
 
 \paragraph{(D) Linear Bellman completeness (a closure property).}
 The most algorithmically useful assumption in this chapter is a \emph{closure}
@@ -149,11 +154,6 @@ In contrast, (C) and (D) are not comparable in general: (C) asserts realizabilit
 while (D) enforces closure under the optimality operator but does not a priori assert
 that $Q^\pi$ is linear for every policy $\pi$.
 
-Finally, note a key subtlety about data access: while (C) is still insufficient
-for sample-efficient \emph{offline} RL (Section~\ref{sec:linear_Qvalues}), it
-\emph{does} permit polynomial sample complexity with a generative model via
-adaptive, on-policy rollouts; see the discussion in
-Section~\ref{chapterBC_bib}.
 
 
 \paragraph{A remark on strength.}
@@ -1217,15 +1217,6 @@ Theorem~\ref{thm:lower_gen_linearQstar}.  In Appendix~\ref{app:linearQstar_lb} w
 also include a simpler (but weaker) proof in the spirit of the original
 construction of \citet{WeiszAS21}, using exponentially many actions.
 
-With regard to the learnability of the all-policies linear
-realizability model~(C) in online (episodic) settings,
-\citet{weisz2023online_qpi} show that linearly $Q^\pi$-realizable MDPs
-are PAC learnable with sample complexity polynomial in
-$(d,H,1/\epsilon)$ (despite the offline impossibility results
-discussed above).  Related polynomial-sample guarantees for online
-learning under $Q^\pi$-realizability (with computational efficiency
-and with more restrictions) are obtained by
-\citet{mhammedi2024optimistic_psdp}. 
 
 \paragraph{A note on (C) with a generative model.}
 Our exponential lower bound under all-policies linear realizability (C) is an
@@ -1235,15 +1226,17 @@ through Bellman backups and allowing estimation error to amplify across stages.
 With a generative model, this particular obstruction disappears because the
 learner can collect \emph{fresh} samples under (or targeted to) the current
 candidate policy, producing unbiased estimates of the relevant Bellman targets
-and avoiding the worst-case compounding that occurs with fixed data.
-This makes the (C) model genuinely subtle: naive least-squares dynamic
-programming can fail offline, yet the model is still PAC-learnable with a
-generative model by procedures that leverage adaptive rollouts; see
-\citet{du2019good}.
-Polynomial-sample PAC guarantees under~(C) are also available in the
-online episodic setting, with more involved algorithms (see Section~\ref{chapterBC_bib} for
-discussion).
-
+and avoiding the worst-case compounding that occurs with fixed data (see
+\citet{du2019good}).
+Furthermore, polynomial-sample PAC guarantees under~(C) are also available in the
+online episodic setting. Here,
+\citet{weisz2023online_qpi} shows that linearly $Q^\pi$-realizable MDPs
+are PAC learnable with sample complexity polynomial in
+$(d,H,1/\epsilon)$.  Related polynomial-sample guarantees for online
+learning under $Q^\pi$-realizability (with computational efficiency
+and with more restrictions) are obtained by
+\citet{mhammedi2024optimistic_psdp}.  This makes the (C) model subtle:
+naive least-squares dynamic programming can fail offline, yet the model is still learnable.
 
 
 Finally, \citet{Wang_linear_lower} studies the \emph{episodic} (online) setting
