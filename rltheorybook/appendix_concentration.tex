@@ -322,6 +322,8 @@ Finally,
 which completes the proof.
 \end{proof}
 
+
+
 \section{Other Bounds}
 
 \subsection{Covering numbers and uniformization via $\epsilon$-nets}
@@ -683,59 +685,171 @@ Since $\Lambda_k\succeq \lambda I$,
 Combine the bounds and use $\|w_f^\star\|_2\le H\sqrt d$.
 \end{proof}
 
+\subsection{Uniform convergence primitives for Bellman-rank losses}
+\label{subsec:br_epsgen_appendix}
 
-\subsection{Bellman error bounds}
+This appendix collects standard high-probability uniform convergence bounds that can be used as
+$\varepsilon_{\mathrm{gen}}(m,\Hcal,\delta)$ in Assumption~\ref{assum:br_uniform_conv}.
+All statements are for a fixed stage $h$ (the chapter union-bounds over $h\in\{0,\dots,H-1\}$).
 
-\begin{lemma}[Uniform convergence for Bellman error under linear function hypothesis class ]  \label{lem:b_error_linear_uniform_conv}
-Given a feature $\phi:\Scal\times\Acal\mapsto \mathbb{R}^d$ with $\| \phi(s,a) \|_2 \leq 1, \forall s,a$. Define $\Hcal_h = \{ w^{\top} \phi(s,a) : \|w\|_2 \leq W, w\in\mathbb{R}^d, \|w^{\top}\phi(\cdot,\cdot)\|_{\infty} \leq H \}$. Given $g\in\Hcal$, denote $\ell(s,a,s', g)$ as follows:
-\begin{align*}
-\ell(s,a, s', h, g) =  \frac{ \one\{\pi_{h,g}(s) = a \}  }{1/A} \left(  w_h^{\top} \phi(s,a) - r(s,a) - \max_{a'} w_{h+1}^{\top}  \phi(s',a')\right).
-\end{align*}
-For any distribution $\nu \in\Delta(\Scal)$, with probability $1-\delta$ over the randomness of the $m$ i.i.d triples $\{s_i,a_i,s'_i\}_{i=1}^m$ with $s_i\sim \mu,a_i\sim \mathrm{Unif}_{\Acal}, s'_i\sim P_h(\cdot | s_i,a_i)$, we have:
- %Define $\mathcal{W} \subset \{ w: w\in\mathbb{R}^d, \|w\|_2 \leq W\}$. Suppose for all $x\in\mathcal{X}$ we have $\|x\|_2 \leq 1$. For any distribution $\nu\in \Delta(\Xcal)$, with probability $1-\delta$ over the randomness of the $m$ i.i.d samples $\{x_i\}_{i=1}^m \sim \nu$, we have:
-\begin{align*}
-\max_{g\in\Hcal} \left\lvert \E_{s\sim \nu,a\sim \text{Unif}_{\Acal}, s'\sim P_h(\cdot|s,a)} [ \ell(s,a,s', h, g) ] - \sum_{i=1}^m \ell(s_i,a_i,s'_i,h, g) / m  \right\rvert \leq 3 HA \sqrt{ \frac{ 2d \ln(1 + 4A W m )  + \ln(1/\delta)}{ m} }.
-\end{align*}
-Similarly, when $\ell(s,a,s',g)$ is defined as:
-\begin{align*}
-\ell(s,a, s', h, g) = w_h^{\top} \phi(s,a) - r(s,a) - \max_{a'} w_{h+1}^{\top}  \phi(s',a') ,
-\end{align*}  for any distribution $\nu\in \Delta(\Scal\times\Acal)$, with probability $1-\delta$ over randomness of the $m$ i.i.d triples $\{s_i,a_i,s'_i\}_{i=1}^m$ with $s_i,a_i\sim \nu, s_i' \sim P_h(\cdot | s_i,a_i)$, we have:
-\begin{align*}
-\max_{g\in\Hcal} \left\lvert \E_{s\sim \nu,a\sim \text{Unif}_{\Acal}, s'\sim P_h(\cdot|s,a)} [ \ell(s,a,s', h, g) ] - \sum_{i=1}^m \ell(s_i,a_i,s'_i,h, g) / m  \right\rvert \leq 3 H \sqrt{ \frac{ 2d \ln(1 + 4 W m )  + \ln(1/\delta)}{ m} }.
-\end{align*}
+\paragraph{Notation.}
+Fix a loss family $\{\tilde{\ell}(s,a,s';g):g\in\Hcal\}$ and a distribution $\nu$ over $(s,a,s')$.
+Given i.i.d.\ data $\Dcal=\{(s_i,a_i,s_i')\}_{i=1}^m\sim \nu^m$, write
+\[
+\E_{\Dcal}[\tilde{\ell}(\cdot;g)] := \frac{1}{m}\sum_{i=1}^m \tilde{\ell}(s_i,a_i,s_i';g),
+\qquad
+\E_{\nu}[\tilde{\ell}(\cdot;g)] := \E_{(s,a,s')\sim\nu}[\tilde{\ell}(s,a,s';g)].
+\]
+We will apply the lemmas below with either
+$\tilde{\ell}=\ell_h(\cdot;\,g)$ (the $Q$-version) or
+$\tilde{\ell}=\tilde{\ell}_h^{V}(\cdot;\,g)$ (the importance-weighted $V$-version from
+\eqref{eq:br_v_loss} in the chapter).
+
+% =========================================================
+\subsubsection{Finite hypothesis classes}
+
+\begin{lemma}[Finite class: Hoeffding + union bound]
+\label{lem:br_epsgen_finite}
+Assume $|\Hcal|<\infty$ and $\|\tilde{\ell}(\cdot;g)\|_\infty\le B$ for all $g\in\Hcal$.
+Then with probability at least $1-\delta$,
+\[
+\sup_{g\in\Hcal}\big|\E_{\Dcal}[\tilde{\ell}(\cdot;g)]-\E_{\nu}[\tilde{\ell}(\cdot;g)]\big|
+\ \le\
+B\sqrt{\frac{2\ln(2|\Hcal|/\delta)}{m}}.
+\]
 \end{lemma}
+
 \begin{proof}
-The proof uses the standard $\epsilon$-net argument.  Define $\mathcal{N}_{\epsilon}$ as the $\epsilon$-net for  $\Wcal = \{ w: w\in\mathbb{R}^d, \|w\|_2 \leq W, w^{\top} \phi(\cdot,\cdot) \in \Hcal \}$. Standard $\epsilon$-net argument shows that $|\Ncal_{\epsilon}| \leq (1 + W / \epsilon)^d$.  Denote $g' = \{ (w'_h)^{\top} \phi\}_{h=0}^{H-1}$, we have:
-\begin{align*}
-&\left\lvert \ell(s,a,s', h, g) - \ell(s,a,s', h,g')  \right\rvert \leq  \frac{ \one\{\pi_{h,g}(s) = a \}  }{1/A} \left[ | w_h^{\top} \phi(s,a) - (w_h')^{\top}\phi(s,a)  | + \max_{a'} |  w_{h+1}^{\top} \phi(s',a') - (w_{h+1}')^{\top}\phi(s',a')  |   \right]\\
-&\leq A \sup_{s,a} | w_h^{\top} \phi(s,a) - (w_h')^{\top}\phi(s,a)  |  + A \sup_{s,a} | w_{h+1}^{\top} \phi(s,a) - (w_{h+1}')^{\top}\phi(s,a)  | \\
-& \leq A \| w_h - w'_{h} \|_2 + A \|w_{h+1} - w_{h+1}' \|_2.
-%& \leq  \frac{2 \one\{\pi_{h,g}(s) = a \}  }{1/A} \sup_{s,a} | w_h^{\top} \phi(s,a) - (w_h')^{\top}\phi(s,a)  | \leq 2A | w_h^{\top} \phi(s,a) - (w_h')^{\top}\phi(s,a)  |.
-\end{align*} Thus, if $\|w_h - w_h'\|_2 \leq \epsilon$, $\| w_{h+1} -w_{h+1}' \|_2 \leq \epsilon$, we have $\left\lvert \ell(s,a,s', h, g) - \ell(s,a,s', h,g')  \right\rvert \leq  2A\epsilon$. 
-
-Consider a $w_h \in \Ncal_{\epsilon}, w_{h+1} \in \Ncal_{\epsilon}$, via Hoeffding's inequality, we have that with probability at least $1-\delta$:
-\begin{align*}
-\left\lvert \E [ \ell(s,a,s', h, (w_h,w_{h+1})) ] -  \bar{\E} [ \ell(s,a,s', h, (w_h,w_{h+1})) ]  \right\rvert \leq  2 HA \sqrt{ \ln(1/\delta) / m  }.
-\end{align*} where for notation simplicity, we denote $\bar\E$ as the empirical average over the $m$ data triples. 
-Apply a union bound over all $w_h\in\Ncal_\epsilon$ and $w_{h+1} \in \Ncal_{\epsilon}$, we have that with probability at least $1-\delta$:
-\begin{align*}
-\forall w_h\in\Ncal_\epsilon, w_{h+1}\in\Ncal_\epsilon: \left\lvert  \E [ \ell(s,a,s', h, (w_h,w_{h+1})) ]  - \bar\E [ \ell(s,a,s', h, (w_h,w_{h+1}))  ] \right\rvert \leq  2 HA \sqrt{ 2 \ln(|\Ncal_\epsilon |/\delta) / m  }.
-\end{align*}
-Thus for any $w_h \in \Wcal, w_{h+1} \in \Wcal$,  we have:
-\begin{align*}
-\left\lvert \E [ \ell(s,a,s', h, (w_h,w_{h+1})) ]  -\bar\E [  \ell(s,a,s', h, (w_h,w_{h+1}))  ]  \right\rvert \leq  2 HA \sqrt{ 2 \ln(|\Ncal_\epsilon |/\delta) / m  }
- + 4A \epsilon.
- \end{align*} Set $\epsilon = 1 / (4 A m)$, we have:
- \begin{align*}
- \left\lvert \E [ \ell(s,a,s', h, (w_h,w_{h+1}))  ] -\bar\E [  \ell(s,a,s', h, (w_h,w_{h+1})) ] \right\rvert & \leq  2HA \sqrt{ ( 2 d \ln  (1 + 4 A W m ) + \ln(1/\delta) )/ m   } + 1 / m \\
- & \leq  3 HA \sqrt{ \frac{ 2d \ln(1 + 4A W m )  + \ln(1/\delta)}{ m} }.
- \end{align*} This proves the first claim in the lemma.
-
-The second claim in the lemma can be proved in a similar way, noting that without the importance weighting term on the loss $\ell$, we have:
-\begin{align*}
-\left\lvert \ell(s,a,s', h, g) - \ell(s,a,s', h,g')  \right\rvert  \leq \| w_h - w_h'  \|_2 + \| w_{h+1} - w_{h+1}'\|_2.
-\end{align*}
-
+Fix $g\in\Hcal$ and apply Hoeffding's inequality to the bounded random variables
+$\tilde{\ell}(s_i,a_i,s_i';g)\in[-B,B]$. Union bound over $g\in\Hcal$.
 \end{proof}
 
+% =========================================================
+\subsubsection{Linear function classes}
 
+We record convenient bounds for Bellman-rank losses induced by linear $Q$-classes.
+Fix a feature map $\phi:\Scal\times\Acal\to\R^d$ with $\|\phi(s,a)\|_2\le 1$ for all $(s,a)$.
+For parameters $W>0$ and $H\ge 1$, define the stage-wise linear class
+\[
+\Gcal_h(\phi,W)
+:=
+\Big\{Q_{h,w}(s,a)=\langle w,\phi(s,a)\rangle:\ \|w\|_2\le W,\ \|Q_{h,w}\|_\infty\le H\Big\}.
+\]
+At a fixed stage $h$, we will view a hypothesis $g$ as specifying a pair of weights $(w_h,w_{h+1})$,
+each lying in the above ball, and use the one-step Bellman residual
+\[
+\ell_h(s,a,s';g)
+:= \langle w_h,\phi(s,a)\rangle - r_h(s,a) - \max_{a'\in\Acal}\langle w_{h+1},\phi(s',a')\rangle.
+\]
+For the $V$-version with uniform exploration at time $h$, define the importance-weighted loss
+\[
+\tilde{\ell}_h^{V}(s,a,s';g)
+:= \frac{\mathbf{1}\{a=\pi_{h,g}(s)\}}{1/A}\,\ell_h(s,a,s';g),
+\qquad
+\pi_{h,g}(s)\in\arg\max_{a\in\Acal}\langle w_h,\phi(s,a)\rangle .
+\]
+
+\begin{lemma}[Linear classes: uniform convergence for $\ell_h$ and $\tilde{\ell}_h^{V}$]
+\label{lem:br_epsgen_linear}
+Fix $\delta\in(0,1)$ and let $\Dcal$ be $m$ i.i.d.\ samples from $\nu$.
+Assume $r_h(s,a)\in[0,1]$ and $\|Q_{h,w}\|_\infty\le H$ for all $w$ in the class. Then:
+\begin{enumerate}
+\item (\textbf{$Q$-loss}) With probability at least $1-\delta$,
+\[
+\sup_{g}\big|\E_{\Dcal}[\ell_h(\cdot;g)]-\E_{\nu}[\ell_h(\cdot;g)]\big|
+\ \le\
+3H\sqrt{\frac{2d\ln(1+4Wm)+\ln(1/\delta)}{m}}.
+\]
+\item (\textbf{$V$-loss}) With probability at least $1-\delta$,
+\[
+\sup_{g}\big|\E_{\Dcal}[\tilde{\ell}_h^{V}(\cdot;g)]-\E_{\nu}[\tilde{\ell}_h^{V}(\cdot;g)]\big|
+\ \le\
+3AH\sqrt{\frac{2d\ln(1+4AWm)+d\ln(e m A)+\ln(1/\delta)}{m}}.
+\]
+\end{enumerate}
+The suprema are over all stage-local pairs $(w_h,w_{h+1})$ with $\|w_h\|_2,\|w_{h+1}\|_2\le W$ and
+$\|Q_{h,w_h}\|_\infty,\|Q_{h+1,w_{h+1}}\|_\infty\le H$.
+\end{lemma}
+
+\begin{proof}
+We use covering-number arguments.
+
+For the $Q$-loss, note that $|\ell_h|\le |Q_{h,w_h}|+|r_h|+|V_{h+1,w_{h+1}}|\le 2H+1\le 3H$.
+Let $\Ncal_\epsilon$ be an $\epsilon$-net of the Euclidean ball $\{w:\|w\|_2\le W\}$; a volumetric bound
+gives $|\Ncal_\epsilon|\le (1+W/\epsilon)^d$. Consider the finite set
+$\Ncal_\epsilon\times\Ncal_\epsilon$ for the pair $(w_h,w_{h+1})$.
+For any fixed net pair $(\bar w_h,\bar w_{h+1})$, Hoeffding's inequality gives
+\[
+\big|\E_{\Dcal}[\ell_h(\cdot;(\bar w_h,\bar w_{h+1}))]-\E_{\nu}[\ell_h(\cdot;(\bar w_h,\bar w_{h+1}))]\big|
+\le
+3H\sqrt{\frac{\ln(2/\delta')}{2m}}
+\]
+with probability at least $1-\delta'$. Union bounding over net pairs and taking $\delta'$ so that the
+overall failure probability is $\delta$ yields a bound with
+$\ln|\Ncal_\epsilon\times\Ncal_\epsilon|\le 2d\ln(1+W/\epsilon)$.
+Finally, if $(w_h,w_{h+1})$ is within $\epsilon$ (in $\|\cdot\|_2$) of $(\bar w_h,\bar w_{h+1})$, then
+$\sup_{s,a}|\langle w_h-\bar w_h,\phi(s,a)\rangle|\le \epsilon$ and
+$\sup_{s'}|\max_{a'}\langle w_{h+1}-\bar w_{h+1},\phi(s',a')\rangle|\le \epsilon$,
+so $|\ell_h(\cdot;g)-\ell_h(\cdot;\bar g)|\le 2\epsilon$ pointwise.
+Taking $\epsilon=1/(4m)$ and simplifying constants yields the stated bound.
+
+For the $V$-loss, we again have $|\tilde{\ell}_h^{V}|\le A|\ell_h|\le 3AH$.
+The indicator $\mathbf{1}\{a=\pi_{h,g}(s)\}$ depends on $w_h$, so we first control the number of
+distinct activation patterns it can induce on the sample.
+Fix the sample $\{(s_i,a_i)\}_{i=1}^m$. For each $i$, the event that $a_i$ is greedy under $w_h$ is
+\[
+\langle w_h,\phi(s_i,a_i)\rangle \ge \langle w_h,\phi(s_i,b)\rangle
+\qquad\text{for all } b\in\Acal,
+\]
+which is described by at most $A-1$ halfspace constraints in $w_h$.
+Across $i=1,\dots,m$ there are at most $m(A-1)\le mA$ corresponding hyperplanes, and a standard
+arrangement bound implies that $\R^d$ is partitioned into at most $(e m A)^{d}$ regions on which all
+indicators $\mathbf{1}\{a_i=\pi_{h,g}(s_i)\}$ are constant. This contributes the additive term
+$d\ln(e m A)$.
+
+Condition on any fixed activation pattern of the sample. On this event, the indicator is fixed on
+each sample point, and the remaining dependence of $\tilde{\ell}_h^{V}$ on $(w_h,w_{h+1})$ is
+$O(A)$-Lipschitz on the sample. We can therefore repeat the same $\epsilon$-net argument as above,
+now with an effective net radius $\epsilon\simeq 1/(A m)$, and union bound over both the net pairs and
+the (at most) $(e m A)^d$ activation patterns. This yields the stated bound.
+\end{proof}
+
+% =========================================================
+\subsubsection{Unions of linear classes (feature selection)}
+
+Many representation-selection settings take $\Hcal$ to be a union over candidate feature maps.
+Let $\Phi$ be a finite set of feature maps $\phi:\Scal\times\Acal\to\R^s$ with $\|\phi(s,a)\|_2\le 1$.
+Define a union hypothesis class $\Hcal=\bigcup_{\phi\in\Phi}\Hcal(\phi)$, where $\Hcal(\phi)$ is the
+linear class induced by $\phi$ with $\|w\|_2\le W$ and $\|w^\top\phi\|_\infty\le H$.
+
+\begin{lemma}[Union of linear classes: extra $\log|\Phi|$]
+\label{lem:br_epsgen_union_linear}
+Under the assumptions of Lemma~\ref{lem:br_epsgen_linear} with dimension $d=s$,
+the same bounds hold with $\ln(1/\delta)$ replaced by $\ln(|\Phi|/\delta)$, i.e.\ with probability at
+least $1-\delta$,
+\[
+\sup_{g\in\Hcal}\big|\E_{\Dcal}[\tilde{\ell}(\cdot;g)]-\E_{\nu}[\tilde{\ell}(\cdot;g)]\big|
+\ \le\
+\varepsilon_{\mathrm{gen}}(m,\Hcal,\delta),
+\]
+where one may take
+\[
+\varepsilon_{\mathrm{gen}}(m,\Hcal,\delta)
+\ \lesssim\
+\begin{cases}
+H\sqrt{\dfrac{s\ln(1+Wm)+\ln(|\Phi|/\delta)}{m}} & \text{for the $Q$-loss},\\[10pt]
+AH\sqrt{\dfrac{s\ln(1+AWm)+s\ln(e m A)+\ln(|\Phi|/\delta)}{m}} & \text{for the $V$-loss}.
+\end{cases}
+\]
+\end{lemma}
+
+\begin{proof}
+Apply Lemma~\ref{lem:br_epsgen_linear} to each fixed $\phi\in\Phi$ with failure probability $\delta/|\Phi|$,
+then union bound over $\Phi$.
+\end{proof}
+
+\paragraph{Specialization to sparse feature selection.}
+If $\Phi$ indexes all $s$-subsets of $[D]$, then $|\Phi|=\binom{D}{s}$ and
+$\ln|\Phi|\le s\ln(eD/s)$.
+Plugging this into Lemma~\ref{lem:br_epsgen_union_linear} yields dependence polynomial in $s$ and
+polylogarithmic in $D$ once substituted into Theorem~\ref{thm:br_main}.
