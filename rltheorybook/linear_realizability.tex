@@ -1217,6 +1217,16 @@ Theorem~\ref{thm:lower_gen_linearQstar}.  In Appendix~\ref{app:linearQstar_lb} w
 also include a simpler (but weaker) proof in the spirit of the original
 construction of \citet{WeiszAS21}, using exponentially many actions.
 
+With regard to the learnability of the all-policies linear
+realizability model~(C) in online (episodic) settings,
+\citet{weisz2023online_qpi} show that linearly $Q^\pi$-realizable MDPs
+are PAC learnable with sample complexity polynomial in
+$(d,H,1/\epsilon)$ (despite the offline impossibility results
+discussed above).  Related polynomial-sample guarantees for online
+learning under $Q^\pi$-realizability (with computational efficiency
+and with more restrictions) are obtained by
+\citet{mhammedi2024optimistic_psdp}. 
+
 \paragraph{A note on (C) with a generative model.}
 Our exponential lower bound under all-policies linear realizability (C) is an
 \emph{offline} phenomenon: the fixed dataset can systematically miss the
@@ -1229,8 +1239,11 @@ and avoiding the worst-case compounding that occurs with fixed data.
 This makes the (C) model genuinely subtle: naive least-squares dynamic
 programming can fail offline, yet the model is still PAC-learnable with a
 generative model by procedures that leverage adaptive rollouts; see
-\citet{du2019good}. Furthermore, it is currently an open question if
-(C) is learnable in an episodic setting.
+\citet{du2019good}.
+Polynomial-sample PAC guarantees under~(C) are also available in the
+online episodic setting, with more involved algorithms (see Section~\ref{chapterBC_bib} for
+discussion).
+
 
 
 Finally, \citet{Wang_linear_lower} studies the \emph{episodic} (online) setting

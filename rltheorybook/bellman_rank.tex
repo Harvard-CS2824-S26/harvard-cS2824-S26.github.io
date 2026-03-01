@@ -1,1034 +1,1183 @@
-% !TEX root = rltheorybook_AJKS.tex
-\chapter{Generalization with \\Bounded Bilinear Rank}
+\chapter{Generalization with Bounded Bellman Rank}
 \label{chap:Bellman_rank}
 
-Our previous lecture  on linear bandits and linear MDPs gave examples of statistically
-efficient reinforcement learning, where we can obtain a sublinear
-regret with no dependence on the number of states or actions in the
-MDP. Obtaining sample size results which are independent of the size
-of the state space (and possibly the action space) is essentially a
-question of \emph{generalization}, which is the focus of this
-chapter. In particular, we now present a more general underlying
-assumption which permit sample efficient reinforcement learning in
-various cases.   
+In the tabular setting, statistical efficiency — and strategic
+exploration with UCBVI — comes from
+directly estimating a finite transition table.  This idea appears explicitly in the generative-model
+analysis of Chapter~\ref{chap:generative}, and in the online episodic setting of
+Chapter~\ref{chap:tabular_exploration}, where optimism drives the learner to visit uncertain
+state--action pairs. 
 
-Recall our lower bounds from
-Chapter~\ref{chap:linear_features} which suggest that
-assumptions which would permit sample efficient RL may be subtle due
-to that: (i) agnostic RL is not possible and (ii) any assumption which
-permits sample efficient requires stronger, and possibly more subtle,
-conditions than simply assuming $Q^\star$ is a linear in some known
-features.  This chapter introduces the Bellman rank condition along with a
-generalization, the Bilinear rank condition, which permit sample efficient RL.
+Moving beyond tabular representations requires structural assumptions.
+Chapter~\ref{chap:linear_features} studied linear function
+approximation under closure conditions such as linear Bellman
+completeness, which reduce dynamic programming to regression; however,
+the clean learnability results there were obtained under a
+generative-model interface, and therefore sidestepped the exploration
+problem.  Chapter~\ref{chap:linear_MDPs} imposed a stronger transition
+model that makes the Bellman-relevant predictions linear, enabling
+optimistic exploration and regret guarantees that scale polynomially
+in the feature dimension.
 
-\iffalse
-Our previous lectures on exploration in RL focused on the UCBVI algorithm designed for the tabular MDPs and Linear MDPs. While linear MDPs extends tabular MDPs to the function approximation regime, it is still limited in linear function approximation, and indeed the assumption that a Bellman backup of any function is still a linear function is a strong assumption. In this chapter, we consider the setting beyond tabular and linear representation. We aim to design algorithm with general function approximation that works for a large family of MDPs that subsumes not only tabular MDPs and linear MDPs, but also other models such as Linear function approximation with Bellman Completion (this generalizes linear MDPs), reactive predictive state representation (PSRs), and reactive Partially Observable Markov Decision Process (POMDPs).
+This chapter develops a more general lens for \emph{generalization} in
+reinforcement learning.  We seek conditions under which a learner can
+find a near-optimal policy using a number of episodes that scales with an intrinsic complexity parameter rather than with $|\Scal|$ (and sometimes rather than with
+$|\Acal|$).  The key object is the \emph{average Bellman error} of one hypothesis evaluated under the
+state distributions induced by another.  When these average Bellman
+errors admit a low-rank factorization 
+(the \emph{Bellman rank} condition), trajectory data collected under
+one roll-in policy can be reused to test many candidate hypotheses, yielding Probably Approximately Correct guarantees in large state spaces.
 
-\fi
+Of central importance is the data interface: here the learner has only
+episodic interaction and must explore in order to obtain informative
+data. Our focus is therefore on the \emph{PAC-RL} question — how to
+return an $\epsilon$-optimal policy with high probability from
+trajectory access alone — which is typically more challenging than
+planning with a simulator. This is a weaker requirement than regret:
+we aim to output a single good policy, rather than control cumulative
+suboptimality online. We discuss the relationship between PAC and
+regret herein. 
 
-This chapter follows the ideas in the original introduction of the
-Bellman rank~\cite{jiang2017contextual}, along with a simplified analysis and a generalized concept, the Bilinear class, provided by~\cite{bilinear}.
+\section{Setting}
+\label{sec:br_setting}
 
-\paragraph{Setting and notation and setting.} 
-This chapter focuses on PAC RL (see
-Section~\ref{sec:sampling_models}), where our goal is be to find a
-near optimal policy. We work in the episodic setting where we can
-obtain trajectories under some fixed $s_0$ (see
-Section~\ref{sec:sampling_models}), and
-we work in the
-finite horizon setting. We use the notation
-$a_{0:h}\sim d^{\pi}$ to denote the sampling of actions $a_0$ to $a_h$
-from trajectories under $\pi$. We also overload notation where we write 
-$s_h,a_h\sim d^{\pi}_h$ for the sampled state-action
-pair at timestep $h$ under $\pi$, and $s_h\sim d^{\pi}_h$ as the
-sampled state at time $h$ under $\pi$.
-%We also use $d^{\pi}_h(\cdot)$ to denote the
-%marginalized state distribution, i.e.,
-%$d^{\pi}_h(s) := \sum_{a\in\Acal} d^{\pi}_h(s,a),\forall s$.  
+We work in an episodic finite-horizon MDP with horizon $H$, state space $\Scal$, action space $\Acal$,
+and a fixed start state $s_0$.\footnote{Extending to an initial distribution $\mu$ is straightforward; we
+use a fixed $s_0$ to keep notation light.}
+Rewards satisfy $r_h(s,a)\in[0,1]$.
 
-\section{Hypothesis Classes}
-\label{sec:hypothesis}
-We assume access to a hypothesis class $\Hcal = \Hcal_0 \times \ldots\times \Hcal_{H-1}$, which can be abstract sets that permit for both
-\emph{model-based and value-based} hypotheses. The only restriction we
-make is that for all $f\in\Hcal$, we have an associated state-action
-value function $Q_{h,f}$ and a value function $V_{h,f}$. 
- Furthermore, we assume the hypothesis class
-is constrained so that  $V_{h,f}(s) = \max_a Q_{h,f}(s,a)$ for all
-$f\in \Hcal$, $h\in [H]$, and $s\in\Scal$,
-which is always possible as we can remove hypothesis for which this is not
-true. We let $\pi_{h,f}$ be the greedy policy with respect to $Q_{h,f}$, i.e., $\pi_{h,f}(s) = \argmax_{a\in\Acal} Q_{h,f}(s,a)$, and $\pi_{f}$ as the sequence of time-dependent policies $\{\pi_{h,f}\}_{h=0}^{H-1}$.
+For any nonstationary policy $\pi=\{\pi_h\}_{h=0}^{H-1}$, define the stage-$h$ occupancy measure
+\[
+d_h^\pi(s,a) := \Pr(s_h=s,a_h=a \mid s_0,\pi,P^\star),
+\qquad
+d_h^\pi(s) := \sum_{a\in\Acal} d_h^\pi(s,a).
+\]
+Our goal is PAC-RL: given $\epsilon\in(0,1)$ and $\delta\in(0,1)$, output a policy $\hat\pi$ such that
+\[
+V_0^\star(s_0) - V_0^{\hat\pi}(s_0)\le \epsilon
+\qquad\text{with probability at least } 1-\delta.
+\]
 
-The following provide some examples of value based and model based hypothesis classes:
+\paragraph{PAC versus regret.}
+This is a \emph{fixed-confidence} guarantee: we aim to return one good policy, rather than control
+cumulative suboptimality online (regret).  Regret bounds typically require finer control of how
+errors evolve along the interaction; we discuss regret and related work in the bibliographic notes.
+As in bandits (Chapter~\ref{chap:bandits}), one can convert PAC guarantees to regret by an
+explore--then--commit schedule, yielding sublinear regret rates of the familiar $T^{2/3}$ form.
 
-\begin{itemize}
-\item An example of \emph{value-based hypothesis class} $\Hcal$ is an explicit set of state-action value $Q$ and value functions $V$ i.e. \begin{align*}
-  \Hcal_h \subset \{(Q_h, V_h) \mid~ &Q_h ~\text{is a function from}~ \Scal \times \Acal \mapsto \R~\text{and}\\
-  & V_h ~\text{is a function from}~ \Scal \mapsto \R\} \, .
-\end{align*} Note that in this case, for any hypothesis
-$f:= ((Q_0, V_0), (Q_1, V_1), \ldots, (Q_{H-1}, V_{H-1})) \in \Hcal$, we can take the associated $Q_{h,f} = Q_h$ and associated $V_{h,f} = V_h$. 
-\item Another example of \emph{value-based hypothesis class} $\Hcal$ is when $\Hcal$ is just a set of state-action value $Q$ functions i.e. \begin{equation*}
-  \Hcal_h \subset \{Q_h \mid Q_h ~\text{is a function from}~ \Scal \times \Acal \mapsto \R\} \, .
-\end{equation*} In
-this case, for any hypothesis
-$f:= (Q_0, Q_1, \ldots, Q_{H-1}) \in \Hcal$, we can take the associated $Q_{h,f} = Q_h$ and the associated $V_{h,f}$ function to be greedy with respect to the $Q_{h,f}$ function i.e. $V_{h,f}(\cdot) = \max_{a\in \Acal} Q_{h,f}(\cdot, a)$.
-\item An example of \emph{model-based hypothesis class} is when $\Hcal_h$ is a set of transition models and reward functions, i.e. \begin{align*}
-  \Hcal_h \subset \{(P_h, r_h) \mid~ &P_h ~\text{is a function from}~ \Scal \times \Acal \mapsto \Delta(\Scal)~\text{and}\\
-  &r_h ~\text{is a function from}~ \Scal \times \Acal \R\} \, .
-\end{align*} In this case, for any hypothesis
-$f:= ((P_0, r_0), (P_1, r_1), \ldots, (P_{H-1}, r_{H-1})) \in \Hcal$, we can take the associated $Q_{h,f}$ and $V_{h,f}$ functions to be the optimal value functions corresponding to the transition models $\{P_h\}_{h=0}^{H-1}$ and reward functions $\{r_h\}_{h=0}^{H-1}$.
-\end{itemize}
+\paragraph{Hypothesis class and realizability.}
+We assume access to a hypothesis class
+\[
+\Hcal = \Hcal_0 \times \cdots \times \Hcal_{H-1}.
+\]
+Each hypothesis $f\in\Hcal$ induces functions $\{Q_{h,f}\}_{h=0}^{H-1}$ and $\{V_{h,f}\}_{h=0}^{H-1}$
+with the consistency constraint
+\[
+V_{h,f}(s)=\max_{a\in\Acal} Q_{h,f}(s,a) \qquad \forall (h,s,f),
+\qquad V_{H,f}\equiv 0.
+\]
+Let $\pi_{h,f}(s)\in\arg\max_a Q_{h,f}(s,a)$ and $\pi_f=\{\pi_{h,f}\}_{h=0}^{H-1}$ be the greedy policy
+induced by $f$ (ties broken in some fixed manner).
 
+We assume $\Hcal$ is realizable: there exists $f^\star\in\Hcal$ such that $Q_{h,f^\star}=Q_h^\star$
+for all $h$ (equivalently, $\pi_{f^\star}$ is optimal).
 
-\section{The Bellman Rank}
+% =========================================================
+\section{The Bellman rank}
+\label{sec:br_rank_def}
 
-We now make assumptions on the Bellman residual error.
-For the ``Q-version'' of the Bellman rank, we assume that the Bellman residual error, $Q - \mathcal{T}Q$, has a simple parametric form. In particular,
+For a fixed stage $h\in\{0,\dots,H-1\}$ and hypothesis $g\in\Hcal$, define the one-step Bellman
+residual integrand
+\[
+\ell_h(s,a,s';g)
+\;:=\;
+Q_{h,g}(s,a) - r_h(s,a) - V_{h+1,g}(s').
+\]
 
-\begin{definition}[$Q$-Bellman Rank]
-\label{def:bellman_rank}
-For a given MDP, a hypothesis class $\Hcal$
-has a \emph{$Q$-Bellman rank} of dimension $d$ if for all $h\in[H]$, there exist functions $W_h: \Hcal \to \R^d$
-and $X_h: \Hcal \to \R^d$ with $\sup_{f\in\Hcal} \|W_h(f)\|_2\leq B_W$ and $\sup_{f\in\Hcal} \|X_h(f)\|_2 \leq B_X$, such that for all  $f,g \in \Hcal$
-%for all $h\in [H]$, $f,g \in \Hcal$ we have that:
-\begin{align*}
-\E_{a_{0:h} \sim d^{\pi_f}}&\big[ Q_{h,g}(s_h,a_h) -  r(s_h,a_h) - V_{h+1,g}(s_{h+1}) \big] =
-%\langle W_h(g) - W_h(f^\star), X_h(f)\rangle.
-\langle W_h(g) - W_h(f^\star), X_h(f)\rangle.
-\end{align*}
-\end{definition}
-Importantly, the functions $W_h$ and $X_h$ need not be known to the learner.
+\subsection{$V$-Bellman rank}
+\label{subsec:br_v_rank}
 
-Instead, of assuming this parametric assumption on the Bellman residual error of the state-action value, we consider a variant which is stated in terms of the values.
-Note that we can write the Bellman optimality equations (see Equation~\ref {eqn:Beq_finite}) in terms of the value functions as follows:
-\begin{equation}\label{eq:bell_residual_V}
-V_h(s) -\max_a\left( r_h(s,a) + \E_{s' \sim P_h(\cdot|s, a)}\left[ V_{h+1} (s') \right] \right) =0.
+Fix hypotheses $f,g\in\Hcal$. The \emph{$V$-average Bellman error} of $g$ under roll-in $d_h^{\pi_f}$ is
+\begin{equation}
+\label{eq:br_v_bellman_error}
+\mathcal{E}_h^{V}(f,g)
+:=
+\E_{s\sim d_h^{\pi_f},\ a=\pi_{h,g}(s),\ s'\sim P_h^\star(\cdot\mid s,a)}
+\big[\ell_h(s,a,s';g)\big].
 \end{equation}
-This motivates the following definition:
+Here the state $s$ is drawn from the distribution induced by $\pi_f$, while the action is the greedy
+action of $g$ at $s$. Since $V_{h,g}(s)=Q_{h,g}(s,\pi_{h,g}(s))$, $\mathcal{E}_h^{V}(f,g)$ is the expected
+$V$-Bellman residual of $g$ on states visited by $\pi_f$.
 
-\begin{definition}[$V$-Bellman Rank]
-For a given MDP, a hypothesis class $\Hcal$ has a \emph{$V$-Bellman rank} of dimension $d$ if for all $h\in [H]$, there exist functions $W_h: \Hcal \to \R^d$
-  and $X_h: \Hcal \to \R^d$ with $\sup_{f\in\Hcal} \|W_h(f)\|_2\leq B_W$ and $\sup_{f\in\Hcal} \|X_h(f)\|_2 \leq B_X$, such that for all $f,g \in \Hcal$:
-  \begin{align*}
-   \E_{a_{0:h-1} \sim d^{\pi_f}, a_h = \pi_{g}(s_h) }
-% &
-\big[ V_{h,g}(s_h) - r(s_h, a_h)-    V_{h+1,g}(s_{h+1}) \big] = 
-%\\& = 
-%  \langle W_h(g) - W_h(f^\star), X_h(f)\rangle .
-\langle W_h(g) - W_h(f^\star), X_h(f)\rangle .
-  \end{align*}
-Note that the action $a_h$ is chosen by $\pi_{g}$, and recall that for every $g$, there corresponds a $Q_{h,g}$, where both $V_{h,g}$ and $\pi_{g}$ are the corresponding greedy value function and policy.
-  \end{definition}
-
-
-Let us remark on a few subtle differences in these two definitions, in terms their usage of functions $V_{h,f}$ vs $Q_{h,f}$. Roughly speaking,  the former definition corresponds to an assumption on the Bellman residual error of the state-action value function, while the latter definition corresponds to an assumption on the Bellman residual error of the value functions. A more subtle distinction is that, for the $Q$-version, the expectation is with respect to $a_{0: h} \sim \pi_f$, while for the $V$-version, the expectation is with respect to $a_{0:h-1}\sim \pi_f$ and $a_h \sim \pi_g$. The use of $\pi_g$ is subtly different than the expectation being taken directly on the Bellman residual error of $V_{h,g}$ due to that $\pi_g$ may not correspond to the true argmax in Equation~\ref{eq:bell_residual_V}.  However, as we shall see, we can find estimates of both of the relevant quantities in the $Q$ and the $V$ versions.
-
-
-
-\paragraph{Realizability.} We say that $\Hcal$ is \emph{realizable} for an MDP
-$\mathcal{M}$ if, for all $h\in[H]$, there
-exists a hypothesis $f^\star \in \Hcal$ such that
-$Q_h^\star(s,a)  = Q_{h,f^\star}(s,a)$, where $Q_h^\star$ is the optimal
-state-action value at time step $h$ in the ground truth MDP
-$\mathcal{M}$. For instance, for the model-based perspective, the
-realizability assumption is implied if the ground truth transitions 
-$\{P_h\}_{h=0}^{H-1}$ and reward function $\{r_h\}_{h=0}^{H-1}$
-belong to our hypothesis class $\Hcal$. 
-
-\section{Examples}
-
-\subsection{Examples that have small $Q$-Bellman rank}
-
-\subsubsection{Contextual Linear Bandits} 
-Let us start with the $H=1$ case and return to the linear bandit model
-from Chapter~\ref{chap:bandits}. Let us consider a contextual model
-where there is a distribution over states $s_0 \sim \mu$ and where we assume:
+\begin{definition}[$V$-Bellman rank]
+\label{def:v_bellman_rank}
+We say $(\Mcal,\Hcal)$ has \emph{$V$-Bellman rank at most $d$} if for each stage $h$ there exist maps
 \[
-\E[r(s,a) ] = w^\star\cdot \phi(s,a).
+X_h:\Hcal\to\R^d,\qquad W_h:\Hcal\to\R^d
 \]
-Here, our hypothesis of state-action values is
-$\mathcal{H} = \{ \theta^{\top} \phi(s,a): \| \theta\|_2 \leq W \}$.
-
-%Consider any function pair $f, g\in\Hcal$, note that since $H = 1$, the state distribution at $h=0$ is independent of the policy $\pi_{f}$. Thus we have:
-%\begin{align*}
-%\E_{s\sim \mu} \left[  V_{0,g}(s) - r(s, \pi_{0,g}(s))   \right] =  \sum_{a\in\Acal}  \E_{s\sim \mu} \left[ \one\{ \pi_g(s) = a \} \left[ Q_{0,g}(s,a) - r(s,a) \right]\right]. 
-%\end{align*} This means that we can write the Bellman error of $g$ averaged over $\mu$ as an inner product between two vectors --- a all one vector, and a vector whose $a$-th entry is $\E_{s\sim \mu}\left[  \one\{ \pi_g(s) = a \} \left[ Q_{0,g}(s,a) - r(s,a) \right]\right]$.
-
-Take two hypothesis $f,g$ where we denote $Q_{0,f}(s,a) :=
-\theta^{\top} \phi(s,a), Q_{0,g}(s,a) = w^{\top} \phi(s,a)$
-(we take $h=0$ due to that $H=1$). We have:
-\begin{align*}
- \mathbb{E}_{a\sim d^{\pi_f}_0} \left[  w^{\top} \phi(s,a)   - r(s,a) \right] 
-  &  = \mathbb{E}_{s\sim\mu, a=\pi_f(s)} \left[  (w-w^\star)^{\top} \phi(s,a) \right] \\
-  & = \left\langle  w - w^\star,\mathbb{E}_{s\sim\mu, a=\pi_f(s)}  [\phi(s,a) ]   \right\rangle.
-\end{align*}  Namely, we can set $W_0(g) = w$, and $X_0(f) = \E_{s\sim \mu, a=\pi_f(s)}[ \phi(s,a)]$.
-Thus, we have the following:
-
-\begin{proposition}
-In the contextual linear bandit model, we have that $\Hcal$,
-as defined above, has a \emph{$Q$-Bellman rank} of $d$.
-\end{proposition}
-
-
-\subsubsection{Linear Bellman Completion} 
-Let us now consider the
-linear Bellman completion setting
-(Definition~\ref{def:bc}). We show that linear
-Bellman completion models have $Q$-Bellman rank equal to $d$.  In this
-setting, since $Q^\star_h(s,a) = (\theta_h^\star)^{\top} \phi(s,a),\forall s,a, h$, we use linear functions for our hypothesis class, i.e.,
-$\mathcal{H}_h = \{ \theta^{\top} \phi(s,a): \| \theta\|_2 \leq W, \|\theta^{\top} \phi(\cdot,\cdot)\|_{\infty} \leq H \}$
-for some $W \in \mathbb{R}^+$ where $\|\theta_h^\star\|_2 \leq W$ ; as in Section~\ref{sec:hypothesis}, the
-set of values are those that are greedy with respect to these $Q$
-functions. 
-
-Recall from Definition~\ref{def:bc}, given $\theta$, we use $\mathcal{T}_h(\theta)\in\mathbb{R}^d$ to represent the linear function resulting from the Bellman backup, i.e.,
-\begin{align*}
-\forall s,a: \Tcal_h(\theta)^{\top} \phi(s,a)  = r(s,a ) + \E_{s'\sim P_h(\cdot | s,a)} [ \max_{a'} \theta^{\top}\phi(s',a')].
-\end{align*} We further assume feature is normalized, i.e., $\sup_{s,a} \| \phi(s,a) \|_2 \leq 1$, and $\sup_{h, \theta\in \Hcal_h}\| \Tcal_h(\theta) \|_2 \leq W$. Note that this condition holds in linear MDP with $W = 2H\sqrt{d}$.
-
-%Here, our hypothesis are parameterized by vectors in $\R^{H \times d}$.
-Take two hypothesis $f,g$ where we denote $Q_{h,f}(s,a) := \theta_h^{\top} \phi(s,a), Q_{h,g}(s,a) = w_h^{\top} \phi(s,a), \forall h$. Then for any time step $h \in [0, H-2]$, we have:
-\begin{align*}
-&\mathbb{E}_{s_h,a_h\sim d^{\pi_f}_h, s_{h+1}\sim P_h(\cdot | s_h,a_h)} \left[  w_h^{\top} \phi(s_h,a_h)   - r(s_h,a_h) - \max_{a'} w_{h+1}^{\top} \phi(s_{h+1}, a')  \right] \\
-&  \quad = \mathbb{E}_{s_h,a_h\sim d^{\pi_f}_h} \left[  w_h^{\top} \phi(s_h,a_h) 
- \mathcal{T}_h(w_{h+1})^{\top} \phi(s_h,a_h)  \right] \\
-& \quad = \left\langle  w_h - \mathcal{T}_h(w_{h+1}),  
-\E_{s_h,a_h\sim d^{\pi_f}_h} [\phi(s_h,a_h) ]   \right\rangle.
-\end{align*} 
-Taking $W_h(g):= w_h -
-\mathcal{T}_h (w_{h+1})$ (and note that $W_h(f^\star) = 0$ due to the Bellman optimality condition) and $X_h(f) := \E_{s_h,a_h\sim
-  d^{\pi_f}_h} [\phi(s_h,a_h)]$, we have shown the following:
-
-\begin{proposition}
-Under the linear Bellman completion assumption, we have that $\Hcal$,
-as defined above, has a \emph{$Q$-Bellman rank} of $d$. Further more, we have $\sup_{g\in\Hcal} \|W_h(g)\|_2 \leq  B_W := 2 W$,  and $\sup_{f\in\Hcal} \|X_h(f)\|_2 \leq B_X := 1$.
-\end{proposition}
-
-There are a number of natural models which satisfy the Bellman
-completeness property, including contextual linear bandits, linear MDPs and Linear Quadratic
-Regulators (we will cover LQRs in Chapter~\ref{chap:LQR}).
-
-
-\subsubsection{Linear $Q^\star$ and $V^\star$}
-%The  second example here is the linear $Q^\star$ \& $V^\star$ model,
-Let us now suppose that  $Q^\star_h$ and $V^\star_h$ are functions
-which are in the span of some given features
-features $\phi:\Scal\times\Acal\mapsto \mathbb{R}^d, \psi:\Scal\mapsto
-\mathbb{R}^d$, i.e. that,
-for all $h \in [0, \dots, H-1]$, there exist
-$\theta^\star_h\in\mathbb{R}^d$ and $w^\star_h\in\mathbb{R}^d$, such
-that for all $s,a$,  $Q^\star_h(s,a) = (\theta^\star_h)^{\top} \phi(s,a)$ and $V^\star_h(s) = (w^\star_h)^{\top}
-\psi(s)$. 
-
-%Below we demonstrate that the $Q$-Bellman rank of
-%this model is at most $d$.   
-
-Our hypothesis class class $\Hcal_h$ is defined as $\Hcal_h =
-\{(\theta, w):  \|\theta\|_2 \leq W_1, \ \|w\|_2 \leq W_2,\ \forall s,
-\max_{a} \theta^{\top}\phi(s,a) = w^{\top}\psi(s)\}$. Take any $f, g$
-where we denote $Q_{h,g}(s,a) = \theta_h^{\top} \phi(s,a), V_{h,g}(s)
-= w_h^{\top} \psi(s)$, we have that:
-\begin{align*}
-&\E_{s,a\sim d^{\pi_f}_h} \left[ \theta_h^{\top} \phi(s,a) - r(s,a) - \mathbb{E}_{s'\sim P_h(\cdot | s,a)}[ w_h^{\top} \psi(s')  ]  \right] \\
-& = \E_{s,a\sim d^{\pi_f}_h} \left[ \theta_h^{\top} \phi(s,a) - Q^\star_h(s,a) + \E_{s'\sim P_h(\cdot | s,a)}[V_h^\star(s') ]- \mathbb{E}_{s'\sim P_h(\cdot | s,a)} [ w_h^{\top} \psi(s')  ]  \right] \\
-& = \E_{s,a\sim d^{\pi_f}_h} \left[ (\theta_h - \theta^\star_h)^{\top} \phi(s,a) + ( w_h - w_h^{\star} )^{\top} \E_{s'\sim P_h(\cdot | s,a)}[ \psi(s') ]\right] \\
-& = \left\langle \begin{bmatrix} \theta_h - \theta_h^\star \\ w_h - w_h^\star  \end{bmatrix},   \E_{s,a\sim d^{\pi_f}_h} \begin{bmatrix} \phi(s,a) \\ \E_{s'\sim P_h(\cdot | s,a)} [ \psi(s')] \end{bmatrix}  \right\rangle.
-\end{align*} 
-
-Taking $W_h(g) :=  \begin{bmatrix} \theta_h  \\
-  w_h  \end{bmatrix}$, and $X_h(f) := \begin{bmatrix}
-  \phi(s,a) \\ \E_{s'\sim P_h(\cdot | s,a)} [\psi(s')] \end{bmatrix}$,
-we have shown that:
-%and the $Q$-Bellman rank is at most $2d$. 
-
-\begin{proposition}
-Under the above linear $Q^\star$ and $V^\star$ assumption,
-our hypothesis class $\Hcal$, as defined above, has a 
-$Q$-Bellman rank of $2d$. 
-\end{proposition}
-
-\paragraph{The linear $Q^\star$ assumption vs. the linear
-  $Q^\star/V^\star$ assumption.} As we saw in
-Chapter~\ref{chap:linear_features}, simply assuming that
-$Q^\star$ is linear is not sufficient for sample efficient RL. Thus it
-may seem surprising that assuming both $Q^\star$ and $V^\star$ are
-linear (in different features) permits a sample efficient algorithm
-(as we shall see). However, it is worthwhile to observe how this is a
-substantially strong assumption. In particular, note that our
-hypothesis class must enforce the constraint that
-$\max_{a} \theta^{\top}\phi(s,a) = w^{\top}\psi(s)$ for all
-$(\theta,w)\in\Hcal$; this \emph{eliminates} functions from the set of
-all $Q$ which are linear in $\phi$. Furthermore, note that this
-pruning is done without collecting any data.
-
-\subsubsection{$Q^\star$-state abstraction}
-
-The $Q^\star$-state abstraction mode is defined as follows. There exists some abstraction function $\xi:\Scal\mapsto \Zcal$ where $|\Zcal| < |\Scal|$, such that for all $h$, we have:
-\begin{align*}
-\forall s,s',  \xi(s) = \xi(s') \Rightarrow Q^\star_h(s,a) = Q^\star_h(s',a), \forall a\in\Acal, \; V^\star_h(s) = V^\star_h(s').
-\end{align*}
-
-We show that this example has low $Q$-bellman rank by showing that it
-is a special case of the linear $Q^\star$ \& $V^\star$ model.  Specifically, let us define $\phi:\Scal\times\Acal\mapsto \mathbb{R}^{|\Zcal||\Acal|}$ and $\psi:\Scal\mapsto \mathbb{R}^{|\Zcal|}$ as follows:
-\begin{align*}
-\phi(s,a)_{z,a'} = \one\{\xi(s) = z, a = a'\},  \quad \psi(s)_{z} = \one\{\xi(s) = z\}.
-\end{align*}
-With this feature setup, we have:
-\begin{align*}
-&Q^\star_h(s,a) = (w_h^\star)^{\top} \phi(s,a), \text{ where } (w_h^\star)_{z,a} = Q^\star(s,a) \text{ with } \xi(s) = z, \\
-& V^\star_h(s) = (\theta_h^\star)^{\top} \psi(s), \text{ where }  (\theta_h^\star)_{z} = V^\star(s) \text{ with } \xi(s) = z.
-\end{align*}
-Thus, similar to linear $Q^\star / V^\star$ model above, we can set $\Hcal$ such that $\Hcal_h := \{ (\theta,w): \|\theta\|_2 \leq W_1, \|w\|_2\leq W_2, \forall s, \max_{s} \theta^{\top}\phi(s,a) = w^{\top} \psi(s) \}$.
-we demonstrate that this model has $Q$-Bellman rank at most $|\Zcal||\Acal| + |\Zcal|$.
-\begin{proposition}
-Under the above $Q^\star$-state abstraction assumption, our hypothesis class $\Hcal$ has a $Q$-Bellman rank of $|\Zcal||\Acal| + |\Zcal|$.
-%$Q^\star$ and $V^\star$ assumption,
-%our hypothesis class $\Hcal$, as defined above, has a 
-%$Q$-Bellman rank of $2d$. 
-\end{proposition}
-
-%\paragraph{$Q$-versions}
-%\begin{itemize}
-%\item linearBC\\
-%give paragraph env. with LQR as special case
-%\item linear Qstar/Vstar
-%\end{itemize}
-
-\subsubsection{Low-occupancy measure}
-
-An MDP has {\bf low (state-action) occupancy measure \/} if the following is true. For all $h$, there exist two functions $\beta_h: \Hcal\mapsto \mathbb{R}^d$, and $\phi_h:\Scal\times\Acal \mapsto \mathbb{R}^d$, such that for any $f\in\Hcal$, we have:
-\begin{align*}
-d^{\pi_f}_h(s,a) = \left\langle \beta_h(f), \phi_h(s,a)  \right\rangle.
-\end{align*}
-We show that this model has $Q$-Bellman rank at most $d$. Consider any $f,g$ and $h$, we have:
-\begin{align*}
-&\E_{s,a \sim d^{\pi_f}_h} \left[ Q_{h,g}(s) - r(s, a) - \E_{s'\sim P_h(\cdot | s, a} [V_{h+1,g}(s')  ] \right] \\
-& =   \beta_h(f)^{\top} \left(  \sum_{s,a} \phi_h(s,a) \left[ Q_{h,g}(s,a) - r(s, a) - \E_{s'\sim P_h(\cdot | s,a)} [V_{h+1,g}(s')]   \right]\right),
-\end{align*} which shows that $W_h(g) := \sum_{s,a} \phi_h(s,a) \left[ Q_{h,g}(s,a) - r(s, a) - \E_{s'\sim P_h(\cdot | s,a)} [V_{h+1,g}(s')]\right]$ (note that $W_h(f^\star) =0$ due to the Bellman optimality condition), and $X_h(f) := \beta_h(f)$. Note that in this model we can use any hypothesis class $\Hcal$ as long as it contains $f^\star$.
-
-\begin{proposition}
-Any hypothesis class $\Hcal$, together with the MDP that has a low-occupancy measure, has $Q$-Bellman rank $d$.
-%Under the above linear $Q^\star$ and $V^\star$ assumption,
-%our hypothesis class $\Hcal$, as defined above, has a 
-%$Q$-Bellman rank of $2d$. 
-\end{proposition}
-
-Note that if the state distribution has low-occupancy, i.e.
+and constants $B_X,B_W\ge 1$ such that
 \[
-d^{\pi_f}_h(s) = \beta_h(f)^{\top} \phi_h(s)\]
-for some $\phi_h:\Scal\mapsto\mathbb{R}^d$, then it satisfies the
-$V$-Bellman rank condition, with rank $d$. In this latter case, we
-refer to the model as having {\bf low (state) occupancy measure\/}.
-
-
-
-
-\subsection{Examples that have small $V$-Bellman rank}
-
-\subsubsection{Contextual Bandit}
-Contextual bandit is a finite horizon MDP with $H = 1$ and finite
-number of actions. The contexts are states $s_0\sim\mu$. Here our
-hypothesis class $\Hcal = \Hcal_0 = \{ f: \Scal\times\Acal\mapsto
-[0,1] \}$ with $r\in\Hcal$. We show that the $V$-Bellman rank is at most $A$.  We use
-the notation $V_{1}(s) = 0, \forall s$ (recall that $H=1$
-again). Consider any function pair $f, g\in\Hcal$, note that since $H
-= 1$, the state distribution at $h=0$ is independent of the policy
-$\pi_{f}$. Thus we have: 
-\begin{align*}
-\E_{s\sim \mu} \left[  V_{0,g}(s) - r(s, \pi_{0,g}(s))   \right] =  \sum_{a\in\Acal}  \E_{s\sim \mu} \left[ \one\{ \pi_g(s) = a \} \left[ Q_{0,g}(s,a) - r(s,a) \right]\right]. 
-\end{align*} This means that we can write the Bellman error of $g$ averaged over $\mu$ as an inner product between two vectors --- an all one vector, and a vector whose $a$-th entry is $\E_{s\sim \mu}\left[  \one\{ \pi_g(s) = a \} \left[ Q_{0,g}(s,a) - r(s,a) \right]\right]$, i.e., we have $X_0(f) = \one_{A}$ where $\one_{A}$ represents a A-dim vector will all one , and $W_0(g) \in \mathbb{R}^A$ where the $a$-th entry of $W_0(g)$ is $\E_{s\sim \nu} \one\{\pi_g(s) = a\} [Q_{0,g}(s,a) - r(s,a)]$. Note that $W_0(f^\star) = 0$ where $f^\star$ is the ground truth reward function here.
-%\sk{Can you be a little more explicit above saying what $X$ and $W$ are?}
-
-\begin{proposition}
-The hypothesis class $\Hcal$ and the contextual bandit model together has a $V$-Bellman rank $A$.
-\end{proposition}
-
-
-\subsubsection{Feature Selection in Low-rank MDPs (Representation Learning)}
-
-We consider low-rank MDP where for all $h$, there exist
-$\mu^\star:\Scal\mapsto \mathbb{R}^d,
-\phi^\star:\Scal\times\Acal\mapsto \mathbb{R}^d$, such that for all
-$s,s,a'$, we have $P_h(s' | s,a) = \mu^\star(s')^{\top}
-\phi^\star(s,a), r(s,a) = (\theta^\star)^{\top} \phi^\star(s,a)$. We denote $\Phi \subset
-\Scal\times\Acal\mapsto\mathbb{R}^d$ as our feature class such that
-$\phi^\star\in\Phi$.  We assume $\mu^\star, \phi^\star, \theta^\star$ are normalized, i.e., $\|\phi^\star(s,a)\|_2 \leq 1, \forall s,a,h$, and $\| v^{\top} \mu^\star \|_2 \leq \sqrt{d}$, for all $v$ such that $\|v\|_{\infty}\leq 1$, $\|\theta^\star\|_2 \leq \sqrt{d}$.
-
-We denote the hypothesis class $\Hcal_h := \{ w^{\top} \phi(s,a) :
-\|w\|_2 \leq W, \phi\in\Phi  \}$ where we can set $W = 4H\sqrt{d}$ since we can verify that for $Q^\star_h(s,a)$, it is linear with respect to $\phi^\star$, i.e., $Q^\star_h(s,a) = (w^\star_h)^\top \phi(s,a)$ for some $w^\star_h$ with $\| w^\star_h \|_2 \leq 2H \sqrt{d}$.  Consider a pair of hypothesis
-$(f,g)$ where we denote $Q_{h,g} :=  w_h^{\top} \phi$, and recall
-$V_{h,g}(\cdot ) = \max_{a} Q_{h,g}(\cdot, a)$,   and $\pi_{h,g}(s) :=
-\argmax_{a} Q_{h,g}(s,a)$. 
-\begin{align}
-&\E_{s \sim d^{\pi_f}_h} \left[  V_{h,g}(s) - r(s, \pi_{h,g}(s) ) - \E_{s'\sim P_h(\cdot | s, \pi_{h,g}(s))}[ V_{h+1,g}(s') ] \right] \label{eq:berror_low_rank_mdp}\\
-& =  \E_{\tilde{s},\tilde{a} \sim d^{\pi_f}_{h-1}} \E_{s\sim P_{h-1}(\cdot | \tilde{s},\tilde{a})}  \left[  V_{h,g}(s) - r(s, \pi_{h,g}(s) ) - \E_{s'\sim P_h(\cdot | s, \pi_{h,g}(s))} [V_{h+1,g}(s')]  \right]  \nonumber\\
-& =  \E_{\tilde{s},\tilde{a} \sim d^{\pi_f}_{h-1}}\int_{s} \mu^\star(s)^{\top} \phi^\star(\tilde{s},\tilde{a}) \left[  V_{h,g}(s) - r(s, \pi_{h,g}(s) ) - \E_{s'\sim P_h(\cdot | s, \pi_{h,g}(s))} [V_{h+1,g}(s') ] \right] d(s) \nonumber \\
-& = \left\langle \int_{s} \mu^\star(s)\left[  V_{h,g}(s) - r(s, \pi_{h,g}(s) ) - \E_{s'\sim P_h(\cdot | s, \pi_{h,g}(s))} [V_{h+1,g}(s')]  \right] , \quad  \E_{\tilde{s},\tilde{a}\sim d^{\pi_f}} [\phi^\star(\tilde{s},\tilde{a})  ]   \right\rangle.
-\end{align} 
-Taking $W_h(g) := \int_{s} \mu^\star(s)\left[  V_{h,g}(s) - r(s,
-  \pi_{h,g}(s) ) - \E_{s'\sim P_h(\cdot | s, \pi_{h,g}(s))}
-  [V_{h+1,g}(s') ] \right] $ (note that $W_h(f^\star) = 0$ due to the Bellman optimality condition) and $X_h(f) :=
-\E_{\tilde{s},\tilde{a}\sim d^{\pi_f}_{h-1}}
-[\phi^\star(\tilde{s},\tilde{a})] $, we have shown that:
-
-\begin{proposition}
-The hypothesis class $\Hcal$ and the low-rank MDP defined above
-together has $V$-Bellman rank $d$. Moreover, we have $\|X_h(f)\|_2 \leq B_X = 1$, and $\|W_h(g)\|_2 \leq B_W = 2H \sqrt{d}$.
-\end{proposition}
-
-\paragraph{Block MDPs.} 
-
-The Block MDP has a small size discrete latent state space $\Zcal$, an emission distribution $v(\cdot; z) \in \Delta(\Scal),\forall z$,  a decoder $\xi: \Scal\mapsto \Zcal$ which maps a state $s$ to its corresponding latent state $z$, and a transition in latent state space $T_h(z'|z,a),\forall h$. To show that Low-rank MDP model captures it, we define $\phi^\star(s,a) \in \{0,1\}^{|\Zcal||\Acal|}$, where $\phi^\star(s,a)$ is a one hot encoding vector which contains zero everywhere, except one in the entry corresponding to the latent state and action pair $(\xi(s), a)$. The corresponding $\mu^\star(s') \in \mathbb{R}^{|\Zcal||\Acal|}$ is defined such that its entry corresponding to $(z,a)$ is equal to $\sum_{z'} T(z' | z,a) v(s'; z')$. This shows that the Block MDP model is a special case of the Low-rank MDP model where the rank is the number of unique latent states. 
-
-
-\paragraph{Feature Selection in Sparse Linear MDP.}
-A sparse linear MDP is a linear MDP where $\phi^\star$ is known (but $\mu^\star$ is unknown), and there is a subset $\mathcal{K}^\star \in [d]$ with $|\mathcal{K}^\star| = s$ and $s < d$, such that $P_h(s' | s,a) = \sum_{i\in\mathcal{K}^\star}  \mu^\star_{i}(s') \phi^\star_{i}(s,a)$, where we use $x_i$ to denote the $i$-th element of the vector $x$. We can re-write the transition as $P_h(s' | s,a) =  \mu^\star_{\mathcal{K}^\star}(s')^{\top} \phi^\star_{\mathcal{K}^\star}(s,a)$, where we denote $x_{\mathcal{K}}$ as the subvector of $x$ that is indexed by elements in $\mathcal{K}$. Thus, this shows that a sparse linear MDP is a special case of low-rank MDP where the rank is $s$ instead of $d$
-
-We consider the following hypothesis class. Define a representation class $\Phi$ with $|\Phi|=$ $ d  \choose s$. Each $\phi\in\Phi$ corresponds to a $s$-size subset $\mathcal{K}\in [d]$. Given $\mathcal{K}$, we have $\phi(s,a) \in \mathbb{R}^{s}$, and $\phi(s,a) = \phi_{\mathcal{K}^\star}^\star(s,a), \forall s,a$. By the assumption that $\|\phi^\star(s,a)\|_2 \leq 1$, we must have $\|\phi(s,a)\|_2 \leq 1$ for all $s,a,\phi\in\Phi$. We define $\Hcal_h = \{w^{\top} \phi: \|w\|_2 \leq W, w\in\mathbb{R}^{s}, \phi\in\Phi_h, | w^{\top} \phi(\cdot,\cdot) |  \leq H\}$. We set $W = 2H \sqrt{d} $ such that $Q^\star_h \in \Hcal_h$ (note that $Q^\star_h$ is a linear function with respect to $\phi_{\mathcal{K}^\star}^\star$ due to the fact that the MDP is a linear MDP with respect to feature $\phi^\star_{\mathcal{K}^\star}$).
-%contains the elements $[\phi^\star(s,a)_i]_{i\in\mathcal{K}} $. We abuse notation and denote $\phi^\star\in\Phi$ as the representation corresponding to $\mathcal{K}^\star$.
-%where each $\phi\in \Phi$ corresponds to a $s$-side subset $\mathcal{K}\in [d]$, and we have $\phi:\Scal\times\Acal\mapsto \mathbb{R}^s$ with $\phi(s,a)$  corresponds 
-
-%Following the similar derivation we had for Eq.~\ref{eq:berror_low_rank_mdp}, we can show that:
-%\begin{align*}
-%&\E_{s \sim d^{\pi_f}_h} \left[  V_{h,g}(s) - r(s, \pi_{h,g}(s) ) - \E_{s'\sim P_h(\cdot | s, \pi_{h,g}(s))}[ V_{h+1,g}(s') ] \right] \\
-%& = \left\langle \int_{s} \mu^\star_{h-1}(s)\left[  V_{h,g}(s) - r(s, \pi_{h,g}(s) ) - \E_{s'\sim P_h(\cdot | s, \pi_{h,g}(s))} [V_{h+1,g}(s')]  \right] , \quad  \E_{\tilde{s},\tilde{a}\sim d^{\pi_f}_{h-1}} [\phi_{h-1}^\star(\tilde{s},\tilde{a})  ]   \right\rangle \\
-%& = \sum_{i\in\mathcal{K}^\star} \E_{\tilde{s},\tilde{a}\sim d^{\pi_f}_{h-1}} [\phi_{h-1, i }^\star(\tilde{s},\tilde{a})  ]  \int_{s} \mu^\star_{h-1,i}(s)\left[  V_{h,g}(s) - r(s, \pi_{h,g}(s) ) - \E_{s'\sim P_h(\cdot | s, \pi_{h,g}(s))} [V_{h+1,g}(s')]  \right], 
-%\end{align*} namely, the inner product only needs to use entries whose index is in $\mathcal{K}^\star$. Thus we have demonstrated that the $V$-Bellman rank is $s$. 
-
-\section{Bilinear Classes}
-
-The Bilinear class model generalizes both the $Q$-Bellman rank and
-$V$-Bellman rank. We define the Bilinear class model as follows. 
-
-\begin{definition}[Bilinear Class] Consider an MDP and a hypothesis
-  class $\Hcal$, a discrepancy function
-  $\ell_f: \Scal\times\Acal \times\Scal\times[H]\times\Hcal$ (defined
-  for each $f\in\Hcal$), and a set of (non-stationary) estimation
-  policy $\Pi_{est} = \{\pi_{est}(f): f\in\Hcal\}$. We say that
-  $\{\Hcal, \ell_f, \Pi_{est}, \Mcal \}$ is a Bilinear class of rank
-  $d$ if
-  $\Hcal$ is realizable in $\Mcal$, and if there exists
-  $W_h:\Hcal\mapsto \mathbb{R}^d$ and $X_h:\Hcal\mapsto \mathbb{R}^d$,
-  such that the following two properties hold for all $f\in \Hcal$ and
-  $h\in [H]$:
-\begin{enumerate}
-\item We have \begin{align}\left\lvert \mathbb{E}_{s,a\sim d^{\pi_f}_h, s'\sim P_h(\cdot | s,a)} \left[ Q_{h,f}(s,a) - r(s,a) - V_{h+1,f}(s') \right]  \right\rvert \leq \left\lvert \langle W_h(f) - W_h(f^\star), X_h(f) \rangle \right\rvert,\label{eq:bilinear_condition_1}\end{align}
-\item The policy $\pi_{est}(f)$ and the discrepancy $\ell_f$ can be used for estimation in the following sense: for any $g\in\Hcal$, we have:
-\begin{align}
-\left\lvert \E_{s\sim d^{\pi_f}_h, a\sim \pi_{est,h}(s;f), s'\sim P_h(\cdot | s,a)} [\ell_f(s,a,s', h, g)]  \right\rvert = \left\lvert \langle W_h(g) - W_h(f^\star), X_h(f) \rangle \right\rvert,\label{eq:bilinear_condition_2}
-\end{align} We suppress the $h$ dependence on $\pi_{est,h}$ when clear from context. 
-Typically $\pi_{est}(f)$ will be either the uniform distribution over $\Acal$ or $\pi_f$ itself.
-In the latter case, we refer to the estimation strategy as being on-policy.  
-%\item for any $f,h$, we have:
-%\begin{align}
-%\E_{s\sim d^{\pi_f}_h, a\sim \pi_{est,h}(s;f), s'\sim P_h(\cdot | s,a)} [ \ell_f(s,a,s', h, f^\star)  ] = 0.\label{eq:bilinear_condition_3}
-%\end{align}
-\end{enumerate}
+\mathcal{E}_h^{V}(f,g)=\langle X_h(f), W_h(g)\rangle\qquad \forall f,g\in\Hcal,
+\]
+and $\sup_{f\in\Hcal}\|X_h(f)\|_2\le B_X$, $\sup_{g\in\Hcal}\|W_h(g)\|_2\le B_W$.
 \end{definition}
 
-The first condition in the above definition assumes that the average Bellman error of $f$ under $\pi_f$'s state-action distribution can be upper bounded by the value from the bilinear formulation. The second condition assumes that we have a discrepancy function that allows us to evaluate the value of the bilinear formulation. Note that the second condition permits data reuse, i.e., given a set of samples where $s \sim d^{\pi_{f}}_h, a\sim \pi_{est,h}(s;f),s'\sim P_h(\cdot|s,a)$, we can use the dataset to evaluate the loss for all $g\in \Hcal$ simultaneously.  This data reuse is the key to generalization. Also the second condition ensures that for all $f$, we must have $\E_{s\sim d^{\pi_f}_h, a\sim \pi_{est,h}(s;f), s'\sim P_h(\cdot | s,a)} [\ell_f(s,a,s', h, f^\star)] = 0$.
+\subsection{$Q$-Bellman rank}
+\label{subsec:br_q_rank}
 
+The $Q$-version averages the same residual under the full \emph{state--action} occupancy of $\pi_f$:
+\begin{equation}
+\label{eq:br_q_bellman_error}
+\mathcal{E}_h^{Q}(f,g)
+:=
+\E_{(s,a)\sim d_h^{\pi_f},\ s'\sim P_h^\star(\cdot\mid s,a)}
+\big[\ell_h(s,a,s';g)\big].
+\end{equation}
 
-%\wen{I added the third condition}
-
-
-\subsection{Examples}
-
-Let now see how the Bilinear classes naturally generalize the Bellman rank.
-
-\subsubsection*{Q-Bellman rank and V-Bellman rank} 
-
-It is straightforward to see that the Bilinear class captures the
-$Q$-Bellman rank and $V$-Bellman rank models. To capture $Q$-Bellman rank, in Bilinear class, we will set $\ell_f := \ell$ for all $f$,
-with $\ell$ being defined in 
-Eq.~\ref{eq:q_brank_loss}, and set
-$\pi_{est,h}(f) = \pi_{f,h},\forall f$. 
-To capture $V$-Bellman rank, we
-will set $\ell_f := \ell$ for all $f$ with $\ell$ being defined in Eq.~\ref{eq:v_brank_loss}, and $\pi_{est}(f) := \textrm{Unif}_{\Acal}$, i.e., uniform distribution over $\Acal$. More precisely, we have:
-\begin{align}
-&\text{$Q$-Bellman rank}: \ell(s,a,s', h, g) := Q_{h,g}(s,a) - r(s,a) - V_{h+1,g}(s'), \label{eq:q_brank_loss}\\
-&\text{$V$-Bellman rank}:  \ell(s,a,s', h, g) := \frac{\one\{a = \pi_{h,g}(s)\}}{1/A} \left( Q_{h,g}(s,a) - r(s,a) - V_{h+1,g}(s')\right). \label{eq:v_brank_loss}
-\end{align}
-In the
-$V$-Bellman rank case, the importance weighting factor $\one\{a =
-\pi_{h,g}(s)\} / (1/A)$ ensures that given any $s,g$, 
+\begin{definition}[$Q$-Bellman rank]
+\label{def:q_bellman_rank}
+We say $(\Mcal,\Hcal)$ has \emph{$Q$-Bellman rank at most $d$} if for each stage $h$ there exist maps
 \[
-\E_{a\sim
-  \textrm{Unif}_{\Acal} ,s'\sim P_h(\cdot | s,a)} \ell(s,a,s',g) = V_{h,g}(s) - r(s,
-\pi_{h,g}(s)) - \E_{s'\sim P_h(\cdot | s,
-  \pi_{h,g}(s))}V_{h+1,g}(s'),
+X_h:\Hcal\to\R^d,\qquad W_h:\Hcal\to\R^d
 \]
-i.e., $\ell(s,a,s',g)$ is an unbiased
-estimate of the V-Bellman error of $g$ at state $s$, given that $a\sim
-\textrm{Unif}_{\Acal} , s'\sim P_h(\cdot | s,a)$. 
+and constants $B_X,B_W\ge 1$ such that
+\[
+\mathcal{E}_h^{Q}(f,g)=\langle X_h(f), W_h(g)\rangle\qquad \forall f,g\in\Hcal,
+\]
+and $\sup_{f\in\Hcal}\|X_h(f)\|_2\le B_X$, $\sup_{g\in\Hcal}\|W_h(g)\|_2\le B_W$.
+\end{definition}
 
-$Q$-Bellman and $V$-Bellman rank already assume the existence of two mapps. 
+\paragraph{Shifting $W_h$ so that $W_h(f^\star)=0$.}
+Under realizability, $\mathcal{E}_h^{V}(f,f^\star)=\mathcal{E}_h^{Q}(f,f^\star)=0$ for all $f$ and $h$.
+Thus, for either definition, we may assume without loss of generality that $W_h(f^\star)=0$ by replacing
+$W_h(g)$ with $W_h(g)-W_h(f^\star)$ (absorbing any constant-factor change into $B_W$).
 
-Note that by our assumption that $\|Q_{h,g}\|_{\infty} \leq H$, we
-have $\|\ell\|_{\infty} \leq H$ for the Q-Bellman rank case, and
-$\|\ell\|_{\infty} \leq AH$ for the $V$-Bellman rank case. 
+\paragraph{Why there are two versions.}
+The $Q$-version is ``on-policy'' at stage $h$ in the sense that $(s_h,a_h)\sim d_h^{\pi_f}$; consequently,
+$\mathcal{E}_h^{Q}(f,g)$ can be estimated directly from data collected by following $\pi_f$.
+The $V$-version evaluates the residual at the \emph{action chosen by $g$} on states visited by $\pi_f$.
+To estimate $\mathcal{E}_h^{V}(f,g)$ from data that does not depend on $g$, one typically injects
+exploration at time $h$ (e.g.\ uniform actions) and uses importance weighting.  This allows data collected
+under one roll-in policy to be reused across many candidate $g$, at the cost of explicit $|\Acal|$-dependence
+in the estimation error.
 
-\iffalse
-It is straightforward to see that the Bilinear class captures the
-$Q$-Bellman rank and $V$-Bellman rank models. To capture $Q$-Bellman
-rank, in Bilinear class, we will set $\ell_f := \ell$ for all $f$,
-with $\ell$ being the loss function defined for the $Q$-Bellman rank
-(Eq.~\ref{eq:q_brank_loss}), and set
-$\pi_{est}(f) = \pi_{f},\forall f$. To capture $V$-Bellman rank, we
-will set $\ell_f := \ell$ for all $f$ with $\ell$ being the loss
-function defined for the $V$-Bellman rank (Eq.~\ref{eq:v_brank_loss}),
-and $\pi_{est}(f) := \textrm{Unif}_{\Acal}$, i.e., uniform
-distribution over $\Acal$.
-\fi 
+% =========================================================
+\subsection{Two anchor examples}
+\label{sec:br_two_examples}
 
-\subsubsection{Linear mixture model} The additional $f$-dependent
-discrepancy function allows Bilinear classes to capture the following \emph{linear
-  mixture model}, which cannot be captured by $Q$ or $V$ version of the
-Bellman rank.
+\subsubsection{Contextual linear bandits ($H=1$): small $Q$-Bellman rank}
 
-A linear mixture MDP model has a feature
-$\phi:\Scal\times\Acal\times\Scal\mapsto \mathbb{R}^d$, such that
-$P_h(s' | s,a) = (\theta_h^\star)^{\top} \phi(s,a,s')$ where we assume
-$\|\theta_h^\star \|_2 \leq W$. We assume reward $r$ is known. 
+Let $H=1$ and suppose the initial state is drawn from a distribution $\mu$.
+Assume rewards satisfy $\E[r(s,a)\mid s,a]=\langle \theta^\star,\phi(s,a)\rangle$ with
+$\phi(s,a)\in\R^d$ and $\|\phi(s,a)\|_2\le 1$.  Take the hypothesis class
+\[
+\Hcal_0=\{Q_\theta(s,a)=\langle \theta,\phi(s,a)\rangle:\ \|\theta\|_2\le W\},
+\]
+with $V_\theta(s)=\max_a Q_\theta(s,a)$ and greedy $\pi_\theta$.
 
-%\sk{say that the reward function is known, in that it is part of
-%  hypothesis class def? this is not quite the correct
-%  hypothesis class as we need to have associated $Q$ and $V$ functions
-%so we should state what these are. this is where we use that $r$ is
-%part of the hypothesis class def. does the original model assume that
-%$r$ is in the span of these features too or something?}
-
-Here, our hypothesis class $\Hcal$ is a model based one, where
-$\Hcal_h = \{ (P_h, r): P_h(s'|s,a) := \theta^{\top}\phi(s,a,s'), \|\theta\|_2 \leq W \}$. We assume that the reward function is known, and the
-associated $Q$ and $V$ function with any hypothesis is the
-optimal state-action value and optimal value for the associated model
-(as discussed in Section~\ref{sec:hypothesis}).
-
-We design the discrepancy function $\ell_f$ as
-follows. Denote $g\in\Hcal$ as
-$g = \{\theta_h^{\top} \psi(\cdot,\cdot,\cdot)\}_{h=0}^{H-1}$,
-\begin{align*}
-\ell_f(s,a,s', h, g) :=  \sum_{\tilde{s}} \theta_h^{\top} \phi(s,a,\tilde{s})   V_{h+1,f}(\tilde{s})  - V_{h+1,f}(s').
-\end{align*}
-
-Below we  show that it is a Bilinear class model. For any
-$f,g\in\Hcal$, set $\pi_{est}(f) = \pi_f$ (i.e., on-policy), we have: 
-\begin{align*}
-\E_{s,a \sim d^{\pi_f}_h,s'\sim P_h(\cdot | s,a)} \ell_f(s,a,s', h,g) & = \E_{s,a\sim d^{\pi_f}_h} \left[\sum_{\tilde{s}} \theta_h^{\top} \phi(s,a,\tilde{s})   V_{h+1,f}(\tilde{s})  - \sum_{\tilde{s}} (\theta^\star_h)^{\top} \phi(s,a,\tilde{s})V_{h+1,f}(s') \right] \\
-& = \left(\theta_h - \theta_h^\star  \right)^{\top} \left( \E_{s,a\sim d^{\pi_f}_h} \left[ \sum_{s'} \phi(s,a,s')\right] \right).
-\end{align*}  Thus we have shown that $W_h(g) = \theta_h $, and $X_h(f) = \E_{s,a\sim d^{\pi_f}_h} \left[ \sum_{s'} \phi(s,a,s')\right]$.
-
-\begin{proposition}
-The hypothesis class $\Hcal$ together with the linear mixture model is a Bilinear class.  
+\begin{proposition}[Contextual linear bandits have $Q$-Bellman rank at most $d$]
+\label{prop:br_ctx_lin_bandit}
+The pair $(\Mcal,\Hcal)$ above has $Q$-Bellman rank at most $d$.
 \end{proposition}
 
+\begin{proof}
+Since $H=1$, $V_{1,g}\equiv 0$ and
+\[
+\mathcal{E}_0^{Q}(f,g)
+=
+\E_{s\sim\mu,\ a=\pi_f(s)}\big[Q_g(s,a)-r(s,a)\big]
+=
+\E_{s\sim\mu,\ a=\pi_f(s)}\langle \theta_g-\theta^\star,\phi(s,a)\rangle.
+\]
+Define $X_0(f):=\E_{s\sim\mu,\ a=\pi_f(s)}[\phi(s,a)]\in\R^d$ and $W_0(g):=\theta_g-\theta^\star\in\R^d$.
+Then $\mathcal{E}_0^{Q}(f,g)=\langle X_0(f),W_0(g)\rangle$.
+\end{proof}
 
+\subsubsection{Linear Bellman completeness: small $Q$-Bellman rank}
 
-\section{PAC-RL with Bounded Bilinear Rank}
+We phrase this in the value-based linear Bellman completeness setting (Definition~\ref{def:bc}).
+Fix features $\phi:\Scal\times\Acal\to\R^d$ with $\|\phi(s,a)\|_2\le 1$ and take a linear class
+\[
+\Hcal_h=\Big\{Q_{h,w}(s,a)=\langle w,\phi(s,a)\rangle:\ \|w\|_2\le W,\ \|Q_{h,w}\|_\infty\le H\Big\},
+\qquad
+V_{h,w}(s)=\max_{a}Q_{h,w}(s,a).
+\]
+Assume linear Bellman completeness: for each $h$ there exists an operator $\Tcal_h:\R^d\to\R^d$ such that
+for all $w\in\R^d$ and all $(s,a)$,
+\[
+\big(\Tcal_h(w)\big)^\top\phi(s,a)
+=
+r_h(s,a)
++
+\E_{s'\sim P_h^\star(\cdot\mid s,a)}\Big[\max_{a'\in\Acal} w^\top\phi(s',a')\Big],
+\]
+and $\sup_{h,\|w\|_2\le W}\|\Tcal_h(w)\|_2\le W$.
 
-%To be added.
+\begin{proposition}[Linear Bellman completeness implies $Q$-Bellman rank at most $d$]
+\label{prop:br_linear_bc}
+Under the above assumptions, $(\Mcal,\Hcal)$ has $Q$-Bellman rank at most $d$.
+One valid choice is
+\[
+X_h(f)=\E_{(s_h,a_h)\sim d_h^{\pi_f}}\big[\phi(s_h,a_h)\big],
+\qquad
+W_h(g)=w_{h,g}-\Tcal_h(w_{h+1,g}).
+\]
+\end{proposition}
 
-
-We now focus on the sample complexity of finding an $\eps$-near
-optimal policy. We work in the episodic setting where we can
-obtain trajectories under some fixed initial state $s_0$ (i.e., $\mu:= \delta(s_0)$). Note that generalizing to any distribution $\mu$ is straightforward. 
-
-\subsection{Algorithm}
-
-%\sk{note that the algorithm  now returns the correct policy. there is
-%  a comment that we can approximately implement this step with
-%samples.}
-
-\begin{algorithm}[h]
-\begin{algorithmic}[1]
-\State \textbf{Input:} number of iteration $T$, batch size $m$, confidence radius $R$, estimation policy $\pi_{est}$, loss $\ell$
-\For{$t = 0\dots T-1 $}
-	\State Set $f_t$ as the solution of the following program:
-		\begin{align*}
-			&f_t = \argmax_{g\in\Hcal} V_{0,g}(s_0), \\
-			& \sum_{i=0}^{t-1} \left( \E_{\Dcal_{i,h}} \ell_{f_i}( s,a,s', g ) \right)^2 \leq R^2, \forall h\in [0,\dots, H-1]
-		\end{align*}
-    	\State $\forall h$, create batch data $\Dcal_{t,h} = \{s^i,
-        a^i, (s')^i\}_{i=1}^m$, 
-
-where $s^i \sim d^{\pi_{f_t}}_h, a^i
-        \sim \pi_{est,h}(s^i; f_t), (s^i)' \sim P_h(\cdot | s^i,
-        a^i)$ (see text for discussion). 
-		%\begin{align*}
-		%	&\text{Q-Bellman rank:}\quad  s^i \sim d^{\pi_{f_t}}_h, a^i \sim \pi_{h, f_t}(s^i), (s^i)' \sim P_h(\cdot | s^i,a^i)\\
-		%	&\text{V-Bellman rank:} \quad s^i \sim d^{\pi_{f_t}}_h, a^i \sim \textrm{Unif}_{\Acal} , (s^i)' \sim P_h(\cdot | s^i,a^i)
-		%\end{align*}
-\EndFor
-\State  \textbf{return} $\arg\max_{\pi\in\{\pi_{f_0},\dots, \pi_{f_{T-1}}\}} V^{\pi}$.
-\end{algorithmic}
-\caption{BLin-UCB}
-\label{alg:bilinear_class}
-\end{algorithm}
-
-We present the Bilinear-UCB algorithm in
-Algorithm~\ref{alg:bilinear_class}. Algorithm~\ref{alg:bilinear_class}
-uses the estimation policy $\pi_{est,h}(\cdot; f_t)$ to generate action
-$a_t$ when collecting the batch $\mathcal{D}_{t,h}$ at iteration $t$
-for time step $h$. 
-
-Note that the samples required by Bilinear-UCB algorithm can be
-obtained in episodic sampling model. We simply follow $\pi$ until time
-step $h$, and then use $\pi_{est}(\cdot; f_t)$ to sample the action at
-the timestep.
-
-While the algorithm returns the best policy found up to time $T$,
-i.e. $\max_{t\in [T]} V^{\pi_{f_t}}$, it is also straight forward to
-replace this step using a sample based estimate of the best policy
-seen so far (with a negligible increase in the sample size).
-
-Intuitively, BLin-UCB uses optimism for exploration. Our constraints are designed such that they eliminate
-functions that are not $f^\star$. Also the
-threshold $R$ will be set such that $f^\star$ is always a feasible solution with high probability. Thus, the $\argmax$ procedure in the objective function ensures that it returns an optimistic estimate, i.e., $V_{0,f_t}(s_0) \geq V^\star_0(s_0)$.   
-
-
-\subsection{Sample Complexity}
-
-We begin by stating the following assumption about the uniform convergence property of our hypothesis class $\Hcal$.
-
-\begin{assumption}[Uniform Convergence]  \label{assum:generalization_brank}We assume that there exists a function $\varepsilon_{gen}(m, \Hcal, \delta)$ such that for any distribution $\nu \in\Delta(\Scal\times\Acal\times\Scal)$ and $f\in\Hcal$, and any $\delta\in(0,1)$, with probability at least $1-\delta$ over the $m$ i.i.d samples $\Dcal := \{s_i,a_i,s'_i\}_{i=1}^m \sim \nu$, we have:
+\begin{proof}
+Fix $f,g$ and stage $h$. Conditioning on $(s_h,a_h)$ and using the defining identity of $\Tcal_h$,
 \begin{align*}
-\sup_{g\in\Hcal} \left\lvert   \E_{\Dcal} [\ell_f(s,a,s', h, g)] - \E_{\nu}[ \ell_f(s,a,s', h, g)]    \right\rvert \leq \varepsilon_{gen}(m, \Hcal, \delta). %\cdot conf(\delta).
-\end{align*} 
+\E\big[\ell_h(s_h,a_h,s_{h+1};g)\mid s_h,a_h\big]
+&=
+w_{h,g}^\top\phi(s_h,a_h)-r_h(s_h,a_h)-\E\big[V_{h+1,g}(s_{h+1})\mid s_h,a_h\big]\\
+&=
+w_{h,g}^\top\phi(s_h,a_h)-\big(\Tcal_h(w_{h+1,g})\big)^\top\phi(s_h,a_h)\\
+&=
+\big(w_{h,g}-\Tcal_h(w_{h+1,g})\big)^\top\phi(s_h,a_h).
+\end{align*}
+Taking expectation over $(s_h,a_h)\sim d_h^{\pi_f}$ yields
+$\mathcal{E}_h^Q(f,g)=\langle X_h(f),W_h(g)\rangle$.
+\end{proof}
+
+\newpage
+
+\section{PAC RL under bounded Bellman rank}
+\label{sec:br_pac}
+
+We now give an optimistic-elimination template that works for either the $Q$- or the $V$-version.
+The two versions differ only in how we estimate the average Bellman error.
+
+\subsection{Uniform convergence primitive}
+\label{subsec:br_epsgen}
+
+For a dataset $\Dcal=\{(s_i,a_i,s_i')\}_{i=1}^m$, we write
+\[
+\E_{\Dcal}[Z(s,a,s')] := \frac{1}{m}\sum_{i=1}^m Z(s_i,a_i,s_i')
+\]
+for the empirical average.
+
+\paragraph{Estimating $\mathcal{E}_h^{Q}(f,g)$.}
+If $(s,a,s')$ are sampled with $(s,a)\sim d_h^{\pi_f}$ and $s'\sim P_h^\star(\cdot\mid s,a)$, then
+$\E_{\Dcal}[\ell_h(s,a,s';g)]$ is an unbiased estimate of $\mathcal{E}_h^Q(f,g)$.
+
+\paragraph{Estimating $\mathcal{E}_h^{V}(f,g)$.}
+To estimate $\mathcal{E}_h^V(f,g)$ from data that does not depend on $g$, we use the
+importance-weighted loss
+\begin{equation}
+\label{eq:br_v_loss}
+\tilde{\ell}_h^{V}(s,a,s';g)
+:=
+\frac{\mathbf{1}\{a=\pi_{h,g}(s)\}}{1/A}\,\ell_h(s,a,s';g).
+\end{equation}
+If $s\sim d_h^{\pi_f}$, $a\sim \mathrm{Unif}(\Acal)$ and $s'\sim P_h^\star(\cdot\mid s,a)$, then
+$\E[\tilde{\ell}_h^{V}(s,a,s';g)]=\mathcal{E}_h^{V}(f,g)$.
+
+\begin{assumption}[Uniform convergence of Bellman-error estimates]
+\label{assum:br_uniform_conv}
+There exists a function $\varepsilon_{\mathrm{gen}}(m,\Hcal,\delta)$ such that for any stage $h$,
+any distribution $\nu$ over $(s,a,s')$, if $\Dcal=\{(s_i,a_i,s_i')\}_{i=1}^m$ are i.i.d.\ from $\nu$,
+then with probability at least $1-\delta$,
+\[
+\sup_{g\in\Hcal}\left|
+\E_{\Dcal}\big[\tilde{\ell}(s,a,s';g)\big]
+-
+\E_{(s,a,s')\sim\nu}\big[\tilde{\ell}(s,a,s';g)\big]
+\right|
+\le
+\varepsilon_{\mathrm{gen}}(m,\Hcal,\delta),
+\]
+where $\tilde{\ell}$ is either $\ell_h(\cdot;\,g)$ (for the $Q$-version) or
+$\tilde{\ell}_h^{V}(\cdot;\,g)$ (for the $V$-version).
 \end{assumption}
 
-The above assumption is the
-standard uniform convergence result and typically we have $\varepsilon_{gen}(m, \Hcal,\delta) \to 0, m\to\infty$. Below we give three examples, one for finite hypothesis class $\Hcal$, one for infinite hypothesis class under the linear Bellman completion setting, and one for the infinite hypothesis class under the problem of feature selection in sparse linear MDPs.
+In Appendix~\ref{subsec:br_epsgen_appendix} we give explicit $\varepsilon_{\mathrm{gen}}$ bounds for both
+choices of $\tilde{\ell}$.
+
+\begin{algorithm}[t]
+\begin{algorithmic}[1]
+\Require iterations $T$, batch size $m$, radius $R$, mode $\mathtt{mode}\in\{\mathtt{Q},\mathtt{V}\}$
+\For{$t = 0,1,\dots, T-1$}
+    \State Choose
+    \[
+    f_t \in \argmax_{g\in\Hcal} V_{0,g}(s_0)
+    \quad \text{s.t.}\quad
+    \sum_{i=0}^{t-1}\Big(\widehat{\mathcal{E}}_{i,h}(g)\Big)^2 \le R^2
+    \ \ \forall h\in\{0,\dots,H-1\},
+    \]
+    where $\widehat{\mathcal{E}}_{i,h}(g):=\E_{\Dcal_{i,h}}\big[\tilde{\ell}(s,a,s';g)\big]$
+    and $\tilde{\ell}$ is chosen according to $\mathtt{mode}$.
+    \For{$h=0,1,\dots,H-1$}
+        \State Collect a batch $\Dcal_{t,h}=\{(s^j,a^j,(s')^j)\}_{j=1}^m$ by rolling in with $\pi_{f_t}$ to time $h$
+        to obtain $s^j\sim d_h^{\pi_{f_t}}$, then
+        \[
+        a^j=
+        \begin{cases}
+        \pi_{h,f_t}(s^j), & \mathtt{mode}=\mathtt{Q},\\
+        \mathrm{Unif}(\Acal), & \mathtt{mode}=\mathtt{V},
+        \end{cases}
+        \qquad
+        (s')^j\sim P_h^\star(\cdot\mid s^j,a^j).
+        \]
+    \EndFor
+\EndFor
+\State Let $\hat t\in\arg\min_{t\in\{0,\dots,T-1\}}\sum_{h=0}^{H-1}\big|\widehat{\mathcal{E}}_{t,h}(f_t)\big|$.
+\State \textbf{Output:} return $\hat\pi := \pi_{f_{\hat t}}$.
+\end{algorithmic}
+\caption{Bellman-rank optimistic elimination (Q/V versions)}
+\label{alg:br_oe}
+\end{algorithm}
+
+\subsection{Algorithm: Bellman-rank optimistic elimination}
+\label{subsec:br_algorithm}
+
+Algorithm~\ref{alg:br_oe} maintains a set of hypotheses that are consistent with all previously
+collected Bellman-error tests.  At iteration $t$ it selects an \emph{optimistic} hypothesis $f_t$,
+maximizing the predicted value $V_{0,g}(s_0)$ subject to the constraint that, at each stage $h$,
+the cumulative squared estimated Bellman errors against $g$ over the past batches are small.
+It then rolls in with $\pi_{f_t}$ to generate a fresh batch of
+transition samples at each stage and repeats. 
+
+The only difference between $\mathtt{mode}=\mathtt{Q}$ and $\mathtt{mode}=\mathtt{V}$ is how we obtain an
+unbiased estimate of the average Bellman error at stage $h$.
+In the $Q$-version we take the on-policy action $a_h=\pi_{h,f_t}(s_h)$.
+In the $V$-version we inject a uniform action at stage $h$ and use the importance-weighted loss
+\eqref{eq:br_v_loss}, which permits testing many candidates $g$ using data whose action choices do not
+depend on $g$.
 
 
-\begin{example}[ Finite hypothesis class case] \label{example:finite_hypothesis}  Let us consider the example where
-$\Hcal$ is a discrete hypothesis class.  In this case, for $Q$-Bellman
-rank loss, via Hoeffding's inequality and a union bound over $\Hcal$, we have that with probability at least $1-\delta$,  
-$$\sup_{g\in\Hcal} \big\lvert   \E_{\Dcal} [ \ell_f(s,a,s', h,g)] -
-  \E_{\nu}[ \ell_f(s,a,s', h, g)]    \big\rvert  \leq  2H \sqrt{ \ln(
-  |\Hcal| /\delta ) / m },$$ 
-which means we can set 
-$$\varepsilon_{gen}(m,\Hcal,\delta) := 2H \sqrt{ \ln(|\Hcal |/\delta)
-  / m }.$$ 
-For $V$-Bellman rank loss, due to the importance weighting, we 
-have an additional $A$ term, i.e., with probability at least $1-\delta$,
-$$\sup_{g\in\Hcal} \big\lvert   \E_{\Dcal}[ \ell_f(s,a,s', h, g)] - \E_{\nu} [\ell_f(s,a,s', h, g)]    \big\rvert  \leq  2HA \sqrt{ \ln( |\Hcal| /\delta ) / m }.$$
-\end{example}
+\subsection{Main PAC guarantee}
+\label{subsec:br_main_thm}
 
-\begin{example}[Linear Bellman completion] \label{example:linear_bc} In the linear Bellman completion model, our hypothesis class $\Hcal_h = \{ w^{\top} \phi(s,a): \|w\|_2 \leq W,  \|w^{\top} \phi(\cdot,\cdot)\|_{\infty} \leq H \}$ is not discrete. However, with the loss function associated with $Q$-Bellman rank, via a standard uniform convergence analysis using $\epsilon$-net for linear functions in $\Hcal$, we can show (details in Lemma~\ref{lem:b_error_linear_uniform_conv}): 
-\begin{align*}
- \sup_{g\in\Hcal} \big\lvert   \E_{\Dcal}[ \ell_f(s,a,s', h, g)] - \E_{\nu} [\ell_f(s,a,s', h, g)]    \big\rvert  \leq  3 H  \sqrt{ ( 2d  \ln(1 +  4  W m) +  \ln(1 /\delta ) ) / m }.
-\end{align*} Thus, we have $$\varepsilon_{gen}(m, \Hcal,\delta) :=  3 H  \sqrt{ \frac{  2d  \ln(1 +  4  W m) +  \ln(1 /\delta ) } { m} }.$$
-\end{example}
-
-
-\begin{example}[Feature selection for sparse linear MDP] \label{example:feature_select} To give another example of infinite hypothesis class case, we consider the following $\Hcal$ with $\Hcal_h = \{w^{\top} \phi: \|w\|_2 \leq 2H\sqrt{d}, w\in\mathbb{R}^s, \phi\in \Phi_h, \|w^{\top} \phi \|_{\infty} \leq H \}$ from the example of feature selection in sparse linear MDP. Recall $\Phi$ is discrete and $|\Phi| =$ $d\choose s$. We focus on the loss function associated with $V$-Bellman rank. Denote $\Hcal_{h, \phi} = \{w^{\top} \phi: \|w\|_2 \leq 2H\sqrt{d}, w\in\mathbb{R}^s, \|w^{\top} \phi \|_{\infty} \leq H \}$ for a $\phi\in\Phi$. Via a standard uniform convergence analysis using $\epsilon$-net for linear functions in $\Hcal_{h, \phi}$, we can show (details in Lemma~\ref{lem:b_error_linear_uniform_conv}):
-\begin{align*}
-\text{P}\left(  \sup_{g\in\Hcal_{\phi}} \big\lvert   \E_{\Dcal}[ \ell_f(s,a,s', h, g)] - \E_{\nu} [\ell_f(s,a,s', h, g)]    \big\rvert  \geq  3 HA \sqrt{ ( 2s \ln(1 + 8 A  H\sqrt{d} m ) + \ln(1/\delta)  ) / m } \right) \leq 1-\delta.
-\end{align*} Applying a union bound over all $\phi\in\Phi$ and use the fact that $|\Phi| \leq s^{d}$, we have:
-\begin{align*}
- \sup_{g\in\Hcal} \big\lvert   \E_{\Dcal}[ \ell_f(s,a,s', h, g)] - \E_{\nu} [\ell_f(s,a,s', h, g)]    \big\rvert  \leq  3 HA \sqrt{ ( 2s \ln(1 +  8A H\sqrt{d} m) + s \ln( d/\delta ) ) / m },
-\end{align*} with probability at least $1-\delta$. %Further applying a union bound over all $h\in [H]$, 
-Thus we have $$\varepsilon_{gen}(m, \Hcal, \delta ) := 3 HA \sqrt{ \frac{ 2s \ln(1 + 8 A H\sqrt{d} m) + s \ln( d/\delta ) } { m} }.$$ Note the polynomial dependence on $s$ and the poly-log dependence on $d$.
-\end{example}
-
-%\sk{change this to have $\mu$ as the start distribution.}
-With the above assumption, now we are ready to state the main theorem. 
-\begin{theorem}[PAC RL for BLin-UCB] Fix $\delta\in (0, 1)$, batch
-  size $m\in\mathbb{N}^+$. Suppose our hypothesis class $\Hcal$ forms
-  a Bilinear class of rank $d$; that the class is realizable; and that
-  the Bilinear-UCB algorithm has access to both $\Hcal$ and the
-  associated discrepancy function $\ell$.
- Set the parameters as follows: 
-\begin{align*}
-T =  \left\lceil 2 Hd \ln\left(4 Hd\left(\frac{B^2_X B_W^2
-    }{\varepsilon^2_{gen}(m,\Hcal,\delta/(TH))}+1\right)\right)\right\rceil, \quad R = \sqrt{T} \epsilon_{gen}(m, \Hcal, \delta/(TH)).
-\end{align*} %$T =  \left\lceil 2 Hd \ln\left( 2 H d B_X^2 / \lambda  \right)\right\rceil $,  then with probability at least $1-\delta$, we have:
-%parameters $\varepsilon_{gen} := \varepsilon_{gen}(m, \Hcal) conf(\delta / TH)$, 
-%$T : = \lceil 1/\varep \rceil$
-%$R := $, $T:= $. 
-Let $\pi$ be the policy returned
-by the Bilinear-UCB algorithm
-(Algorithm~\ref{alg:bilinear_class}). With probability at least
-$1-\delta$, we have:
-\begin{align*}
-%\E_{s_0\sim\mu}[V^\star_0(s_0)] - \E_{s_0\sim\mu} [V^{\pi}_{0}(s_0)] \leq   6 \varepsilon_{gen}\sqrt{ d H^3\ln\left(4Hd\left(\frac{B^2_X B_W^2
-%    }{\varepsilon^2_{gen}}+1\right)\right) }.
-V^\star_0(s_0) - V^{\pi}_{0}(s_0) \leq   5 \varepsilon_{gen}
-\sqrt{ d H^3\ln\left(4Hd\left(\frac{B^2_X B_W^2}{\varepsilon^2_{gen}}+1\right)\right) }.
-\end{align*}\label{them:main_blin_ucb}
-Note the total number of samples obtained is $mTH$.
+\begin{theorem}[PAC RL under bounded Bellman rank]
+\label{thm:br_main}
+Fix $\mathtt{mode}\in\{\mathtt{Q},\mathtt{V}\}$.
+Assume realizability and that $(\Mcal,\Hcal)$ has Bellman rank at most $d$ in the corresponding sense:
+$Q$-Bellman rank if $\mathtt{mode}=\mathtt{Q}$, and $V$-Bellman rank if $\mathtt{mode}=\mathtt{V}$,
+with bounds $B_X,B_W$.
+Run Algorithm~\ref{alg:br_oe} with batch size $m$ and define
+\[
+\varepsilon_{\mathrm{gen}} := \varepsilon_{\mathrm{gen}}\!\left(m,\Hcal,\frac{\delta}{TH}\right).
+\]
+Set
+\[
+T := \left\lceil c\,Hd \,\ln\!\Big( eHd\Big(\frac{B_X^2B_W^2}{\varepsilon_{\mathrm{gen}}^2}+1\Big)\Big)\right\rceil,
+\qquad
+R := \sqrt{T}\,\varepsilon_{\mathrm{gen}},
+\]
+for universal constants $c>0$.
+Then with probability at least $1-\delta$, the output policy $\hat\pi$ satisfies
+\[
+V_0^\star(s_0) - V_0^{\hat\pi}(s_0)
+\ \le\
+C\,\varepsilon_{\mathrm{gen}}\,
+\sqrt{dH^3\ln\!\Big( eHd\Big(\frac{B_X^2B_W^2}{\varepsilon_{\mathrm{gen}}^2}+1\Big)\Big)},
+\]
+for a universal constant $C>0$.
 \end{theorem}
 
-%\sk{note the above is for the returned policy.}
+\paragraph{Where the $|\Acal|$ dependence enters.}
+The theorem is stated in terms of $\varepsilon_{\mathrm{gen}}$.
+For $\mathtt{mode}=\mathtt{Q}$, the loss $\tilde{\ell}=\ell_h$ is uniformly $O(H)$-bounded under the
+usual range assumptions on $Q_{h,g}$, so standard concentration does not introduce an explicit $|\Acal|$
+factor.
+For $\mathtt{mode}=\mathtt{V}$, $\tilde{\ell}=\tilde{\ell}_h^V$ includes an importance weight of size $A$,
+and $\varepsilon_{\mathrm{gen}}$ typically scales linearly with $A$.
 
-Before proving the main theorem, we revisit the three examples above, i.e., finite hypothesis case, linear Bellman completion, and feature selection in sparse linear MDP,  and derive the sample complexity bounds for these examples.
+\subsection{Instantiations}
+\label{subsec:br_instantiations}
 
-\paragraph{Finite hypothesis class case (Example~\ref{example:finite_hypothesis} continued).} Plugging in
-specific forms of $\varepsilon_{gen}(m,\Hcal, \delta / (TH))$ in the above general
-theorem allows us to instantiate PAC bounds. Consider the $Q$-Bellman
-rank example with a discrete hypothesis class $\Hcal$. In this case,
-as we show above, we have $\varepsilon_{gen}(m,\Hcal,\delta) := 2H \sqrt{\ln(|\Hcal| / \delta) / m }$. To have $V^\star_0(s_0) - \max_{i\in
-  [0,\dots, T-1]}  V^{\pi_{f_i}}_{0}(s_0) \leq \epsilon$ for some
-$\epsilon \in (0, H)$, we just need to set $m$ such that:
-\begin{align*}
-12 H \sqrt{\frac{ \ln(|\Hcal| / \delta)} { m} }\sqrt{ d H^3\ln\left(4Hd\left(\frac{B^2_X B_W^2
-  m  }{4H^2 \ln(|\Hcal| /\delta)}+1\right)\right) } \leq \epsilon, 
-\end{align*} 
-%$$m =
-%\frac{c dH^5 \ln(dH^2) \ln(|\Hcal|) \ln(1/\delta) }{\epsilon^2} \cdot
-%\ln\left( \frac{dHB_X B_W\ln(|\Hcal|)\ln(1/\delta) }{\epsilon} \right)
-%=\widetilde{O}\left( \frac{dH^5 \ln(|\Hcal / \delta|)}{\epsilon^2}
-%\right),$$ 
-Using the inequality from Equation~\ref{eqn:footnote},  it is suffice to set $m$ as:
-\begin{align*}
-m = \frac{c d H^5 \ln(|\Hcal| / \delta) }{\epsilon^2} \cdot \nu, \text{ where } \nu :=  \ln\left( \frac{ dH^5  }{ \epsilon^2 } \left(  Hd B_X^2 B_W^2  + 4Hd \ln(|\Hcal| / \delta) \right)  \right),
-\end{align*}
-% \ln\left( \frac{ dH^5 \ln(|\Hcal| / \delta) }{ \epsilon^2 } \left( \frac{ Hd B_X^2 B_W^2}{ \ln(|\Hcal| / \delta)} + 4Hd \right)  \right) %= \widetilde{O}\left( \frac{dH^5 \ln(|\Hcal|/\delta)}{\epsilon^2} \right),
-%\end{align*}
-and $c$ is an absolute constant.
- Using the fact that $T = \left\lceil 2 Hd \ln\left(4 Hd\left(\frac{B^2_X B_W^2
-    }{\varepsilon^2_{gen}(m,\Hcal,\delta/(TH))}+1\right)\right)\right\rceil$, we can reach the following corollary.
-    
-   \begin{corollary}[PAC bound for finite hypothesis $\mathcal{H}$ under $Q$-Bellman rank]
-    Fix $\epsilon, \delta \in (0,1)$. With probability  at least $1-\delta$, BLin-UCB learns a policy $\pi$ such that
-$V^\star_0(s_0) - V^{\pi}_0(s_0) \leq \epsilon$, using at most
-$$\frac{ c  H^6 d^2 \ln(|\Hcal| / \delta) }{ \epsilon^2} \cdot  \ln\left(4 Hd\left(\frac{B^2_X B_W^2
-  dH^3   \nu  }{ \epsilon^2 }+1\right)\right) \cdot \nu$$ many
-trajectories.  
-\end{corollary}
+Theorem~\ref{thm:br_main} is stated in terms of $\varepsilon_{\mathrm{gen}}$.
+This section records a few standard plug-ins from Appendix~\ref{subsec:br_epsgen_appendix}.
 
-\paragraph{Linear Bellman completion (Example~\ref{example:linear_bc}, continued).} Plugging in the specific form of $\varepsilon_{gen}(m, \Hcal, \delta/(TH))$ and $B_X = 1$ and $B_W = W$, with some linear algebra, we get:
-\begin{align*}
-\left( 5 \varepsilon_{gen}
-\sqrt{ d H^3\ln\left(4Hd\left(\frac{B^2_X B_W^2}{\varepsilon^2_{gen}}+1\right)\right) } \right)^2 \leq c \frac{ H^5 d^2 }{m} \ln^2\left( \frac{H^3 d^3  W^4 m}{\delta}   \right),
-\end{align*} for some absolute constant $c$. Thus, to have $V^\star_0(s_0) - \max_{i\in
-  [0,\dots, T-1]}  V^{\pi_{f_i}}_{0}(s_0) \leq \epsilon$ for some
-$\epsilon \in (0, H)$, it is suffice to set $m$ such that:
-\begin{align*}
-c \frac{ H^5 d^2 }{m} \ln^2\left( \frac{H^3 d^3  W^4 m}{\delta}   \right) \leq \epsilon^2. 
-\end{align*} Using the fact that for any positive scalars $a,b$, $m = 9 a \ln^2( 9 ab  )$ is a solution to the inequality $m \geq a \ln^2( bm )$, we can set $m$ as: $$m:= \frac{c' H^5 d^2 }{\epsilon^2} \cdot \nu, \text{ where } \nu:= \ln^2\left( \frac{ H^8 d^5 W^4 }{\epsilon^2\delta} \right).$$  Also plugging in $\varepsilon_{gen}(m, \Hcal, \delta / (HT))$ into $T$, we get:
-\begin{align*}
-T \leq c'' Hd \ln\left( Hd + H^6 d^3 W^2 \nu / \epsilon^2   \right)
-\end{align*} Thus, the total number of trajectories used can be upper bounded as $mT$. This leads to the following corollary. 
-\begin{corollary}[PAC bound for linear Bellman completion] Fix $\epsilon,\delta\in (0,1)$. With probability at least $1-\delta$, for the linear Bellman completion model, BLin-UCB finds a policy $\pi$ such that $V^\star_0(s_0 ) - V^{\pi}_0(s_0) \leq \epsilon$, using at most
-\begin{align*}
- \frac{  \tilde{c} H^6 d^3  }{ \epsilon^2} \cdot \nu',
-\end{align*} where $ \tilde{c}$ is an absolute constant, and $\nu'$ only contains log terms: $$\nu' := \ln^2\left( \frac{ H^8 d^5 W^4 }{\epsilon^2\delta} \right) \ln\left(H d + \frac{ H^6 d^3 W^2}{\epsilon^2} \ln^2\left( \frac{ H^8 d^5 W^4 }{\epsilon^2\delta} \right) \right).$$
-\end{corollary}
-
-
-\paragraph{Feature Selection in Sparse linear MDP (Example~\ref{example:feature_select}, continued).} Plugging in the specific form of $\varepsilon_{gen}(m, \Hcal, \delta / (TH))$ and the fact that $B_X = 1$ and $B_W = 2H\sqrt{d}$,  with some linear algebra, we get:
-\begin{align*}
-\left( 5 \varepsilon_{gen}
-\sqrt{ d H^3\ln\left(4Hd\left(\frac{B^2_X B_W^2}{\varepsilon^2_{gen}}+1\right)\right) } \right)^2 \leq c \frac{ H^5 A^2 s^2 }{m} \ln^2\left( \frac{AH^3 d^2 m}{\delta}   \right),
-\end{align*} for some absolute constant $c$. Thus, to have $V^\star_0(s_0) - \max_{i\in
-  [0,\dots, T-1]}  V^{\pi_{f_i}}_{0}(s_0) \leq \epsilon$ for some
-$\epsilon \in (0, H)$, it is suffice to set $m$ such that:
-\begin{align*}
-c \frac{ H^5 A^2 s^2 }{m} \ln^2\left( \frac{AH^3 d^2 m}{\delta}   \right) \leq \epsilon^2.
-\end{align*} Using the fact that for any positive scalars $a,b$, $m = 9 a \ln^2( 9 ab  )$ is a solution to the inequality $m \geq a \ln^2( bm )$, we can set $m$ as:
-\begin{align*}
-m = \frac{  c' H^5 A^2 s^2   }{\epsilon^2} \cdot \nu, \text{ where } \nu := \ln^2\left( \frac{ H^8 A^3 s^2 d^2 }{\epsilon^2\delta}  \right).
-\end{align*} Also plugging in $\varepsilon_{gen}(m, \Hcal, \delta / (HT))$ into $T$, we get:
-\begin{align*}
-T = c'' H s \ln\left( 4Hs + 4H^8 A^2 s^2 d^2 \nu / \epsilon^2  \right)
-\end{align*}  Note the total number of trajectories used here is $mT$. This leads to the following corollary. 
-\begin{corollary}[PAC bound for feature selection in sparse linear MDP]
-Fix $\delta,\epsilon \in (0,1)$. With probability at least $1-\delta$, for the sparse linear MDP model, BLin-UCB finds a policy $\pi$ such that $V^\star_0(s_0) - V^{\pi}_0(s_0) \leq \epsilon$, using total number of trajectories at most
-\begin{align*}
- \frac{  \tilde{c} H^6 A^2  s^3  }{ \epsilon^2} \cdot \nu',
-\end{align*} with $ \tilde{c}$ being an absolute constant, and $\nu'$ only containing log terms: $$\nu' := \ln^2 \left( \frac{H^8 A^3 s^2 d^2}{\epsilon^2 \delta} \right) \ln\left(4H s + \frac{4H^8 A^2 s^2 d^2}{\epsilon^2} \ln^2\left( \frac{ H^8 A^3 s^2 d^2 }{\epsilon^2\delta} \right) \right).$$
-\end{corollary}
-Note the polynomial dependence on $s$ instead of $d$ ($d$ only appears inside log-terms) in the above PAC bound, which indicates that BLin-UCB leverages the sparsity.
- 
-
-%\wen{does the above look better?  no $\tilde{O}$ now..}
-
-%\sk{how do you get the above? can you make a few comments on how you
-%  get this? (presumably this uses that same footnote?) tildeO notation
-%  is weird here, since we aren't dropping all the log terms. maybe write $f(blah)$ where you say in words that
-%  $f $ is log function of and log(log()) function of stuff.}
-
-\subsection{Analysis}
-
-%\sk{can we fix the analysis to be for a starting distribution $\mu$.}
-
-
-For notational convenience, let us overload notation and write
-$\varepsilon_{gen} := \varepsilon_{gen}(m, \Hcal, \delta / TH)$.
-
-\begin{lemma}\label{lemma:high_prob_event_brank}For all $h\in [0,\dots,H-1]$ and $t \in [0, \dots, T-1]$, with probability at least $1-\delta$, we have:
-\begin{align*}
-\sup_{g\in\Hcal}\left\lvert \E_{\Dcal_{t,h}}[ \ell_{f_t}(s,a,s', g)]  - \E_{s\sim d_h^{\pi_{f_t}}, a\sim \pi_{est}(s), s'\sim P_h(\cdot|s,a)}\left[ \ell_{f_t}(s,a,s', g)\right] \right\rvert \leq \varepsilon_{gen}.
-\end{align*}
-\end{lemma}
-\begin{proof} Note that the $(s,a,s')$ triple from $\Dcal_{i,h}$ is sampled as $s\sim d^{\pi_{f_t}}_h, a\sim \pi_{est}(s), s'\sim P_h(\cdot | s,a)$, in an i.i.d fashion.
-Thus, using assumption~\ref{assum:generalization_brank} and a union bound over all $h$ and $ t$ concludes the proof. 
-\end{proof}
-
-Our next lemma is with regards to feasibility and optimism; we show
-that with high probability, $f^\star$ is always a feasible solution of
-our constrained optimization program, which implies the optimism
-property holds.
-\begin{lemma}[Optimism and Feasibility of $f^\star$]  Assume the event
-  in Lemma~\ref{lemma:high_prob_event_brank} holds and that $R:= \sqrt{T}
-  \varepsilon_{gen}$.  We have that for all $t\in [T]$,
-  $f^\star$ is a feasible solution of the constrained program in
-  Alg.~\ref{alg:bilinear_class}. 
-Furthermore, we have $ V_{0,f_t}(s_0) \geq    V^\star_0(s_0)$, for all $t\in [T]$. 
-\end{lemma}
-\begin{proof}
-  Based on the second condition in the Bilinear class (Eq.~\ref{eq:bilinear_condition_2}), we have that for $f^\star$:$$| \E_{s\sim d_h^{\pi_{f_t}}, a\sim \pi_{est}(s), s'\sim P_h(\cdot|s,a)}\left[ \ell_{f_t}(s,a,s', f^\star)\right] |  =   | \langle W_h(f^\star ) - W_h(f^\star), X_h(f_t)  \rangle |  = 0,  \forall t.$$
-  %  has satisfies the Bellman optimality equations,
-%  $\E_{s'\sim P_h(\cdot | s,a)} \ell_f(s,a,s',f^\star) = 0$ for all
-  %$s,a$ and $f$.  
-  This and our assumption that the event in
-  Lemma~\ref{lemma:high_prob_event_brank} holds imply that:
-\begin{align*}
-\big|\E_{\Dcal_{t,h}} [\ell_{f_t}(s,a,s', f^\star)]\big| & = 
-\big|\E_{\Dcal_{t,h}} [\ell_{f_t}(s,a,s', f^\star)]
--\E_{s\sim d_h^{\pi_{f_t}}, a\sim \pi_{est}(s), s'\sim P_h(\cdot|s,a)}\left[ \ell_{f_t}(s,a,s', f^\star)\right] \big| \\
-\quad & \leq
-\sup_{g\in\Hcal}\left\lvert \E_{\Dcal_{t,h}} [ \ell_{f_t}(s,a,s', g)]  
-- \E_{s\sim d_h^{\pi_{f_t}}, a\sim \pi_{est}(s), s'\sim P_h(\cdot|s,a)}\left[ \ell_{f_t}(s,a,s', g)\right] \right\rvert \\
-&\leq \varepsilon_{gen}
-\end{align*} 
-This implies $\sum_{i=0}^{t-1} \left( \E_{\Dcal_{i,h}} \ell_{f_i}( s,a,s',
-  f^\star ) \right)^2 \leq T \varepsilon_{gen}^2$, which completes the
-proof of the first claim.
-
-For the second claim, the feasibility of $f^\star$ and the fact that
-$f_t$ is the maximizer of the constrained program immediately implies
-the lemma.  
-\end{proof}
-
-\iffalse
-\begin{proof}
-The event in Lemma~\ref{lemma:high_prob_event_brank} implies that for all $t$, $$\sup_{g\in\Hcal}\left\lvert \E_{\Dcal_{t,h}} [ \ell(s,a,s', g)]  - \E_{s\sim d_h^{\pi_{f_t}}, a\sim \pi_{est}(s), s'\sim P_h(\cdot|s,a)}\left[ \ell(s,a,s', g)\right] \right\rvert \leq \varepsilon_{gen}.$$
-
-Thus, for $f^\star \in \Hcal$, we have:
-\begin{align*}
-\E_{\Dcal_{t,h}} [\ell(s,a,s', f^\star)] \leq \varepsilon_{gen} +  \E_{s\sim d_h^{\pi_{f_t}}, a\sim \pi_{est}(s), s'\sim P_h(\cdot|s,a)}\left[ \ell(s,a,s', f^\star)\right] = \varepsilon_{gen},
-\end{align*} where in the last equality we use the fact that $\E_{s'\sim P_h(\cdot | s,a)} \ell(s,a,s',f^\star) = 0$ for all $s,a$, since $f^\star$ has zero Bellman error at any $s,a$.
-Summing over $i = 0$ to $t-1$ concludes the proof.
-\end{proof}
-\fi
-
-\iffalse
-The feasibility of $f^\star$ immediately implies optimism.
-\begin{lemma}[Optimism] Assume the event in Lemma~\ref{lemma:high_prob_event_brank} holds. Then we have $V_{0,f_t}(s_0) \geq V^\star_0(s_0)$, for all $t\in [0, \dots, T-1]$. 
-\end{lemma}
-\begin{proof}
-The feasibility of $f^\star$ and the fact that $f_t$ is the maximizer of the constrained program immediately implies the lemma. 
-\end{proof}
-\fi
-
-Now we are ready to bound the per-episode regret.
-\begin{lemma}\label{lemma:optimsm_brank}Assume the event in Lemma~\ref{lemma:high_prob_event_brank} holds. For all $t\in [0,\dots, T-1]$, we have:
-\begin{align*}
- V_0^\star(s_0)  -  V^{\pi_{f_t}}_0(s_0)  \leq  \sum_{h=0}^{H-1} \left\lvert \left\langle W_h(f_t) - W_h(f^\star), X_h(f_t) \right\rangle \right\rvert.
-\end{align*}
-\end{lemma}
-\begin{proof}
-We upper bound the regret as follows. Using optimism, we have
-\begin{align*}
-&  V_0^\star(s_0)   -  V^{\pi_{f_t}}_0(s_0)   \leq  V_{0,f_t}(s_0)  - \E_{s_0\sim \mu} [  V^{\pi_{f_t}}_0(s_0) ]  \\
-& = Q_{0,f_t}(s_0,a_0)   - \E\left[ \sum_{h=0}^{H-1} r(s_h,a_h) | \pi_{f_t} \right]\\
-& =  \E\left[ \sum_{h=0}^{H-1} Q_{h, f_t}(s_h,a_h) - r(s_h,a_h) + Q_{h+1,f_t}(s_{h+1}, a_{h+1})  \vert \pi_{f_t}   \right]\\
-& \leq \sum_{h=0}^{H-1} \left\lvert \E_{s_h,a_h\sim d_h^{\pi_{f_t}} } \left[ Q_{h,f_t}(s_h,a_h) - r(s_h,a_h) - \E_{s_{h+1}\sim P_h(\cdot | s,a)} \left[ V_{h+1,f_t}(s_{h+1}) \right] \right]\right\rvert \\
-&  \leq  \sum_{h=0}^{H-1} \left\lvert \left\langle W_h(f_t) - W_h(f^\star), X_h(f_t)   \right\rangle \right\rvert,
-\end{align*} 
-where the first equality uses that $a_0 = \pi_{0,f_t}(s_0)$, and the fact that $\pi_{0,f_t}(s) = \argmax_{a}
-Q_{0,f_t}(s,a)$, the second equality uses telescoping with the
-definition $Q_{H, f_0 }(s,a) = 0$ for all $s,a$, and the last equality
-uses the first condition in Bilinear class (Eq.~\ref{eq:bilinear_condition_1})
-%of $Q/V$-Bellman rank (note that since $a\sim
-%\pi_{f_t}$, we have $Q_{h,f_t}(s,a) = V_{h, f_t}(s)$ for all $s$).  
-\end{proof}
-
-
-We are now ready to prove the main theorem. The proof uses the same
-elliptical potential argument from Chapter~\ref{chap:bandits}.
-
-\begin{proof}[Proof of Theorem~\ref{them:main_blin_ucb}]
-Define $\Sigma_{t,h} := \lambda I + \sum_{\tau=0}^{t-1} X_h(f_\tau)
-X_h^{\top} (f_\tau)$ (we will set $\lambda$ later). 
-First let us show that  there exists an iteration $t$, such that for
-all $h\in[H]$,
-\begin{equation}\label{eq:show_two_terms}
-\|X_h(f_{{t}})\|^2_{\Sigma^{-1}_{{t},h}} \leq \exp\left(
-  \frac{H d}{T} \ln\left( 1 + \frac{T  B^2_X }{ d\lambda} \right) \right) - 1, \quad
-\left\| W_h(f_t)  - W_h(f^\star)\right\|^2_{\Sigma_{t, h}} \leq4 \lambda B_{W}^2 + 4T \varepsilon_{gen}^2.
-\end{equation}
-
-We now prove the first claim above. Using Lemma~\ref{lem:detA} (from
-our linear bandit analysis), 
-\begin{align*}
- \sum_{t=0}^{T-1} \ln\left( 1 + \|X_h(f_t)\|^2_{\Sigma^{-1}_{t,h}}
-  \right) \leq \ln \frac{\det(\Sigma_{T,h})}{\det(\lambda I)} \leq d
-  \ln\left( 1 + \frac{T  B^2_X }{d\lambda } \right), 
-\end{align*}  which holds for all $h$. 
-After multiplying by $1/T$ and summing over $h$, leads to:
-\begin{align*}
-\frac{1}{T} \sum_{t=0}^{T-1}  \sum_{h=0}^{H-1} \ln\left( 1 +
-  \|X_h(f_t)\|^2_{\Sigma^{-1}_{t,h}} \right) \leq \frac{H d}{T}
-  \ln\left( 1 + \frac{T  B^2_X }{d \lambda } \right).
-\end{align*} 
-By the intermediate value theorem, there exists a $t$
-such that
-$\sum_{h=0}^{H-1} \ln\left( 1 + \|X_h(f_t)\|^2_{\Sigma^{-1}_{t,h}}
-\right) \leq \frac{H d}{T} \ln\left( 1 + T B^2_X / (d\lambda)
-\right)$.
-%Denote this iteration as $\hat{t}$. 
-This further implies that for any
-$h$ in this iteration $t$, we have
-$\ln\left( 1 + \|X_h(f_{{t}})\|^2_{\Sigma^{-1}_{{t},h}}
-\right) \leq \frac{H d}{T} \ln\left( 1 + T B^2_X / (d\lambda) \right)$.
-Rearranging terms proves the first claim.
-%which means that:
-%\begin{align*}
-%\forall h, \|X_h(f_{\hat{t}})\|^2_{\Sigma^{-1}_{\hat{t},h}} \leq
-%\exp\left(  \frac{H d}{T} \ln\left( 1 + T  B^2_X / \lambda \right) \right) - 1. 
-%\end{align*}
-
-Now let us prove our claim on the second term.
-Using the definition of $\pi_{est}(s)$ and that $f_t$ is a feasible
-solution, we have that
-\begin{align*}
-& \sum_{i=0}^{t-1 } \left(  \E_{s\sim d_h^{\pi_{f_i}},a\sim \pi_{est}(s), s'\sim P_h(\cdot | s,a)} [\ell_{f_i}(s,a,s', f_t)  ] \right)^2   \leq 2 \sum_{i=0}^{t-1 } \left(  \E_{\Dcal_{i,h}} [ \ell_{f_i}(s,a,s', f_t) ]  \right)^2 \\
-& \quad + 2 \sum_{i=0}^{t-1} \left(  \E_{s\sim d_h^{\pi_{f_t}},a\sim
-  \pi_{est}(s), s'\sim P_h(\cdot | s,a)} [ \ell_{f_i}(s,a,s', f_t) ]
-  -\E_{\Dcal_{i,h}} [\ell_{f_i}(s,a,s', f_t)  ]  \right)^2 
-\leq 2 T \varepsilon_{gen}^2 + 2 T \varepsilon^2_{gen} = 4 T \varepsilon_{gen}^2,
-\end{align*} 
-Using this and the second condition in the definition of Bilinear class (Eq.~\ref{eq:bilinear_condition_2}), we have:
-\begin{align*}
-&\left\| W_h(f_t)  - W_h(f^\star)\right\|^2_{\Sigma_{t, h}} =
-\sum_{i=0}^{t-1} \left( (W_h(f_t) - W_h(f^\star))^\top X_h(f_i) \right)^2+
- \lambda \| W_h(f_t)  - W_h(f^\star) \|_2^2\\
-&= \sum_{i=0}^{t-1 } \left(  \E_{s\sim d_h^{\pi_{f_i}},a\sim \pi_{est}(s), s'\sim P_h(\cdot | s,a)} [ \ell_{f_i}(s,a,s', f_t) ]  \right)^2 
-+ \lambda \| W_h(f_t) - W_h(f^\star) \|_2^2
-\leq 4 T\varepsilon^2_{gen} + 4\lambda B_W^2,
-\end{align*}
-which proves our claimed bound on the second term.
-
-\iffalse
-%where for notation simplicity, we wrote $s'\sim P_h$ in short of $s'\sim P_h(\cdot | s,a)$.
-This implies that at iteration $i$, we have $\pi_{est} = \pi_{f_i}$. Together with the definition of $Q$-Bellman rank, we have:
-\begin{align*}
-\sum_{i=0}^{t-1 } \left(  \E_{s\sim d_h^{\pi_{f_i}},a\sim \pi_{f_i}(s), s'\sim P_h} [ \ell(s,a,s', f_t) ]  \right)^2 & = \sum_{i=0}^{t-1} \left( W_h(f_t)^\top X_h(f_i) \right)^2 \\
-&  = \left\| W_h(f_t) \right\|^2_{\Sigma_{t, h}} - \lambda \| W_h(f_t) \|_2^2 \leq 4 T\varepsilon^2_{gen}. 
-\end{align*} Rearrange terms, we have:
-\begin{align*}
-\left\| W_h(f_t) \right\|^2_{\Sigma_{t, h}} \leq \lambda \| W_h(f_t) \|_2^2 + T\varepsilon^2_{gen} \leq \lambda B_{W}^2 + T \varepsilon_{gen}^2.
-\end{align*}
-
-
-For any $h$ and $t$, via Cauchy Schwartz, we have:
-\begin{align}
-\left\langle W_h(f_t), X_h(f_t)\right\rangle  \leq \left\| X_h(f_t)  \right\|_{\Sigma_{t,h}^{-1}} \left\| W_h(f_t)  \right\|_{\Sigma_{t,h}}. 
-\label{eq:cs_brank}
-\end{align}
-To bound $\left\| W_h(f_t)  \right\|_{\Sigma_{t,h}}$, we note that $f_t$ is a feasible solution, i.e., 
-\begin{align*}
-\sum_{i=0}^{t-1 } \left(  \E_{\Dcal_{i,h}} [ \ell(s,a,s', f_t) ]  \right)^2 \leq R^2 = T \varepsilon^2_{gen}, 
-\end{align*} which also implies that:
-\begin{align*}
-& \sum_{i=0}^{t-1 } \left(  \E_{s\sim d_h^{\pi_{f_i}},a\sim \pi_{est}(s), s'\sim P_h} [\ell(s,a,s', f_t)  ] \right)^2   \leq 2 \sum_{i=0}^{t-1 } \left(  \E_{\Dcal_{i,h}} [ \ell(s,a,s', f_t) ]  \right)^2 \\
-& \quad + 2 \sum_{i=0}^{t-1} \left(  \E_{s\sim d_h^{\pi_{f_t}},a\sim \pi_{est}(s), s'\sim P_h} [ \ell(s,a,s', f_t) ] -\E_{\Dcal_{i,h}} [\ell(s,a,s', f_t)  ]  \right)^2 \leq 2 T \varepsilon_{gen}^2 + 2 T \varepsilon^2_{gen} = 4 T \varepsilon_{gen}^2,
-\end{align*} where for notation simplicity, we wrote $s'\sim P_h$ in
-short of $s'\sim P_h(\cdot | s,a)$. 
-
-Now we discuss two case: $Q$-bellman rank and $V$-Bellman rank. 
-
-For $Q$-Bellman rank, at iteration $i$, we have $\pi_{est} = \pi_{f_i}$. Together with the definition of $Q$-Bellman rank, we have:
-\begin{align*}
-\sum_{i=0}^{t-1 } \left(  \E_{s\sim d_h^{\pi_{f_i}},a\sim \pi_{f_i}(s), s'\sim P_h} [ \ell(s,a,s', f_t) ]  \right)^2 & = \sum_{i=0}^{t-1} \left( W_h(f_t)^\top X_h(f_i) \right)^2 \\
-&  = \left\| W_h(f_t) \right\|^2_{\Sigma_{t, h}} - \lambda \| W_h(f_t) \|_2^2 \leq 4 T\varepsilon^2_{gen}. 
-\end{align*} Rearrange terms, we have:
-\begin{align*}
-\left\| W_h(f_t) \right\|^2_{\Sigma_{t, h}} \leq \lambda \| W_h(f_t) \|_2^2 + T\varepsilon^2_{gen} \leq \lambda B_{W}^2 + T \varepsilon_{gen}^2.
-\end{align*}
-
-For $V$-Bellman rank case, we have $\pi_{est}(s) = \textrm{Unif}_{\Acal} $, since the loss function has an importance weighting term, we have:
-\begin{align*}
-  &\sum_{i=0}^{t-1 } \left(  \E_{s\sim d_h^{\pi_{f_i}},a\sim \textrm{Unif}_{\Acal} , s'\sim P_h} [ A \one\{a = \pi_{f_t}(s)\} \ell(s,a,s', f_t)  ] \right)^2 \\
-&=  \sum_{i=0}^{t-1 } \left(  \E_{s\sim d_h^{\pi_{f_i}},a\sim \pi_{f_t}(s), s'\sim P_h} [ \ell(s,a,s', f_t)]   \right)^2 = \sum_{i=0}^{t-1} \left( W_h(f_t)^\top X_h(f_i) \right)^2 = \left\| W_h(f_t) \right\|^2_{\Sigma_{t, h}} - \lambda \| W_h(f_t) \|_2^2 \leq 4 T\varepsilon^2_{gen}.
-\end{align*}
-Rearrange terms, we have:
-\begin{align*}
-\left\| W_h(f_t) \right\|^2_{\Sigma_{t, h}} \leq \lambda \| W_h(f_t) \|_2^2 + T\varepsilon^2_{gen} \leq \lambda B_{W}^2 + T \varepsilon_{gen}^2.
-\end{align*}
-\fi
-
-\iffalse
-Now back to Eq.~\ref{eq:cs_brank}, we have:
-\begin{align*}
-\left\langle W_h(f_t), X_h(f_t)\right\rangle \leq \left\| X_h(f_t)  \right\|_{\Sigma_{t,h}^{-1}} \left\| W_h(f_t)  \right\|_{\Sigma_{t,h}} \leq \left\| X_h(f_t)  \right\|_{\Sigma_{t,h}^{-1}} \left(\lambda B_{W}^2 + T \varepsilon_{gen}^2\right)
-\end{align*} for all $t$.
-\fi
-
-%Thus for the iteration $t = \argmin_{t\in[0,\dots, T-1]} \ln\left( 1 + \|X_h(f_t)\|^2_{\Sigma^{-1}_{t,h}} \right) $, we have:
-Now consider the iteration $t$ where Eqs.~\ref{eq:show_two_terms} hold. Using Lemma~\ref{lemma:optimsm_brank}, we have:
-\begin{align*}
- V^\star_0(s_0)  -  V^{\pi_{f_{t}}}_0(s_0)  & \leq \sum_{h=0}^{H-1} \left\lvert (W_h(f_{t}) - W_h(f^\star)) ^{\top} X_h(f_{t})\right\rvert \\
-& \leq \sum_{h=0}^{H-1} \| W_h(f_{t})  - W_h(f^\star)\|_{\Sigma_{t, h}} \| X_h(f_{t})  \|_{\Sigma^{-1}_{t, h}} \\
-%\leq \sqrt{H} \sqrt{ \sum_{h=0}^{H-1} \| X_h(f_{t})  \|^2_{\Sigma^{-1}_{t, h}} \| W_h(f_{t})  \|^2_{\Sigma_{t, h}} } 
-& \leq H\sqrt{ 4\lambda B_{W}^2 + 4T \varepsilon_{gen}^2 } 
-\sqrt{ \exp\left( \frac{Hd}{T} \ln(1 + \frac{T B^2_X }{d \lambda})  \right) - 1  }
-%& \leq \left(\lambda B_{W}^2 + T \varepsilon_{gen}^2\right) 
-\end{align*} 
-Now let us set $1/\lambda = B_W^2 /\varepsilon^2_{gen} + 1/B^2_X$.
-Using this setting of $\lambda$ and that $T = \left\lceil 2 Hd \ln\left(4 Hd\left(\frac{B^2_X B_W^2
-}{\varepsilon^2_{gen}}+1\right)\right)\right\rceil$,
+\begin{corollary}[Finite hypothesis classes]
+\label{cor:br_finite_inst}
+Assume $|\Hcal|<\infty$ and $\|Q_{h,g}\|_\infty\le H$ for all $h,g$.
+Fix $T$ and $m$ and apply Lemma~\ref{lem:br_epsgen_finite} with failure probability $\delta/(TH)$.
+Then one may take
 \[
-\frac{Hd}{T} \ln\left(1 + \frac{T B^2_X }{d \lambda}\right)
-\leq \frac{Hd}{T} \ln\left(1 
-+ \frac{T }{d} \cdot \left(\frac{B^2_X B_W^2 }{\varepsilon^2_{gen}}+1\right)
-\right)
-\leq \frac{Hd}{T} \ln\left(2 
-T \left(\frac{B^2_X B_W^2 }{\varepsilon^2_{gen}}+1\right)
-\right) \leq 1,
+\varepsilon_{\mathrm{gen}}
+\ \le\
+3H\sqrt{\frac{2\ln\!\big(2|\Hcal|TH/\delta\big)}{m}}
+\qquad\text{for $\mathtt{mode}=\mathtt{Q}$},
 \]
-where the last step follows since we can show that, for any positive
-$a,b$, 
-\begin{equation}\label{eqn:footnote}
-\textrm{If } T = 2 a \ln(2ab) \textrm{ then }
-a \ln( b T)/T \leq 1.
-\end{equation}
-%Using our setting that $T = \left\lceil 2 Hd \ln\left(4 Hd\left(\frac{B^2_X B_W^2
-%}{\varepsilon^2_{gen}}+1\right)\right)\right\rceil$, we can verify that $\frac{Hd}{T} \ln( 2T (B_X^2 B_W^2 / \varepsilon_{gen}^2 + 1)  ) \leq 1$.\footnote{We can show that $T = 2 a \ln(2 a%b)$ is the solution to the inequality $T \geq a \ln( b T)$ for any $a>0, b>0$. \label{footnote:inequality}}
-This implies that:
-\begin{align*}
- V^\star_0(s_0)  -    V^{\pi_{f_{{t}}}}_0(s_0) 
-& \leq H\sqrt{ 2\left(4\lambda B_{W}^2 + 4T \varepsilon_{gen}^2\right) } \\
-%&\leq  H \sqrt{ 2\lambda B_W^2 + 
-%16 \varepsilon^2_{gen}   Hd \ln\left(4 Hd\left(\frac{B^2_X B_W^2
-%    }{\varepsilon^2_{gen}}+1\right)\right) }.  \\
-&\leq  H \sqrt{ 8 \varepsilon^2_{gen} + 
-16 \varepsilon^2_{gen}   Hd \ln\left(4Hd\left(\frac{B^2_X B_W^2
-    }{\varepsilon^2_{gen}}+1\right)\right) }\\
-&\leq  5 \varepsilon_{gen}\sqrt{  d H^3\ln\left(4Hd\left(\frac{B^2_X B_W^2
-    }{\varepsilon^2_{gen}}+1\right)\right) }.  
-\end{align*}
-where the second inequality uses that $\lambda \leq \varepsilon^2_{gen}/
-B_W^2$, due to our choice of $\lambda$. This concludes the proof.
+and
+\[
+\varepsilon_{\mathrm{gen}}
+\ \le\
+3AH\sqrt{\frac{2\ln\!\big(2|\Hcal|TH/\delta\big)}{m}}
+\qquad\text{for $\mathtt{mode}=\mathtt{V}$}.
+\]
+Substituting into Theorem~\ref{thm:br_main} yields an explicit PAC guarantee after choosing $m$ so that
+the right-hand side is at most $\epsilon$.
+\end{corollary}
+
+\paragraph{Beyond finite classes.}
+For infinite hypothesis classes, one replaces the finite-class union bound by a standard complexity
+measure (covering numbers, VC-type dimensions, Rademacher complexity, etc.).
+Appendix~\ref{subsec:br_epsgen_appendix} records one convenient covering-number instantiation for
+linear $Q$-classes, which is the one used next. We use this below and
+in the next section.
+
+\paragraph{Linear Bellman completeness.}
+In the linear Bellman completeness setting (Chapter~\ref{chap:linear_features}), the one-step
+Bellman residuals can be written as linear functionals of a $d$-dimensional feature vector.
+Proposition~\ref{prop:br_linear_bc} shows this implies bounded $Q$-Bellman rank.
+Algorithm~\ref{alg:br_oe} therefore yields PAC guarantees for linear Bellman completeness from
+trajectory access alone, complementing the earlier generative-model guarantees for linear Bellman
+completeness.
+
+\begin{corollary}[Linear Bellman completeness]
+\label{cor:br_linear_bc_inst}
+Consider the linear Bellman completeness setting of Proposition~\ref{prop:br_linear_bc}, with feature
+dimension $d$ and weight bound $W$ (so $\|w_{h,g}\|_2\le W$ for all $h,g$).
+Take $\Hcal$ to be the corresponding product of stage-wise linear classes and run
+Algorithm~\ref{alg:br_oe} in $\mathtt{mode}=\mathtt{Q}$.
+Then $(\Mcal,\Hcal)$ has $Q$-Bellman rank at most $d$ and Lemma~\ref{lem:br_epsgen_linear} yields
+\[
+\varepsilon_{\mathrm{gen}}
+\ \le\
+3H\sqrt{\frac{2d\ln(1+4Wm)+\ln\!\big(TH/\delta\big)}{m}}.
+\]
+In particular, there is a choice of $m$ and $T$ for which Theorem~\ref{thm:br_main} guarantees
+$V_0^\star(s_0)-V_0^{\hat\pi}(s_0)\le \epsilon$ with probability at least $1-\delta$, using
+\[
+m \;=\; \widetilde O\!\left(\frac{d^2 H^5}{\epsilon^2}\right)
+\qquad\text{and}\qquad
+T \;=\; \widetilde O(Hd),
+\]
+where $\widetilde O(\cdot)$ hides logarithmic factors in $(H,d,W,1/\epsilon,1/\delta)$.
+In particular, the sample complexity is polynomial in $(H,d,1/\epsilon)$ and does not depend on $|\Scal|$.
+\end{corollary}
+
+As written, Algorithm~\ref{alg:br_oe} collects $m$ independent roll-ins for each stage, for a total of
+$O(mHT)$ trajectories of length at most $H$.
+In $\mathtt{mode}=\mathtt{Q}$ one can form all batches $\{\Dcal_{t,h}\}_{h=0}^{H-1}$ from the same $m$
+full episodes of $\pi_{f_t}$, reducing the interaction cost to $O(mT)$ full episodes.
+
+
+\newpage
+\section{Analysis}
+\label{subsec:br_analysis}
+
+We prove Theorem~\ref{thm:br_main}. Fix $\mathtt{mode}\in\{\mathtt{Q},\mathtt{V}\}$.
+For each stage $h$, let $\tilde{\ell}_h(\cdot;\,g)$ denote the loss used in the constraints and in
+data collection: $\tilde{\ell}_h=\ell_h$ for $\mathtt{mode}=\mathtt{Q}$, and
+$\tilde{\ell}_h=\tilde{\ell}_h^V$ for $\mathtt{mode}=\mathtt{V}$.
+
+For each iteration $t$ and stage $h$, the algorithm collects an i.i.d.\ batch
+$\Dcal_{t,h}=\{(s_i,a_i,s_i')\}_{i=1}^m$ by rolling in with $\pi_{f_t}$ to time $h$ and then choosing
+actions according to the $\mathtt{mode}$-dependent rule at time $h$.
+Define the empirical Bellman-error estimate
+\[
+\widehat{\mathcal{E}}_{t,h}(g)
+\;:=\;
+\E_{\Dcal_{t,h}}\big[\tilde{\ell}_h(s,a,s';g)\big]
+\;=\;
+\frac{1}{m}\sum_{i=1}^m \tilde{\ell}_h(s_i,a_i,s_i';g).
+\]
+By construction (and by the importance-weighting identity in the $V$-case),
+\[
+\E\big[\widehat{\mathcal{E}}_{t,h}(g)\mid \mathcal{H}_{<t}\big]
+\;=\;
+\mathcal{E}^{\mathtt{mode}}_h(f_t,g),
+\]
+where $\mathcal{E}^{\mathtt{mode}}_h$ denotes $\mathcal{E}^Q_h$ if $\mathtt{mode}=\mathtt{Q}$ and
+$\mathcal{E}^V_h$ if $\mathtt{mode}=\mathtt{V}$.
+
+\begin{lemma}[Uniform estimation event]
+\label{lem:br_good_event}
+Let $\varepsilon_{\mathrm{gen}}:=\varepsilon_{\mathrm{gen}}(m,\Hcal,\delta/(TH))$.
+With probability at least $1-\delta$, simultaneously for all $t\in\{0,\dots,T-1\}$, all
+$h\in\{0,\dots,H-1\}$, and all $g\in\Hcal$,
+\[
+\big|\widehat{\mathcal{E}}_{t,h}(g)-\mathcal{E}^{\mathtt{mode}}_h(f_t,g)\big|
+\ \le\ 
+\varepsilon_{\mathrm{gen}}.
+\]
+\end{lemma}
+
+\begin{proof}
+Condition on $\mathcal{H}_{<t}$. Then $\Dcal_{t,h}$ is i.i.d.\ from some distribution $\nu_{t,h}$
+over $(s,a,s')$. Assumption~\ref{assum:br_uniform_conv} applied with failure probability $\delta/(TH)$
+gives the desired bound for this fixed pair $(t,h)$. Union bound over $t$ and $h$ completes the proof.
 \end{proof}
 
+In the rest of the proof we condition on the event of Lemma~\ref{lem:br_good_event}.
+We also apply the standard shift so that $W_h(f^\star)=0$ for all $h$, absorbing any constant-factor
+change into $B_W$.
+
+\begin{lemma}[Feasibility and optimism]
+\label{lem:br_feasible_optimistic}
+On the event of Lemma~\ref{lem:br_good_event}, if $R=\sqrt{T}\,\varepsilon_{\mathrm{gen}}$ then
+$f^\star$ is feasible in every iteration $t$, and hence $V_{0,f_t}(s_0)\ge V_0^\star(s_0)$ for all $t$.
+\end{lemma}
+
+\begin{proof}
+Fix $t$ and $h$. Realizability implies $Q_{h,f^\star}=Q_h^\star$ and $V_{h+1,f^\star}=V_{h+1}^\star$.
+Therefore, for any $(s,a)$,
+\[
+\E_{s'\sim P_h^\star(\cdot\mid s,a)}\big[\ell_h(s,a,s';f^\star)\big]
+=
+Q_h^\star(s,a)-r_h(s,a)-\E[V_{h+1}^\star(s')]
+=0.
+\]
+It follows that $\mathcal{E}_h^{\mathtt{mode}}(f,f^\star)=0$ for every roll-in $f$ (both
+$\mathtt{Q}$ and $\mathtt{V}$). By Lemma~\ref{lem:br_good_event},
+$|\widehat{\mathcal{E}}_{i,h}(f^\star)|\le \varepsilon_{\mathrm{gen}}$ for all $i\in\{0,\dots,t-1\}$.
+Hence
+\[
+\sum_{i=0}^{t-1}\big(\widehat{\mathcal{E}}_{i,h}(f^\star)\big)^2
+\le
+t\,\varepsilon_{\mathrm{gen}}^2
+\le
+T\,\varepsilon_{\mathrm{gen}}^2
+=R^2,
+\]
+so $f^\star$ is feasible at iteration $t$. Since $f_t$ maximizes $V_{0,g}(s_0)$ over the feasible set and
+$V_{0,f^\star}(s_0)=V_0^\star(s_0)$, we have $V_{0,f_t}(s_0)\ge V_0^\star(s_0)$.
+\end{proof}
+
+\begin{lemma}[Performance bound via self Bellman error]
+\label{lem:br_perf_decomp}
+For every $t$,
+\[
+V_0^\star(s_0)-V_0^{\pi_{f_t}}(s_0)
+\ \le\
+\sum_{h=0}^{H-1}\Big|\mathcal{E}^{\mathtt{mode}}_h(f_t,f_t)\Big|
+\ =\
+\sum_{h=0}^{H-1}\Big|\langle X_h(f_t),W_h(f_t)\rangle\Big|.
+\]
+\end{lemma}
+
+\begin{proof}
+By Lemma~\ref{lem:br_feasible_optimistic}, $V_0^\star(s_0)\le V_{0,f_t}(s_0)$, so
+\[
+V_0^\star(s_0)-V_0^{\pi_{f_t}}(s_0)\le V_{0,f_t}(s_0)-V_0^{\pi_{f_t}}(s_0).
+\]
+Let $(s_h,a_h)_{h=0}^{H-1}$ be the trajectory generated by executing $\pi_{f_t}$ in the true MDP.
+Since $a_h=\pi_{h,f_t}(s_h)$ and $V_{h,f_t}(s_h)=Q_{h,f_t}(s_h,a_h)$,
+\[
+V_{0,f_t}(s_0)-\sum_{h=0}^{H-1} r_h(s_h,a_h)
+=
+\sum_{h=0}^{H-1}\big(Q_{h,f_t}(s_h,a_h)-r_h(s_h,a_h)-V_{h+1,f_t}(s_{h+1})\big).
+\]
+Taking expectation over the trajectory gives
+\[
+V_{0,f_t}(s_0)-V_0^{\pi_{f_t}}(s_0)
+=
+\sum_{h=0}^{H-1}\E\big[\ell_h(s_h,a_h,s_{h+1};f_t)\big]
+=
+\sum_{h=0}^{H-1}\mathcal{E}^{\mathtt{mode}}_h(f_t,f_t),
+\]
+and the absolute-value bound follows. Finally, Bellman rank gives
+$\mathcal{E}^{\mathtt{mode}}_h(f_t,f_t)=\langle X_h(f_t),W_h(f_t)\rangle$.
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:br_main}]
+Fix a regularization parameter $\lambda>0$ (chosen at the end) and define, for each stage $h$,
+\[
+\Sigma_{t,h}:=\lambda I+\sum_{i=0}^{t-1} X_h(f_i)X_h(f_i)^\top,
+\qquad
+\Sigma_{0,h}=\lambda I .
+\]
+
+First, we put bound on $\|W_h(f_t)\|_{\Sigma_{t,h}}$.
+Since $f_t$ is feasible,
+$\sum_{i=0}^{t-1}(\widehat{\mathcal{E}}_{i,h}(f_t))^2\le R^2$.
+On the good event, for each $i\in\{0,\dots,t-1\}$,
+\[
+\big|\langle X_h(f_i),W_h(f_t)\rangle\big|
+=
+\big|\mathcal{E}^{\mathtt{mode}}_h(f_i,f_t)\big|
+\le
+\big|\widehat{\mathcal{E}}_{i,h}(f_t)\big|+\varepsilon_{\mathrm{gen}}.
+\]
+Thus,
+\[
+\sum_{i=0}^{t-1}\langle X_h(f_i),W_h(f_t)\rangle^2
+\le
+2\sum_{i=0}^{t-1}\big(\widehat{\mathcal{E}}_{i,h}(f_t)\big)^2 + 2t\,\varepsilon_{\mathrm{gen}}^2
+\le
+2R^2+2T\varepsilon_{\mathrm{gen}}^2
+=
+4T\varepsilon_{\mathrm{gen}}^2.
+\]
+Therefore,
+\begin{equation}
+\label{eq:br_W_norm_bound}
+\|W_h(f_t)\|_{\Sigma_{t,h}}^2
+=
+\lambda\|W_h(f_t)\|_2^2 + \sum_{i=0}^{t-1}\langle X_h(f_i),W_h(f_t)\rangle^2
+\le
+\lambda B_W^2 + 4T\varepsilon_{\mathrm{gen}}^2.
+\end{equation}
+
+Now, we bound $\|X_h(f_t)\|_{\Sigma_{t,h}^{-1}}$ for a given $t$.
+For each fixed $h$, the matrix determinant lemma gives
+\[
+\det(\Sigma_{t+1,h})=\det(\Sigma_{t,h})\Big(1+\|X_h(f_t)\|_{\Sigma_{t,h}^{-1}}^2\Big),
+\]
+so summing over $t=0,\dots,T-1$ yields
+\[
+\sum_{t=0}^{T-1}\ln\Big(1+\|X_h(f_t)\|_{\Sigma_{t,h}^{-1}}^2\Big)
+=
+\ln\frac{\det(\Sigma_{T,h})}{\det(\lambda I)}.
+\]
+Since $\|X_h(f_t)\|_2\le B_X$,
+\[
+\mathrm{tr}(\Sigma_{T,h})
+\le d\lambda + \sum_{t=0}^{T-1}\|X_h(f_t)\|_2^2
+\le d\lambda + T B_X^2.
+\]
+Using $\det(M)\le (\mathrm{tr}(M)/d)^d$ for PSD $M$ gives
+\[
+\ln\frac{\det(\Sigma_{T,h})}{\det(\lambda I)}
+\le
+d\ln\Big(1+\frac{T B_X^2}{d\lambda}\Big).
+\]
+Summing over $h$ and averaging over $t$ yields
+\[
+\frac{1}{T}\sum_{t=0}^{T-1}\sum_{h=0}^{H-1}\ln\Big(1+\|X_h(f_t)\|_{\Sigma_{t,h}^{-1}}^2\Big)
+\le
+\frac{Hd}{T}\ln\Big(1+\frac{T B_X^2}{d\lambda}\Big).
+\]
+Hence there exists $t^\star\in\{0,\dots,T-1\}$ such that
+\[
+\sum_{h=0}^{H-1}\ln\Big(1+\|X_h(f_{t^\star})\|_{\Sigma_{t^\star,h}^{-1}}^2\Big)
+\le
+\frac{Hd}{T}\ln\Big(1+\frac{T B_X^2}{d\lambda}\Big).
+\]
+Since each summand is nonnegative, this implies that for every $h$,
+\begin{equation}
+\label{eq:br_X_norm_bound}
+\|X_h(f_{t^\star})\|_{\Sigma_{t^\star,h}^{-1}}^2
+\le
+\exp\!\left(\frac{Hd}{T}\ln\Big(1+\frac{T B_X^2}{d\lambda}\Big)\right)-1.
+\end{equation}
+
+
+By Lemma~\ref{lem:br_perf_decomp} and Cauchy--Schwarz,
+\begin{align*}
+V_0^\star(s_0)-V_0^{\pi_{f_{t^\star}}}(s_0)
+&\le
+\sum_{h=0}^{H-1}\|X_h(f_{t^\star})\|_{\Sigma_{t^\star,h}^{-1}}\,
+\|W_h(f_{t^\star})\|_{\Sigma_{t^\star,h}} \\
+&\le
+H\sqrt{\lambda B_W^2 + 4T\varepsilon_{\mathrm{gen}}^2}\;
+\sqrt{\exp\!\left(\frac{Hd}{T}\ln\Big(1+\frac{T B_X^2}{d\lambda}\Big)\right)-1},
+\end{align*}
+using \eqref{eq:br_W_norm_bound} and \eqref{eq:br_X_norm_bound}.
+
+Now choose
+\[
+\lambda := \frac{B_X^2}{\frac{B_X^2B_W^2}{\varepsilon_{\mathrm{gen}}^2}+1},
+\qquad
+L := \ln\!\Big(eHd\Big(\frac{B_X^2B_W^2}{\varepsilon_{\mathrm{gen}}^2}+1\Big)\Big),
+\qquad
+T := \left\lceil c\,Hd\,L\right\rceil,
+\]
+with $c>0$ a sufficiently large universal constant.
+Then $\lambda B_W^2\le \varepsilon_{\mathrm{gen}}^2$ and, since $T\asymp Hd\,L$,
+\[
+\ln\Big(1+\frac{T B_X^2}{d\lambda}\Big)
+=
+\ln\Big(1+\frac{T}{d}\Big(\frac{B_X^2B_W^2}{\varepsilon_{\mathrm{gen}}^2}+1\Big)\Big)
+\le
+L + \ln(3cL),
+\]
+which implies (for $c$ large enough) that
+\[
+\frac{Hd}{T}\ln\Big(1+\frac{T B_X^2}{d\lambda}\Big)\le 1.
+\]
+Using $\exp(x)-1\le 2x$ for $x\in[0,1]$ yields
+\[
+V_0^\star(s_0)-V_0^{\pi_{f_{t^\star}}}(s_0)
+\ \le\
+C_0\,\varepsilon_{\mathrm{gen}}\sqrt{dH^3\,L}
+\]
+for a universal constant $C_0>0$.
+
+Finally, we select the output iterate.
+Algorithm~\ref{alg:br_oe} returns $\hat\pi=\pi_{f_{\hat t}}$ where
+$\hat t\in\arg\min_{t\in\{0,\dots,T-1\}}\sum_{h=0}^{H-1}\big|\widehat{\mathcal{E}}_{t,h}(f_t)\big|$.
+On the good event, for every $t$ and $h$,
+\[
+\big|\mathcal{E}_h^{\mathtt{mode}}(f_t,f_t)\big|
+\le
+\big|\widehat{\mathcal{E}}_{t,h}(f_t)\big|+\varepsilon_{\mathrm{gen}},
+\qquad
+\big|\widehat{\mathcal{E}}_{t,h}(f_t)\big|
+\le
+\big|\mathcal{E}_h^{\mathtt{mode}}(f_t,f_t)\big|+\varepsilon_{\mathrm{gen}}.
+\]
+Therefore,
+\begin{align*}
+\sum_{h=0}^{H-1}\big|\mathcal{E}_h^{\mathtt{mode}}(f_{\hat t},f_{\hat t})\big|
+&\le
+\sum_{h=0}^{H-1}\big|\widehat{\mathcal{E}}_{\hat t,h}(f_{\hat t})\big| + H\varepsilon_{\mathrm{gen}} \\
+&\le
+\sum_{h=0}^{H-1}\big|\widehat{\mathcal{E}}_{t^\star,h}(f_{t^\star})\big| + H\varepsilon_{\mathrm{gen}} \\
+&\le
+\sum_{h=0}^{H-1}\big|\mathcal{E}_h^{\mathtt{mode}}(f_{t^\star},f_{t^\star})\big| + 2H\varepsilon_{\mathrm{gen}}.
+\end{align*}
+Combining with Lemma~\ref{lem:br_perf_decomp} and the bound for $t^\star$ gives
+\[
+V_0^\star(s_0)-V_0^{\hat\pi}(s_0)
+\le
+C_0\,\varepsilon_{\mathrm{gen}}\sqrt{dH^3\,L} + 2H\varepsilon_{\mathrm{gen}}.
+\]
+Since $L=\ln(eHd(\cdots))\ge 1$ and $d\ge 1$, the additive term $2H\varepsilon_{\mathrm{gen}}$ is
+dominated by the leading term up to a constant factor, yielding the stated bound of
+Theorem~\ref{thm:br_main}.
+\end{proof}
+
+\newpage
+
+\section{Model zoo: bounded Bellman rank}
+\label{sec:br_model_zoo}
+
+This section lists structural assumptions that imply bounded Bellman rank in either the $V$- or the
+$Q$-sense. We emphasize examples not already covered in the anchor examples above.
+
+SK: maybe make a point that we use the ``beyond finite classes'' to
+get instantiaions here (and to see the appendix).
+
+\subsection{Linear $Q^\star$ and linear $V^\star$ (a restricted linear class)}
+\label{subsec:br_zoo_linear_qv}
+
+Assume there are known feature maps $\phi:\Scal\times\Acal\to\R^d$ and $\psi:\Scal\to\R^d$ such that for
+each stage $h$,
+\[
+Q_h^\star(s,a) = \langle \theta_h^\star,\phi(s,a)\rangle,
+\qquad
+V_h^\star(s) = \langle w_h^\star,\psi(s)\rangle,
+\]
+and we restrict the hypothesis class to pairs $(\theta_h,w_h)$ that are internally consistent:
+\[
+\Hcal_h
+=
+\Big\{(\theta,w):\ \|\theta\|_2\le W_1,\ \|w\|_2\le W_2,\ \max_{a}\langle\theta,\phi(s,a)\rangle=\langle w,\psi(s)\rangle\ \forall s\Big\}.
+\]
+
+\begin{proposition}[Linear $Q^\star$ \& $V^\star$ imply bounded $Q$-Bellman rank]
+\label{prop:br_linear_qv}
+Under the assumptions above, $(\Mcal,\Hcal)$ has $Q$-Bellman rank at most $2d$.
+\end{proposition}
+
+\begin{proof}
+Fix $f,g$ and stage $h$, and write $g$'s parameters as $(\theta_h,w_{h+1})$.
+Using $Q_h^\star(s,a)=r_h(s,a)+\E[V_{h+1}^\star(s_{h+1})\mid s_h=s,a_h=a]$,
+\begin{align*}
+\mathcal{E}_h^{Q}(f,g)
+&=
+\E_{(s,a)\sim d_h^{\pi_f}}
+\Big[\langle \theta_h-\theta_h^\star,\phi(s,a)\rangle
++\Big\langle w_{h+1}-w_{h+1}^\star,\ \E[\psi(s_{h+1})\mid s_h=s,a_h=a]\Big\rangle\Big]\\
+&=
+\left\langle
+\begin{bmatrix}\theta_h-\theta_h^\star\\ w_{h+1}-w_{h+1}^\star\end{bmatrix},
+\ \E_{(s,a)\sim d_h^{\pi_f}}
+\begin{bmatrix}\phi(s,a)\\ \E[\psi(s_{h+1})\mid s_h=s,a_h=a]\end{bmatrix}
+\right\rangle.
+\end{align*}
+\end{proof}
+
+SK: we could just say in words that ``standard'' argument gives policy
+sample complexity? like in a \paragraph format.  presumably this is no
+different than the linear BC analysis? unclear if we need this one in
+the appendix?
+
+
+\subsection{$Q^\star$-state abstraction}
+\label{subsec:br_zoo_abstraction}
+
+Suppose there is an abstraction map $\xi:\Scal\to\Zcal$ with $|\Zcal|\ll|\Scal|$ such that for all $h$,
+\[
+\xi(s)=\xi(s')\ \Rightarrow\ Q_h^\star(s,a)=Q_h^\star(s',a)\ \forall a,
+\quad\text{and}\quad
+V_h^\star(s)=V_h^\star(s').
+\]
+This is a special case of Proposition~\ref{prop:br_linear_qv} with one-hot features on $\Zcal$.
+
+SK: maybe not worth mentioning SC here?
+
+\subsection{Low-occupancy structure}
+\label{subsec:br_zoo_occupancy}
+
+\begin{proposition}[Low state-action occupancy implies bounded $Q$-Bellman rank]
+\label{prop:br_low_occ_q}
+Assume that for each stage $h$ there exist maps $\beta_h:\Hcal\to\R^d$ and $\psi_h:\Scal\times\Acal\to\R^d$
+such that for all $f\in\Hcal$,
+$d_h^{\pi_f}(s,a)=\langle \beta_h(f),\psi_h(s,a)\rangle$.
+Then any realizable $\Hcal$ has $Q$-Bellman rank at most $d$.
+\end{proposition}
+
+\begin{proof}
+For any $f,g$,
+\[
+\mathcal{E}_h^{Q}(f,g)
+=
+\sum_{s,a} d_h^{\pi_f}(s,a)\,\E[\ell_h(s,a,s';g)\mid s,a]
+=
+\Big\langle \beta_h(f),\ \sum_{s,a}\psi_h(s,a)\,\E[\ell_h(s,a,s';g)\mid s,a]\Big\rangle.
+\]
+\end{proof}
+
+\begin{proposition}[Low state occupancy implies bounded $V$-Bellman rank]
+\label{prop:br_low_occ_v}
+Assume that for each stage $h$ there exist maps $\beta_h:\Hcal\to\R^d$ and $\psi_h:\Scal\to\R^d$
+such that for all $f\in\Hcal$, $d_h^{\pi_f}(s)=\langle \beta_h(f),\psi_h(s)\rangle$.
+Then any realizable $\Hcal$ has $V$-Bellman rank at most $d$.
+\end{proposition}
+
+\begin{proof}
+For any $f,g$,
+\[
+\mathcal{E}_h^{V}(f,g)
+=
+\sum_{s} d_h^{\pi_f}(s)\,\E[\ell_h(s,\pi_{h,g}(s),s';g)\mid s]
+=
+\Big\langle \beta_h(f),\ \sum_{s}\psi_h(s)\,\E[\ell_h(s,\pi_{h,g}(s),s';g)\mid s]\Big\rangle.
+\]
+\end{proof}
+
+SK: we could just say in words that ``standard'' argument gives policy
+SC.  if we don't have something in the appendix on this that is
+fine. but saying something in words would be good.
+
+
+\subsection{Low-rank transitions and representation learning}
+\label{subsec:br_zoo_lowrank_rep}
+
+Assume a low-rank transition factorization: there exist unknown maps
+$\mu_h^\star:\Scal\to\R^d$ and $\phi^\star:\Scal\times\Acal\to\R^d$ such that for all $h$,
+\[
+P_h^\star(s'\mid s,a)=\langle \mu_h^\star(s'),\phi^\star(s,a)\rangle,
+\qquad
+\|\phi^\star(s,a)\|_2\le 1.
+\]
+Then there exist realizable hypothesis classes for which the $V$-Bellman rank is at most $d$; the
+factorization comes from writing the $s_h$-distribution as a linear functional of the previous
+$(s_{h-1},a_{h-1})$ distribution and pushing the residual into the $\mu_h^\star$ side (cf.\ the
+derivation in the previous draft).
+
+SK: I think disucssing SC would be great here? and I think we should
+say why this is ``feature learning'' in a sentence. Basically the
+point here is that this moves ``beyond'' poly(d) to learn
+features. this is made clear in the next example. I think a formal
+result here would be nice? the point for this one is that this class
+is ``more general'' than the next one.
 
 
 
+\subsection{Sparse linear MDPs and feature selection}
+\label{subsec:br_zoo_sparse}
 
-\section{The Eluder Dimension}
+A sparse linear MDP is a special case of the low-rank model where a known ambient feature
+$\phi^\star(s,a)\in\R^D$ is used, but transitions depend only on an unknown subset
+$K^\star\subset[D]$ with $|K^\star|=s\ll D$.
+Equivalently, it is a rank-$s$ low-rank MDP after restricting to the coordinates in $K^\star$.
+In particular, there exist realizable classes with $V$-Bellman rank at most $s$.
 
-To be added...
+\paragraph{Why this is useful.}
+If the learner does not know $K^\star$, one natural hypothesis class is a union over candidate supports
+(e.g.\ all $s$-subsets). The rank remains $s$, while $\varepsilon_{\mathrm{gen}}$ depends only
+logarithmically on the number of candidates (Appendix~\ref{subsec:br_epsgen_appendix}), yielding
+sample complexity polynomial in $s$ and polylogarithmic in $D$.
 
+SK: formal result for this one would be great. i don't care where the
+proof is, but the concentration lemma should be in the appenix
 
-\iffalse
+SK: I moved this here (from the most recent Instantiation section). It
+didn't make sense in the instantions ans Model Zoo is after the algo
+section! and we have even defined the feature seleciton setting!
+
+\begin{corollary}[Feature selection: polynomial in $s$, polylogarithmic in $D$]
+\label{cor:br_feature_select_inst}
+In the sparse linear MDP setting with unknown support $K^\star\subset[D]$, $|K^\star|=s$, take $\Hcal$
+to be a union over candidate supports (e.g.\ all $s$-subsets) and run Algorithm~\ref{alg:br_oe} in
+$\mathtt{mode}=\mathtt{V}$.
+Then Lemma~\ref{lem:br_epsgen_union_linear} implies that $\varepsilon_{\mathrm{gen}}$ depends on the
+candidate family only through $\ln|\Phi|$, which is $O(s\ln D)$ for $s$-subset selection.
+Plugging into Theorem~\ref{thm:br_main} yields PAC sample complexity polynomial in $s$ and
+polylogarithmic in $D$.
+\end{corollary}
+
+SK: an oder version of the corollary.
+
+\begin{corollary}[Feature selection: polynomial in $s$, polylog in $D$]
+\label{cor:br_feature_select_inst}
+In the sparse linear MDP setting with unknown support $K^\star\subset[D]$, $|K^\star|=s$, take $\Hcal$ to
+be a union over candidate supports (e.g.\ all $s$-subsets) and run Algorithm~\ref{alg:br_oe} in
+$\mathtt{mode}=\mathtt{V}$. Then $\varepsilon_{\mathrm{gen}}$ depends on the candidate family only through
+a $\log|\Phi|$ term (Appendix~\ref{subsec:br_epsgen_appendix}), which becomes $O(s\log D)$ for $s$-subset
+selection. Plugging into Theorem~\ref{thm:br_main} yields PAC sample complexity polynomial in $s$ and
+polylogarithmic in $D$.
+\end{corollary}
+
+\subsection{Two plug-in instantiations}
+\label{subsec:br_plug_in}
+
+SK: now this should be gone.
+
+Theorem~\ref{thm:br_main} is stated in terms of $\varepsilon_{\mathrm{gen}}$.
+To illustrate how it translates into standard sample-complexity statements, we record two common
+instantiations. Both follow by plugging in the corresponding $\varepsilon_{\mathrm{gen}}$ bounds from
+Appendix~\ref{subsec:br_epsgen_appendix}.
+
+\begin{corollary}[Finite hypothesis classes: Q vs.\ V dependence on $A$]
+\label{cor:br_finite_inst}
+Assume $|\Hcal|<\infty$ and $\|Q_{h,g}\|_\infty\le H$ for all $h,g$.
 \begin{itemize}
-%\item BiLinear classes. give linear MDP example (done above.)
-\item Eluder dimension. just say all that is needed in the proof is a stopping condition.
+\item If we run Algorithm~\ref{alg:br_oe} in $\mathtt{mode}=\mathtt{Q}$ and $(\Mcal,\Hcal)$ has $Q$-Bellman
+rank $d$, then a Hoeffding+union bound gives $\varepsilon_{\mathrm{gen}}(m)\lesssim H\sqrt{\ln(|\Hcal|/\delta)/m}$,
+with no explicit $A$ factor.
+\item If we run Algorithm~\ref{alg:br_oe} in $\mathtt{mode}=\mathtt{V}$ and $(\Mcal,\Hcal)$ has $V$-Bellman
+rank $d$, then the importance weight yields $\varepsilon_{\mathrm{gen}}(m)\lesssim AH\sqrt{\ln(|\Hcal|/\delta)/m}$.
 \end{itemize}
-\fi
+In both cases, Theorem~\ref{thm:br_main} yields a PAC bound after choosing $m$ so that the RHS is at most $\epsilon$.
+\end{corollary}
+
+
+
+\section{Analysis}
+\label{subsec:br_analysis}
+
+We prove Theorem~\ref{thm:br_main}. Fix $\mathtt{mode}\in\{\mathtt{Q},\mathtt{V}\}$.
+For each stage $h$, let $\tilde{\ell}_h(\cdot;\,g)$ denote the loss used in the constraints and in
+data collection:
+$\tilde{\ell}_h=\ell_h$ for $\mathtt{mode}=\mathtt{Q}$, and $\tilde{\ell}_h=\tilde{\ell}_h^V$ for
+$\mathtt{mode}=\mathtt{V}$.
+For each iteration $t$ and stage $h$, the algorithm collects an i.i.d.\ batch
+$\Dcal_{t,h}=\{(s_i,a_i,s_i')\}_{i=1}^m$ from the distribution induced by rolling in with $\pi_{f_t}$
+to time $h$, then choosing $a_i$ according to the appropriate $\mathtt{mode}$-dependent rule at time $h$.
+Define the empirical Bellman-error estimate
+\[
+\widehat{\mathcal{E}}_{t,h}(g)
+\;:=\;
+\E_{\Dcal_{t,h}}\big[\tilde{\ell}_h(s,a,s';g)\big]
+\;=\;
+\frac{1}{m}\sum_{i=1}^m \tilde{\ell}_h(s_i,a_i,s_i';g).
+\]
+By construction (and by the importance-weighting identity in the $V$-case),
+\[
+\E\big[\widehat{\mathcal{E}}_{t,h}(g)\mid \mathcal{H}_{<t}\big]
+\;=\;
+\mathcal{E}^{\mathtt{mode}}_h(f_t,g),
+\]
+where $\mathcal{E}^{\mathtt{mode}}_h$ denotes $\mathcal{E}^Q_h$ if $\mathtt{mode}=\mathtt{Q}$ and
+$\mathcal{E}^V_h$ if $\mathtt{mode}=\mathtt{V}$.
+
+\begin{lemma}[Uniform estimation event]
+\label{lem:br_good_event}
+Let $\varepsilon_{\mathrm{gen}}:=\varepsilon_{\mathrm{gen}}(m,\Hcal,\delta/(TH))$.
+With probability at least $1-\delta$, simultaneously for all $t\in\{0,\dots,T-1\}$, all
+$h\in\{0,\dots,H-1\}$, and all $g\in\Hcal$,
+\[
+\big|\widehat{\mathcal{E}}_{t,h}(g)-\mathcal{E}^{\mathtt{mode}}_h(f_t,g)\big|
+\ \le\ 
+\varepsilon_{\mathrm{gen}}.
+\]
+\end{lemma}
+
+\begin{proof}
+Condition on $\mathcal{H}_{<t}$.  Then $\Dcal_{t,h}$ is i.i.d.\ from some distribution $\nu_{t,h}$
+over $(s,a,s')$. Assumption~\ref{assum:br_uniform_conv} applied with failure probability $\delta/(TH)$
+gives the desired bound for this fixed pair $(t,h)$. Union bound over $t$ and $h$ completes the proof.
+\end{proof}
+
+In the rest of the proof we condition on the event of Lemma~\ref{lem:br_good_event}.
+We also apply the standard shift discussed in the chapter so that $W_h(f^\star)=0$ for all $h$,
+absorbing any constant-factor change into $B_W$.
+
+\begin{lemma}[Feasibility and optimism]
+\label{lem:br_feasible_optimistic}
+On the event of Lemma~\ref{lem:br_good_event}, if $R=\sqrt{T}\,\varepsilon_{\mathrm{gen}}$ then
+$f^\star$ is feasible in every iteration $t$, and hence $V_{0,f_t}(s_0)\ge V_0^\star(s_0)$ for all $t$.
+\end{lemma}
+
+\begin{proof}
+Fix $t$ and $h$. Realizability implies $Q_{h,f^\star}=Q_h^\star$ and $V_{h+1,f^\star}=V_{h+1}^\star$.
+Therefore, for any $(s,a)$,
+\[
+\E_{s'\sim P_h^\star(\cdot\mid s,a)}\big[\ell_h(s,a,s';f^\star)\big]
+=
+Q_h^\star(s,a)-r_h(s,a)-\E[V_{h+1}^\star(s')]
+=0,
+\]
+so $\mathcal{E}_h^{\mathtt{mode}}(f,f^\star)=0$ for every roll-in $f$ (both $\mathtt{Q}$ and $\mathtt{V}$).
+Thus Lemma~\ref{lem:br_good_event} gives $|\widehat{\mathcal{E}}_{i,h}(f^\star)|\le \varepsilon_{\mathrm{gen}}$
+for all $i<h$, and hence
+\[
+\sum_{i=0}^{t-1}\big(\widehat{\mathcal{E}}_{i,h}(f^\star)\big)^2
+\le
+t\,\varepsilon_{\mathrm{gen}}^2
+\le
+T\,\varepsilon_{\mathrm{gen}}^2
+=R^2.
+\]
+So $f^\star$ is feasible. Since $f_t$ maximizes $V_{0,g}(s_0)$ over the feasible set and
+$V_{0,f^\star}(s_0)=V_0^\star(s_0)$, we have $V_{0,f_t}(s_0)\ge V_0^\star(s_0)$.
+\end{proof}
+
+\begin{lemma}[Performance bound via self Bellman error]
+\label{lem:br_perf_decomp}
+For every $t$,
+\[
+V_0^\star(s_0)-V_0^{\pi_{f_t}}(s_0)
+\ \le\
+\sum_{h=0}^{H-1}\Big|\mathcal{E}^{\mathtt{mode}}_h(f_t,f_t)\Big|
+\ =\
+\sum_{h=0}^{H-1}\Big|\langle X_h(f_t),W_h(f_t)\rangle\Big|.
+\]
+\end{lemma}
+
+\begin{proof}
+By Lemma~\ref{lem:br_feasible_optimistic}, $V_0^\star(s_0)\le V_{0,f_t}(s_0)$, so
+\[
+V_0^\star(s_0)-V_0^{\pi_{f_t}}(s_0)\le V_{0,f_t}(s_0)-V_0^{\pi_{f_t}}(s_0).
+\]
+Let $(s_h,a_h)_{h=0}^{H-1}$ be the trajectory generated by executing $\pi_{f_t}$ in the true MDP.
+Since $a_h=\pi_{h,f_t}(s_h)$ and $V_{h,f_t}(s_h)=Q_{h,f_t}(s_h,a_h)$, we can telescope:
+\begin{align*}
+V_{0,f_t}(s_0)-\sum_{h=0}^{H-1} r_h(s_h,a_h)
+&=
+\sum_{h=0}^{H-1}\big(Q_{h,f_t}(s_h,a_h)-r_h(s_h,a_h)-V_{h+1,f_t}(s_{h+1})\big).
+\end{align*}
+Taking expectation over the trajectory gives
+\[
+V_{0,f_t}(s_0)-V_0^{\pi_{f_t}}(s_0)
+=
+\sum_{h=0}^{H-1}\E\big[\ell_h(s_h,a_h,s_{h+1};f_t)\big]
+=
+\sum_{h=0}^{H-1}\mathcal{E}^{\mathtt{mode}}_h(f_t,f_t),
+\]
+and the absolute-value bound follows. Finally, Bellman rank gives
+$\mathcal{E}^{\mathtt{mode}}_h(f_t,f_t)=\langle X_h(f_t),W_h(f_t)\rangle$.
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:br_main}]
+Fix a regularization parameter $\lambda>0$ (chosen at the end) and define, for each stage $h$,
+\[
+\Sigma_{t,h}:=\lambda I+\sum_{i=0}^{t-1} X_h(f_i)X_h(f_i)^\top,
+\qquad
+\Sigma_{0,h}=\lambda I .
+\]
+
+\emph{A bound on $\|W_h(f_t)\|_{\Sigma_{t,h}}$.}
+Since $f_t$ is feasible,
+$\sum_{i=0}^{t-1}(\widehat{\mathcal{E}}_{i,h}(f_t))^2\le R^2$.
+On the good event, for each $i<h$,
+\[
+\big|\langle X_h(f_i),W_h(f_t)\rangle\big|
+=
+\big|\mathcal{E}^{\mathtt{mode}}_h(f_i,f_t)\big|
+\le
+\big|\widehat{\mathcal{E}}_{i,h}(f_t)\big|+\varepsilon_{\mathrm{gen}}.
+\]
+Thus, using $(u+v)^2\le 2u^2+2v^2$,
+\[
+\sum_{i=0}^{t-1}\langle X_h(f_i),W_h(f_t)\rangle^2
+\le
+2\sum_{i=0}^{t-1}\big(\widehat{\mathcal{E}}_{i,h}(f_t)\big)^2 + 2t\,\varepsilon_{\mathrm{gen}}^2
+\le
+2R^2+2T\varepsilon_{\mathrm{gen}}^2
+=
+4T\varepsilon_{\mathrm{gen}}^2.
+\]
+Therefore,
+\begin{equation}
+\label{eq:br_W_norm_bound}
+\|W_h(f_t)\|_{\Sigma_{t,h}}^2
+=
+\lambda\|W_h(f_t)\|_2^2 + \sum_{i=0}^{t-1}\langle X_h(f_i),W_h(f_t)\rangle^2
+\le
+\lambda B_W^2 + 4T\varepsilon_{\mathrm{gen}}^2.
+\end{equation}
+
+\emph{A bound on $\|X_h(f_t)\|_{\Sigma_{t,h}^{-1}}$ for some $t$.}
+For each fixed $h$, the matrix determinant lemma gives
+\[
+\det(\Sigma_{t+1,h})=\det(\Sigma_{t,h})\Big(1+\|X_h(f_t)\|_{\Sigma_{t,h}^{-1}}^2\Big),
+\]
+so summing over $t=0,\dots,T-1$ yields
+\[
+\sum_{t=0}^{T-1}\ln\Big(1+\|X_h(f_t)\|_{\Sigma_{t,h}^{-1}}^2\Big)
+=
+\ln\frac{\det(\Sigma_{T,h})}{\det(\lambda I)}.
+\]
+Since $\|X_h(f_t)\|_2\le B_X$, we have
+$\mathrm{tr}(\Sigma_{T,h})\le d\lambda + \sum_{t=0}^{T-1}\|X_h(f_t)\|_2^2 \le d\lambda + T B_X^2$.
+Using $\det(M)\le (\mathrm{tr}(M)/d)^d$ for PSD $M$,
+\[
+\ln\frac{\det(\Sigma_{T,h})}{\det(\lambda I)}
+\le
+d\ln\Big(1+\frac{T B_X^2}{d\lambda}\Big).
+\]
+Summing over $h$ and averaging over $t$ gives
+\[
+\frac{1}{T}\sum_{t=0}^{T-1}\sum_{h=0}^{H-1}\ln\Big(1+\|X_h(f_t)\|_{\Sigma_{t,h}^{-1}}^2\Big)
+\le
+\frac{Hd}{T}\ln\Big(1+\frac{T B_X^2}{d\lambda}\Big).
+\]
+Hence there exists some $\hat t\in\{0,\dots,T-1\}$ such that for every $h$,
+\begin{equation}
+\label{eq:br_X_norm_bound}
+\|X_h(f_{\hat t})\|_{\Sigma_{\hat t,h}^{-1}}^2
+\le
+\exp\!\left(\frac{Hd}{T}\ln\Big(1+\frac{T B_X^2}{d\lambda}\Big)\right)-1.
+\end{equation}
+
+\emph{Combine.}
+By Lemma~\ref{lem:br_perf_decomp} and Cauchy--Schwarz,
+\begin{align*}
+V_0^\star(s_0)-V_0^{\pi_{f_{\hat t}}}(s_0)
+&\le
+\sum_{h=0}^{H-1}\|X_h(f_{\hat t})\|_{\Sigma_{\hat t,h}^{-1}}\,
+\|W_h(f_{\hat t})\|_{\Sigma_{\hat t,h}} \\
+&\le
+H\sqrt{\lambda B_W^2 + 4T\varepsilon_{\mathrm{gen}}^2}\;
+\sqrt{\exp\!\left(\frac{Hd}{T}\ln\Big(1+\frac{T B_X^2}{d\lambda}\Big)\right)-1},
+\end{align*}
+where we used \eqref{eq:br_W_norm_bound} and \eqref{eq:br_X_norm_bound}.
+
+Now choose
+\[
+\lambda := \frac{B_X^2}{\frac{B_X^2B_W^2}{\varepsilon_{\mathrm{gen}}^2}+1},
+\qquad
+L := \ln\!\Big(Hd\Big(\frac{B_X^2B_W^2}{\varepsilon_{\mathrm{gen}}^2}+1\Big)\Big),
+\qquad
+T := \left\lceil c\,Hd\,L\right\rceil
+\]
+with $c>0$ a sufficiently large universal constant.
+Then $\lambda B_W^2\le \varepsilon_{\mathrm{gen}}^2$ and
+\[
+\ln\Big(1+\frac{T B_X^2}{d\lambda}\Big)
+=
+\ln\Big(1+\frac{T}{d}\Big(\frac{B_X^2B_W^2}{\varepsilon_{\mathrm{gen}}^2}+1\Big)\Big)
+\le
+\ln\Big(2T\Big(\frac{B_X^2B_W^2}{\varepsilon_{\mathrm{gen}}^2}+1\Big)\Big)
+\le
+c'\,L
+\]
+for a universal constant $c'>0$ (using $T\asymp Hd\,L$ and $\ln L\le L$ for $L\ge 1$; the case $L<1$
+is trivial after adjusting constants).
+With $c$ chosen large enough, this implies
+\[
+\frac{Hd}{T}\ln\Big(1+\frac{T B_X^2}{d\lambda}\Big)\le 1.
+\]
+Using $\exp(x)-1\le 2x$ for $x\in[0,1]$ and $\lambda B_W^2\le \varepsilon_{\mathrm{gen}}^2$ gives
+\[
+V_0^\star(s_0)-V_0^{\pi_{f_{\hat t}}}(s_0)
+\ \le\
+C\,\varepsilon_{\mathrm{gen}}\sqrt{dH^3\,L}
+\]
+for a universal constant $C>0$.
+
+Finally, Algorithm~\ref{alg:br_oe} returns a policy $\hat\pi$ from the set
+$\{\pi_{f_0},\dots,\pi_{f_{T-1}}\}$ (e.g.\ the best by a small number of evaluation rollouts),
+so $V_0^{\hat\pi}(s_0)\ge V_0^{\pi_{f_{\hat t}}}(s_0)$ and the same bound holds for $\hat\pi$.
+\end{proof}
 
 
 \section{Bibliographic Remarks and Further Readings}\label{ch7:bib}
@@ -1092,6 +1241,8 @@ introduced and studied in
 \cite{modi2020sample,ayoub2020model,zhou2021provably,zhou2021nearly}.
 The linear $Q^\star$ and $V^\star$ model and the low-occupancy model
 were first introduced by \citet{bilinear}.
+
+SK: need eluder ref. minmax ref of foster. and root(T) bellman rank result
 
 \iffalse
 Note that the definition of our average
