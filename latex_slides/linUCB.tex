@@ -479,6 +479,56 @@ Substitute our log-determinant bound (Lemma~\ref{lem:detA}) into the term above:
 This matches our definition of $\sqrt{\beta_t}$, concluding that $\mu^\star \in \textsc{Ball}_t$.
 \end{frame}
 
+\section{Deep Learning Connection: NTK Bandits}
+
+\begin{frame}\frametitle{Beyond Linear: Neural Network Reward Models}
+
+What if our expected reward is a non-linear neural network $f(x; \theta)$? 
+\[
+\E[r_t \mid x_t=x] \;=\; f(x; \theta^\star)
+\]
+Optimizing UCB exploration directly in deep neural networks is notoriously hard. But in the \textbf{overparameterized regime}, neural networks behave like linear models!
+
+\vspace{0.4cm}
+\pause
+\textbf{The Local Linear Approximation:}
+Consider a highly overparameterized network initialized at $\theta_0$. We take a first-order Taylor expansion around the initialization:
+\[
+f(x; \theta) \;\approx\; f(x; \theta_0) \;+\; \langle \nabla_\theta f(x; \theta_0),\, \theta - \theta_0 \rangle
+\]
+
+\vspace{0.2cm}
+\pause
+This allows us to extract a \alert{fixed feature map} driven by the network architecture:
+\[
+\phi(x) \;:=\; \nabla_\theta f(x; \theta_0) \;\in\; \R^p
+\]
+where $p$ is the number of parameters.
+\end{frame}
+
+\begin{frame}\frametitle{Neural UCB \& The Neural Tangent Kernel}
+
+Using the gradient feature map $\phi(x) = \nabla_\theta f(x; \theta_0)$, we can define a kernel:
+\[
+k_{\text{NTK}}(x, x') \;:=\; \phi(x)^\top \phi(x') \;=\; \langle \nabla_\theta f(x; \theta_0), \nabla_\theta f(x'; \theta_0) \rangle
+\]
+This is the \textbf{Neural Tangent Kernel (NTK)}.
+
+\vspace{0.4cm}
+\pause
+\textbf{Neural UCB (NTK Bandits):}
+We can simply run LinUCB (or GP-UCB) using these extracted features!
+\begin{align*}
+\onslide<2->{ \Lambda_t &= \lambda I + \sum_{\tau=0}^{t-1} \phi(x_\tau) \phi(x_\tau)^\top \\ }
+\onslide<3->{ b_t(x) &= \beta \sqrt{\phi(x)^\top \Lambda_t^{-1} \phi(x)} \qquad \text{(or use the kernel trick)} \\ }
+\onslide<4->{ x_t &= \argmax_{x \in D} \Big( f(x; \theta_{t-1}) \;+\; b_t(x) \Big) }
+\end{align*}
+
+\onslide<5->{
+\vspace{0.2cm}
+\small \textit{Takeaway: In the infinite-width limit, training a neural network with gradient descent is equivalent to kernel regression with the NTK. By using NTK features for our bonuses, we achieve theoretically grounded exploration in deep reinforcement learning.}
+}
+\end{frame}
 
 \end{document}
 
