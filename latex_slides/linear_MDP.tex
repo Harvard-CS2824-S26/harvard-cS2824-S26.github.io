@@ -33,21 +33,12 @@
   \tableofcontents
 \end{frame}
 
-\begin{frame}
-\titlepage  
-\end{frame}
-
-\begin{frame}[noframenumbering]
-  \frametitle{Outline}
-  \tableofcontents
-\end{frame}
-
 \section{Motivation \& Setting}
 
 \begin{frame}\frametitle{Recap: From Bandits to MDPs}
 
 \begin{itemize}
-\item \textbf{Tabular MDPs (UCBVI):} We achieved $\tilde{O}(H \sqrt{S A K})$ regret. 
+\item \textbf{Tabular MDPs (UCBVI):} We achieved $\tilde{O}(\textrm{poly}(H) \sqrt{S A K})$ regret. 
   \begin{itemize}
     \item Great, but scales poorly when the state space $\Scal$ is enormous.
   \end{itemize}
@@ -91,7 +82,7 @@ s_0^k = s_0, \qquad a_h^k = \pi_h^k(s_h^k), \qquad s_{h+1}^k \sim P_h^\star(\cdo
 \vspace{0.2cm}
 \textbf{Regret:}
 \[
-R_K \;:=\; \E\!\left[\sum_{k=0}^{K-1}\bigl(V^\star - V^{\pi^k}\bigr)\right]
+R_K \;:=\; \sum_{k=0}^{K-1}\bigl(V^\star - V^{\pi^k}\bigr)
 \]
 
 \end{frame}
@@ -102,253 +93,598 @@ R_K \;:=\; \E\!\left[\sum_{k=0}^{K-1}\bigl(V^\star - V^{\pi^k}\bigr)\right]
   \tableofcontents[currentsection]
 \end{frame}
 
+% =======================
+% Linear Transition Model
+% =======================
 \begin{frame}\frametitle{The Linear Transition Model}
 
-We assume the transition kernel is \emph{linear in known features}. 
+We assume the transition kernel is \emph{linear in known features}.
 
-\vspace{0.2cm}
-\begin{assumption}[Linear MDP]\label{assump:linear_mdp}
-There exists a known feature map $\phi:\Scal\times\Acal\to\R^d$ with $\sup_{s,a}\|\phi(s,a)\|_2\le 1$, and unknown parameters $\{\mu_h^\star\}_{h=0}^{H-1}$ (where $\mu_h^\star\in\R^{|\Scal|\times d}$), such that:
+%\vspace{0.25cm}
+\begin{assumption}[Linear MDP]\label{assump:linear_mdp_slides}
+There exists a known feature map $\phi:\Scal\times\Acal\to\R^d$ with
+$\sup_{s,a}\|\phi(s,a)\|_2\le 1$, and unknown parameters
+$\{\mu_h^\star\}_{h=0}^{H-1}$ with $\mu_h^\star\in\R^{|\Scal|\times d}$ such that for all
+$h$ and $(s,a)$,
 \[
-P_h^\star(\cdot\mid s,a) \;=\; \mu_h^\star\,\phi(s,a)
+P_h^\star(\cdot\mid s,a) \;=\; \mu_h^\star\,\phi(s,a).
 \]
+Equivalently, for each $s'\in\Scal$, \alert{
+$P_h^\star(s'\mid s,a) \;=\; \mu_h^\star(s')^\top \phi(s,a)$}.
+%where $\mu_h^\star(s')\in\R^d$ is the $s'$-th row of $\mu_h^\star$.
 \end{assumption}
 
-\vspace{0.4cm}
+\vspace{0.15cm}
 \pause
-\textbf{Normalization condition:}
-For technical convenience, we assume the unknown measures satisfy:
+\textbf{Low-rank view (matrix form).}
+View $P_h^\star$ as a matrix in $\R^{(SA)\times S}$ and
+$\Phi\in\R^{(SA)\times d}$. Then
 \[
-\big\|(\mu_h^\star)^\top f\big\|_2 \;\le\; \sqrt{d}\,\|f\|_\infty \qquad \text{for all } f:\Scal\to\R
+P_h^\star \;=\; \Phi\,(\mu_h^\star)^\top,
+\qquad\text{so}\qquad \mathrm{rank}(P_h^\star)\le d.
 \]
+
+\vspace{0.15cm}
+\pause
+\textbf{Normalization (used to bound coefficients).}
+For all $f:\Scal\to\R$,
+\[
+\big\|(\mu_h^\star)^\top f\big\|_2 \;\le\; \sqrt{d}\,\|f\|_\infty.
+\]
+
 \end{frame}
 
 
-\begin{frame}\frametitle{The ``Magic'' Property: Linear Backups}
+% ==========================================
+% Examples & intuition: what is a Linear MDP?
+% ==========================================
+\begin{frame}\frametitle{Examples \& Intuition: What is a Linear MDP?}
 
-A fundamental consequence of the Linear MDP model is how it behaves under conditional expectations.
+\small
+\textit{Warm-up (tabular):} take $\phi(s,a)$ one-hot in $\R^{SA}$, so $d=SA$.
 
-%\vspace{0.2cm}
-\begin{lemma}[Linearization of $P_h^\star f$]\label{lem:linearize_Pf}
-Fix any bounded function $f:\Scal\to\R$. Define $w_{h,f}^\star \;:=\; (\mu_h^\star)^\top f \in \R^d$. Then:
-\[
-(P_h^\star f)(s,a) \;=\; \phi(s,a)^\top w_{h,f}^\star
-\]
-Moreover, if $\|f\|_\infty\le H$, then $\|w_{h,f}^\star\|_2\le H\sqrt{d}$.
-\end{lemma}
-
-%\vspace{0.4cm}
+\vspace{0.25cm}
 \pause
-\textbf{Proof Sketch:}
-\begin{align*}
-(P_h^\star f)(s,a) &= \sum_{s'\in\Scal} f(s')\,P_h^\star(s'\mid s,a) \\
-&= \sum_{s'\in\Scal} f(s') \big( \mu_h^\star(s')^\top \phi(s,a) \big) \\
-&= \Big( \sum_{s'\in\Scal} f(s') \mu_h^\star(s') \Big)^\top \phi(s,a) \;=\; (w_{h,f}^\star)^\top \phi(s,a).
-\end{align*}
-\end{frame}
-
-
-\begin{frame}\frametitle{Implication: A Strong Form of Completeness}
-
-Recall from our ``Assumption Ladder'': \textbf{Bellman Completeness} requires that if $f \in \mathcal{F}$, then $\mathcal{T}_h f \in \mathcal{F}$.
-
-\vspace{0.4cm}
-\pause
-The Linear MDP assumption is \alert{much stronger}:
-\[
-f:\Scal\to\R \quad\longmapsto\quad \bigl((s,a)\mapsto (P_h^\star f)(s,a)\bigr)
-\]
-takes \emph{every bounded} $f$ into $\mathrm{span}(\phi)$.
-
-\vspace{0.4cm}
-\pause
-\textbf{Why is this amazing?}
+\textbf{Example 1: Latent mixture / ``topic'' model}
 \begin{itemize}
-    \item The value function $V_{h+1}^\star$ is highly non-linear (due to $\max_a$).
-    \item Our optimistic estimates $\widehat{V}_{h+1}^k$ will be even messier (due to clipping and bonuses).
-    \item \alert{It doesn't matter!} The one-step lookahead of these messy functions is \emph{always} a perfect linear function of $\phi(s,a)$. Least-squares will always be well-specified.
+  \item Known mixture weights: $\phi(s,a)\in\Delta(d)$.
+  \item Unknown components: $\mu_{h,1}^\star,\dots,\mu_{h,d}^\star\in\Delta(\Scal)$.
+  \item Mixture of $d$ base transition kernels:
+  \[
+  P_h^\star(\cdot\mid s,a)=\sum_{i=1}^d \phi_i(s,a)\,\mu_{h,i}^\star(\cdot).
+  \]
+\end{itemize}
+
+\vspace{0.10cm}
+\pause
+\textbf{Example 2: Known state embedding + unknown linear latent dynamics}
+\begin{itemize}
+  \item Suppose we are given a \emph{state embedding} $\psi:\Scal\to\R^d$ (learned or engineered).
+  \item Unknown dynamics act linearly in the embedding space: $W_h^\star\in\R^{d\times d}$,
+  \[
+  P_h^\star(s'\mid s,a)=\psi(s')^\top W_h^\star \phi(s,a)
+  \qquad (\text{with normalization so this is a distribution}).
+  \]
+  \item Interpretation: next-state probabilities depend on $(s,a)$ only through $\phi(s,a)$,
+  and the dependence on $s'$ is summarized by $\psi(s')$.
 \end{itemize}
 
 \end{frame}
 
-\section{The Algorithm: Lin-UCBVI}
-\begin{frame}[noframenumbering]
-  \frametitle{Outline}
-  \tableofcontents[currentsection]
+% ======================================
+% Magic property: linearizing one-step lookahead
+% ======================================
+\begin{frame}\frametitle{The ``Magic'' Property: Linear Backups}
+
+\small
+\textbf{Key consequence:} for any bounded $f:\Scal\to\R$, $(P_h^\star f)(s,a)$ is linear in $\phi(s,a)$.
+
+\vspace{0.03cm}
+\begin{lemma}[Linearization of $P_h^\star f$]\label{lem:linearize_Pf_slides}
+Fix $h$ and bounded $f$. Let $w_{h,f}^\star := (\mu_h^\star)^\top f\in\R^d$. Then
+\[
+(P_h^\star f)(s,a)
+:= \E_{s'\sim P_h^\star(\cdot\mid s,a)}[f(s')]
+\;=\;
+\phi(s,a)^\top w_{h,f}^\star.
+\]
+If $\|f\|_\infty\le H$, then $\|w_{h,f}^\star\|_2\le H\sqrt d$.
+\end{lemma}
+
+\vspace{0.03cm}
+\pause
+\textbf{Proof sketch:}
+\[
+(P_h^\star f)(s,a)=\sum_{s'} f(s')\,P_h^\star(s'|s,a)
+=\sum_{s'} f(s')\,\mu_h^\star(s')^\top \phi(s,a),
+\]
+\[
+=\Big(\sum_{s'} f(s')\,\mu_h^\star(s')\Big)^\top \phi(s,a)
+=( (\mu_h^\star)^\top f)^\top \phi(s,a).
+\]
+
 \end{frame}
 
-\begin{frame}\frametitle{Stage-wise Ridge Regression}
+% ======================================
+% Implication: strong completeness
+% ======================================
+\begin{frame}\frametitle{Implication: A Strong Form of Completeness}
 
-To build our algorithm, we estimate $(P_h^\star f)(s,a)$ using ridge regression.
+\small
+\textbf{Recall (Bellman completeness):}\;
+$f\in\Fcal \Rightarrow \Tcal_h f \in \Fcal$ \quad (closure only for $f$ in the hypothesis class).
 
-\vspace{0.2cm}
-At episode $k$, stage $h$, our dataset is $D_h^k := \{(s_h^i, a_h^i, s_{h+1}^i)\}_{i=0}^{k-1}$. Let $x_h^i := \phi(s_h^i, a_h^i)$.
-
-\vspace{0.4cm}
-\textbf{1. The regularized design matrix:}
+\vspace{0.15cm}
+\pause
+\textbf{Linear MDP is stronger (for the transition part):}\;
+for each stage $h$,
 \[
-\Lambda_h^k \;:=\; \lambda I + \sum_{i=0}^{k-1} x_h^i (x_h^i)^\top
+\forall\, f:\Scal\to\R \ \text{bounded},\qquad
+(P_h^\star f)(s,a)=\E[f(s')\mid s,a]\in \mathrm{span}(\phi).
+\]
+Equivalently, there exists $w_{h,f}^\star\in\R^d$ such that
+\[
+(P_h^\star f)(s,a)=\phi(s,a)^\top w_{h,f}^\star \qquad \forall (s,a).
 \]
 
-\vspace{0.2cm}
-\textbf{2. The ridge estimator} for the linear coefficient of any function $f$:
-\[
-\widehat w_{h,f}^k \;:=\; (\Lambda_h^k)^{-1}\sum_{i=0}^{k-1} x_h^i\,f(s_{h+1}^i)
-\]
-
-\vspace{0.2cm}
-\textbf{3. The empirical transition operator:}
-\[
-(\widehat P_h^k f)(s,a) \;:=\; \phi(s,a)^\top \widehat w_{h,f}^k
-\]
+\vspace{0.15cm}
+\pause
+\textbf{Why this matters for DP / least squares:}
+\begin{itemize}
+  \item $V_{h+1}^\star$ is nonlinear (max over actions), and $\widehat V_{h+1}^k$ is even messier (bonus + clipping).
+  \item \alert{Still:} the \emph{regression target} $(s,a)\mapsto (P_h^\star \widehat V_{h+1}^k)(s,a)$ is always exactly linear in $\phi(s,a)$.
+  \item So each stage reduces to a \emph{well-specified} linear regression problem for $w_{h,\widehat V_{h+1}^k}^\star$.
+\end{itemize}
 
 \end{frame}
 
 
+% ======================================
+% Planning with a known model
+% ======================================
+\begin{frame}\frametitle{Planning with a Known Model}
+
+\small
+Suppose we knew the transition parameters $\{\mu_h^\star\}_{h=0}^{H-1}$.
+
+\vspace{0.15cm}
+\textbf{Backward DP:}\quad $ V_H \equiv 0$, and for $h=H-1,\dots,0$,
+\[
+Q_h^\star(s,a)=r_h(s,a)+(P_h^\star V_{h+1}^\star)(s,a),
+\qquad
+V_h^\star(s)=\max_{a\in\Acal} Q_h^\star(s,a).
+\]
+
+\vspace{0.15cm}
+\pause
+\textbf{Linear MDP plug-in:}\quad for any $f$,
+\[
+(P_h^\star f)(s,a)=\phi(s,a)^\top(\mu_h^\star)^\top f.
+\]
+So the Bellman backup can be written as
+\[
+Q_h^\star(s,a)=r_h(s,a)+\phi(s,a)^\top w_h^\star,
+\qquad
+w_h^\star := (\mu_h^\star)^\top V_{h+1}^\star \in \R^d.
+\]
+
+\vspace{0.15cm}
+\pause
+\textbf{Key takeaway:} we never need the full $P_h^\star(\cdot\mid s,a)$.
+To plan, we can estimate the \emph{linear functional}:
+\[
+(s,a)\mapsto (P_h^\star V_{h+1})(s,a)=\phi(s,a)^\top w_{h,V_{h+1}}^\star.
+\]
+Lin-UCBVI does this with ridge regression + an elliptical bonus.
+
+\end{frame}
+
+% =========================================================
+% Stage-wise ridge regression (compact + sets up bonus cleanly)
+% =========================================================
+\begin{frame}\frametitle{Stage-wise Ridge Regression (Estimating $P_h^\star f$)}
+
+\small
+At episode $k$, stage $h$, we have past transitions
+$D_h^k=\{(s_h^i,a_h^i,s_{h+1}^i)\}_{i<k}$ and features $x_h^i:=\phi(s_h^i,a_h^i)\in\R^d$.
+
+\vspace{0.10cm}
+\textbf{Design matrix:}\;
+\[
+\Lambda_h^k := \lambda I + \sum_{i=0}^{k-1} x_h^i(x_h^i)^\top.
+\]
+
+\vspace{0.10cm}
+\textbf{Ridge fit for a given target function $f:\Scal\to\R$:}\;
+\[
+\widehat w_{h,f}^k := (\Lambda_h^k)^{-1}\sum_{i=0}^{k-1} x_h^i\, f(s_{h+1}^i),
+\qquad
+(\widehat P_h^k f)(s,a):=\phi(s,a)^\top \widehat w_{h,f}^k.
+\]
+
+\vspace{0.10cm}
+\pause
+\textbf{Interpretation:}
+we never estimate $P_h^\star(\cdot\mid s,a)$; we only estimate the \emph{linear functional}
+$(s,a)\mapsto (P_h^\star f)(s,a)$ for the specific $f$ used in planning (namely $f=\widehat V_{h+1}^k$).
+
+\end{frame}
+
+
+% =========================================================
+% Bonus: where it comes from (replaces the "Ridge and Bonus?" placeholder)
+% =========================================================
+\begin{frame}\frametitle{UCB Bonus: Uncertainty in Direction $\phi(s,a)$}
+
+\small
+Under the linear MDP model, for each fixed $f$ there is a true coefficient
+$w_{h,f}^\star=(\mu_h^\star)^\top f$ with $(P_h^\star f)(s,a)=\phi(s,a)^\top w_{h,f}^\star$.
+Ridge gives $\widehat w_{h,f}^k$.
+
+\vspace{0.10cm}
+\pause
+\textbf{High-probability form (LinUCB-style):}\;
+for all $(s,a)$,
+\[
+\big|\phi(s,a)^\top(\widehat w_{h,f}^k-w_{h,f}^\star)\big|
+\ \le\
+\beta\;\|\phi(s,a)\|_{(\Lambda_h^k)^{-1}}.
+\]
+
+\vspace{0.10cm}
+\pause
+\textbf{So we use the exploration bonus:}\;
+\[
+b_h^k(s,a) := \beta\,\|\phi(s,a)\|_{(\Lambda_h^k)^{-1}}.
+\]
+This is large when $\phi(s,a)$ lies in a poorly-sampled direction (small eigenvalues of $\Lambda_h^k$),
+and shrinks as we collect more data.
+
+\end{frame}
+
+
+% =========================================================
+% Optimistic planning (minor compacting)
+% =========================================================
 \begin{frame}\frametitle{Optimistic Planning (Lin-UCBVI)}
 
-Just like UCBVI, we use backward induction, but with an elliptical bonus!
-
-\vspace{0.2cm}
-\textbf{The Exploration Bonus:}
+\small
+\textbf{Exploration bonus:}\;
 \[
-b_h^k(s,a) \;:=\; \beta\,\|\phi(s,a)\|_{(\Lambda_h^k)^{-1}}
+b_h^k(s,a) := \beta\,\|\phi(s,a)\|_{(\Lambda_h^k)^{-1}}.
 \]
 
+\vspace{0.10cm}
 \pause
-\vspace{0.2cm}
-\textbf{The Value Iteration Updates:}
-Initialize $\widehat V_H^k(\cdot)\equiv 0$. For $h=H-1,\dots,0$:
+\textbf{Backward induction:}\; set $\widehat V_H^k\equiv 0$. For $h=H-1,\dots,0$,
 \begin{align*}
 \onslide<2->{ \widehat Q_h^k(s,a) &:= \mathrm{clip}_{[0,H-h]}\!\Big( r_h(s,a) + b_h^k(s,a) + (\widehat P_h^k \widehat V_{h+1}^k)(s,a) \Big) \\ }
 \onslide<3->{ \widehat V_h^k(s) &:= \max_{a\in\Acal}\widehat Q_h^k(s,a) \\ }
-\onslide<4->{ \pi_h^k(s) &\in \argmax_{a\in\Acal}\widehat Q_h^k(s,a) }
+\onslide<4->{ \pi_h^k(s) &\in \argmax_{a\in\Acal}\widehat Q_h^k(s,a). }
 \end{align*}
 
 \onslide<5->{
-\vspace{0.2cm}
-Execute $\pi^k$ for one episode, observe trajectory, update $\Lambda_h^{k+1}$, and repeat.
+\vspace{0.10cm}
+Execute $\pi^k$ for one episode, then update $\Lambda_h^{k+1}=\Lambda_h^k+\phi(s_h^k,a_h^k)\phi(s_h^k,a_h^k)^\top$.
 }
+
 \end{frame}
 
 
 \begin{frame}\frametitle{The Regret Guarantee}
 
+\small
 \begin{theorem}[Regret of Lin-UCBVI]
-Assume the Linear MDP model and bounded rewards. Run Lin-UCBVI with $\lambda \ge 1$ and appropriately chosen bonus scale $\beta = \tilde{O}(Hd)$. 
+Assume the Linear MDP model and $r_h(s,a)\in[0,1]$. Run Lin-UCBVI with $\lambda\ge 1$ and
+a bonus scale $\beta=\widetilde O(Hd)$ (from a uniform confidence bound).
 
-\vspace{0.2cm}
-Then, with high probability, the expected regret is bounded by:
+Then with probability at least $1-\delta$, the cumulative regret satisfies:
 \[
-R_K \;\le\; c\,\beta\,H\,\sqrt{K\,d\,\log\!\Big(1+\tfrac{K}{\lambda}\Big)} \;+\; \text{small constant}
+R_K \;=\; \sum_{k=0}^{K-1} \left(V^\star - V^{\pi^k}\right)
+\;\le\;
+c\,\beta\,H\,\sqrt{K\,d\,\log\!\Big(1+\tfrac{K}{\lambda}\Big)}
+\;+\;
+\mathcal{O}\Big(H\sqrt{K\log(1/\delta)}\Big),
 \]
-which simplifies to:
-\[
-R_K \;=\; \tilde{O}\!\Big(H^2 \sqrt{d^3 K}\Big)
-\]
+for a universal constant $c$.
 \end{theorem}
 
+\vspace{0.15cm}
 \pause
-\vspace{0.4cm}
 \textbf{Takeaways:}
 \begin{itemize}
-    \item We have fully removed the dependence on $|\Scal|$ and $|\Acal|$.
-    \item The structural complexity is entirely captured by the feature dimension $d$.
+  \item The $\mathcal{O}(\sqrt{K})$ martingale noise term is dominated by the primary $\beta$ term.
+  \item Absorbing lower-order terms gives: $R_K \;=\; \widetilde O\!\Big(H^2\sqrt{d^3K}\Big)$.
+  \item No explicit dependence on $|\Scal|$ or $|\Acal|$ (structure captured entirely by $d$).
 \end{itemize}
 
 \end{frame}
 
-\section{Analysis \& Proof Sketch}
-\begin{frame}[noframenumbering]
-  \frametitle{Outline}
-  \tableofcontents[currentsection]
-\end{frame}
 
+% =========================================================
+% Top-level proof roadmap (new)
+% =========================================================
+\begin{frame}\frametitle{Proof Roadmap (What are the three moving parts?)}
 
-\begin{frame}\frametitle{The Statistical Hurdle: Why is this hard?}
+\small
+We reuse the same three ideas as UCBVI + LinUCB:
 
-Why can't we just plug in the confidence bound from Linear Bandits?
-
-\vspace{0.2cm}
-In LinUCB, we bounded the error of estimating a \emph{fixed} parameter $\mu^\star$. Here, we are running regression on a target function:
+\vspace{0.10cm}
+\begin{enumerate}
+\item \textbf{(Confidence)} \quad
+Uniformly control value-dependent regression targets:
 \[
-\widehat w_{h,\widehat V_{h+1}^k}^k \;:=\; (\Lambda_h^k)^{-1}\sum_{i=0}^{k-1} x_h^i\,\alert{\widehat V_{h+1}^k(s_{h+1}^i)}
+\big|(\widehat P_h^k f)(s,a)-(P_h^\star f)(s,a)\big|
+\ \le\ \beta\,\|\phi(s,a)\|_{(\Lambda_h^k)^{-1}}
+\quad \text{for } f=\widehat V_{h+1}^k.
 \]
+\item \textbf{(Optimism)} \quad
+Backward induction shows $\widehat V_h^k(s)\ge V_h^\star(s)$ for all $k,h,s$.
+\item \textbf{(Simulation + summation)} \quad
+For each episode $k$,
+\[
+V^\star - V^{\pi^k}\ \le\ 2\sum_{h=0}^{H-1}\E_{d_h^{\pi^k}}\!\big[b_h^k(s_h,a_h)\big],
+\]
+then sum using an \textbf{elliptical potential} (log-det) argument.
+\end{enumerate}
 
+\vspace{0.10cm}
 \pause
-\vspace{0.4cm}
-\textbf{The Catch:}
+\textbf{Today’s only new wrinkle vs LinUCB:} the target $f=\widehat V_{h+1}^k$ is random, so we need
+\emph{uniform} confidence over the whole optimistic value-function class.
+
+\end{frame}
+
+
+% =========================================================
+% Statistical hurdle (tighten wording)
+% =========================================================
+\begin{frame}\frametitle{The Statistical Hurdle: Why Uniform Confidence?}
+
+\small
+In LinUCB we estimate a fixed parameter $\mu^\star$. Here we estimate a \emph{value-dependent} coefficient:
+\[
+\widehat w_{h,\widehat V_{h+1}^k}^k
+=
+(\Lambda_h^k)^{-1}\sum_{i=0}^{k-1}\phi(s_h^i,a_h^i)\,\widehat V_{h+1}^k(s_{h+1}^i).
+\]
+
+\vspace{0.12cm}
+\pause
+\textbf{The catch:}
 \begin{itemize}
-    \item The target $\widehat V_{h+1}^k$ is a \alert{random function}.
-    \item It depends heavily on the dataset $D_h^k$ (through the bonuses and previous value functions).
-    \item Standard martingale concentration fails because the noise and the target are deeply correlated!
+  \item $\widehat V_{h+1}^k$ is a \alert{random function} built from past data (and bonuses).
+  \item So the ``labels'' $\widehat V_{h+1}^k(s_{h+1}^i)$ are correlated with the design/history.
+  \item A fixed-function concentration bound is not enough; we need a bound that holds
+  \emph{simultaneously for all optimistic value functions the algorithm may produce}.
 \end{itemize}
 
 \end{frame}
 
 
-\begin{frame}\frametitle{The Solution: Uniform Confidence}
+% =========================================================
+% Uniform confidence (cleaner + less misleading note)
+% =========================================================
+\begin{frame}\frametitle{Step (a): Uniform Confidence over Optimistic Values}
 
-To fix this, we need a \emph{Uniform Confidence} bound over the entire class of possible optimistic value functions that the algorithm could ever produce.
-
-\vspace{0.2cm}
-\begin{proposition}[Uniform model confidence]\label{prop:uniform_model_conf}
-By constructing an $\epsilon$-net over the optimistic value function class, we can guarantee that with high probability, for \emph{all} episodes $k$, stages $h$, and $(s,a)$:
+\small
+\begin{proposition}[Uniform model confidence (informal)]
+With probability at least $1-\delta$, simultaneously for all episodes $k$, stages $h$,
+all $(s,a)$, and the specific $f=\widehat V_{h+1}^k$ produced by the algorithm,
 \[
-\big|(\widehat P_h^k \widehat V_{h+1}^k)(s,a) - (P_h^\star \widehat V_{h+1}^k)(s,a)\big| \;\le\; \beta\,\|\phi(s,a)\|_{(\Lambda_h^k)^{-1}}
+\big|(\widehat P_h^k f)(s,a) - (P_h^\star f)(s,a)\big|
+\ \le\ 
+\beta\,\|\phi(s,a)\|_{(\Lambda_h^k)^{-1}}.
 \]
-where $\beta = \tilde{O}(Hd)$.
 \end{proposition}
 
+\vspace{0.10cm}
 \pause
-\vspace{0.4cm}
-\textit{Note: The $\tilde{O}(d)$ inside $\beta$ comes directly from the covering number (the log-size of the $\epsilon$-net). From here out, we condition on this clean event holding.}
+\textbf{Where does $\beta$ come from?}
+Self-normalized martingale concentration + an $\epsilon$-net over the optimistic value class
+(max + bonus + clipping), which yields $\beta=\widetilde O(Hd)$.
+
 \end{frame}
 
 
-\begin{frame}\frametitle{Proof Sketch: Optimism \& Simulation}
+% =========================================================
+% Step (b): Optimism (short)
+% =========================================================
+\begin{frame}\frametitle{Step (b): Optimism (Backward Induction)}
 
-If the uniform confidence bound holds, the rest of the proof closely mirrors tabular UCBVI!
-
-\vspace{0.2cm}
-\textbf{1. Optimism (Backward Induction):}
+\small
+On the uniform confidence event, for every episode $k$, stage $h$, and state $s$,
 \[
-\widehat V_h^k(s)\ \ge\ V_h^\star(s) \qquad \forall k, h, s
+\widehat V_h^k(s)\ \ge\ V_h^\star(s).
 \]
-\textit{Proof Idea:} We designed $\widehat{Q}$ by taking the true Bellman backup and adding an upper confidence bonus. 
 
+\vspace{0.12cm}
 \pause
-\vspace{0.4cm}
-\textbf{2. The Simulation Lemma (Per-episode bound):}
+\textbf{Reason (one line):}
+for any $(s,a)$,
 \[
-V^\star - V^{\pi^k} \;\le\; 2\sum_{h=0}^{H-1}\E_{(s_h,a_h)\sim d_h^{\pi^k}}\!\big[b_h^k(s_h,a_h)\big]
+(P_h^\star \widehat V_{h+1}^k)(s,a)
+\le
+(\widehat P_h^k \widehat V_{h+1}^k)(s,a)+b_h^k(s,a),
 \]
-\textit{Proof Idea:} By optimism, the value error is bounded by the sum of our local uncertainty bonuses along the executed trajectory. 
+so $r_h + P_h^\star V_{h+1}^\star \le r_h + b_h^k + \widehat P_h^k\widehat V_{h+1}^k$ (and clipping preserves the inequality).
+
 \end{frame}
 
 
-\begin{frame}\frametitle{Proof Sketch: Wrapping Up (Elliptical Potential)}
+% =========================================================
+% Step (c): Simulation lemma + visitation measure (make it explicit)
+% =========================================================
+\begin{frame}\frametitle{Step (c): Simulation Lemma (Per-episode bound)}
 
-We sum the per-episode regret over all $K$ episodes:
+\small
+Let $d_h^{\pi^k}(s,a)=\Pr(s_h=s,a_h=a\mid s_0,\pi^k,P^\star)$ be the stage-$h$ occupancy.
+
+\vspace{0.10cm}
+On the uniform confidence event, for every episode $k$,
 \[
-R_K \;\le\; 2\sum_{k=0}^{K-1} \sum_{h=0}^{H-1} b_h^k(s_h^k,a_h^k) \;=\; 2\beta \sum_{h=0}^{H-1} \sum_{k=0}^{K-1} \|\phi(s_h^k,a_h^k)\|_{(\Lambda_h^k)^{-1}}
+V^\star - V^{\pi^k}
+\ \le\
+2\sum_{h=0}^{H-1}\E_{(s_h,a_h)\sim d_h^{\pi^k}}\!\big[b_h^k(s_h,a_h)\big].
+\]
+
+\vspace{0.12cm}
+\pause
+\textbf{Plug in the LinUCB-style bonus:}
+\[
+b_h^k(s,a)=\beta\,\|\phi(s,a)\|_{(\Lambda_h^k)^{-1}}
+\quad\Longrightarrow\quad
+V^\star - V^{\pi^k}
+\ \le\
+2\beta\sum_{h=0}^{H-1}\E_{d_h^{\pi^k}}\!\Big[\|\phi(s_h,a_h)\|_{(\Lambda_h^k)^{-1}}\Big].
+\]
+
+\end{frame}
+
+
+% =========================================================
+% Elliptical potential (make the log-det step explicit)
+% =========================================================
+\begin{frame}\frametitle{Summation: Elliptical Potential (Log-det)}
+
+\small
+Summing the simulation bound over episodes reduces regret to
+\[
+R_K \ \le\ 2\beta\sum_{h=0}^{H-1}\sum_{k=0}^{K-1}\|\phi(s_h^k,a_h^k)\|_{(\Lambda_h^k)^{-1}}.
+\]
+
+\vspace{0.10cm}
+\pause
+Fix a stage $h$ and write $x_k:=\phi(s_h^k,a_h^k)$, $\Lambda_{k+1}=\Lambda_k+x_kx_k^\top$.
+Matrix determinant lemma gives the standard potential bound:
+\[
+\sum_{k=0}^{K-1}\|x_k\|_{\Lambda_k^{-1}}^2
+\ \le\ 2\log\frac{\det(\Lambda_K)}{\det(\Lambda_0)}
+\ \le\ 2d\log\!\Big(1+\tfrac{K}{\lambda}\Big).
+\]
+
+\vspace{0.10cm}
+\pause
+By Cauchy--Schwarz,
+\[
+\sum_{k=0}^{K-1}\|x_k\|_{\Lambda_k^{-1}}
+\ \le\
+\sqrt{K\sum_{k=0}^{K-1}\|x_k\|_{\Lambda_k^{-1}}^2}
+\ \le\
+\sqrt{2K\,d\,\log\!\Big(1+\tfrac{K}{\lambda}\Big)}.
+\]
+Sum over $h$ and multiply by $\beta$ to get the theorem.
+
+\end{frame}
+
+\section{Bridge: Bellman Rank \& Generalization}
+
+\begin{frame}\frametitle{The Question: What makes RL Generalize?}
+
+We have seen two successful "recipes" for avoiding $|\Scal|$-dependence:
+\begin{enumerate}
+    \item \textbf{Tabular UCBVI:} Estimate the full local transition.
+    \item \textbf{Lin-UCBVI:} Estimate only the Bellman-relevant lookahead functionals.
+\end{enumerate}
+
+\vspace{0.4cm}
+\pause
+\textbf{The General Problem:}
+What if we don't know the features $\phi(s,a)$? Or what if the transitions are non-linear, but some other structural bottleneck exists?
+
+\vspace{0.4cm}
+\pause
+\textbf{The Goal:} We seek a \textbf{structural complexity measure} that tells us when trajectory data collected under policy $f$ can effectively "test" the quality of another hypothesis $g$.
+\end{frame}
+
+
+\begin{frame}\frametitle{The Core Object: Average Bellman Error}
+
+Define the one-step Bellman residual of a hypothesis $g \in \mathcal{H}$ as:
+\[
+\ell_h(s,a,s';g) \;:=\; Q_{h,g}(s,a) - r_h(s,a) - V_{h+1,g}(s')
 \]
 
 \pause
 \vspace{0.2cm}
-We bound the inner sum using Cauchy-Schwarz and the same log-determinant potential lemma we used for Linear Bandits!
+We measure the quality of $g$ using its \textbf{Average Bellman Error} under the roll-in distribution induced by the policy of $f$, denoted $d_h^{\pi_f}$:
+\[
+\mathcal{E}_h^{Q}(f,g) \;:=\; \E_{(s,a)\sim d_h^{\pi_f},\ s'\sim P_h^\star}\Big[\ell_h(s,a,s';g)\Big]
+\]
+
+\pause
+\vspace{0.2cm}
+\textbf{Key Intuition:}
+\begin{itemize}
+    \item If $g = f^\star$ (realizability), then $\mathcal{E}_h(f, f^\star) = 0$ for \emph{every} roll-in policy $f$.
+    \item Finding a near-optimal policy is equivalent to finding a $g$ that has low Bellman error under its own distribution ($\mathcal{E}_h(g, g) \approx 0$).
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}\frametitle{Defining Bellman Rank}
+
+Consider a massive matrix $M_h$ where rows are "Roll-in Policies" $f \in \mathcal{H}$ and columns are "Tested Hypotheses" $g \in \mathcal{H}$. Each entry is the cross-error $\mathcal{E}_h(f,g)$.
+
+\vspace{0.2cm}
+\begin{definition}[$Q$-Bellman Rank]
+The pair $(\Mcal,\Hcal)$ has \emph{$Q$-Bellman rank at most $d$} if there exist maps $X_h, W_h: \Hcal \to \R^d$ such that:
+\[
+\mathcal{E}_h^{Q}(f,g) \;=\; \langle X_h(f),\, W_h(g)\rangle \qquad \forall f,g\in\Hcal
+\]
+\end{definition}
+
+\pause
+\vspace{0.2cm}
+\textbf{Conceptual Punchline:}
+\begin{itemize}
+    \item A Linear MDP assumes the \textbf{Transition Matrix} is low rank ($rank \le d$).
+    \item Bellman Rank assumes the \textbf{Error Matrix} is low rank ($rank \le d$).
+    \item We do not need to know the features $X_h, W_h$; we only assume they exist.
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}\frametitle{Example: LinMDPs have Bellman Rank $d$}
+
+Why did today's Linear MDP model work? Let's check its Bellman Rank:
+\begin{itemize}
+    \item \textbf{LinMDP Hypothesis:} $Q_{h,g}(s,a) = \phi(s,a)^\top w_{h,g}$.
+    \item \textbf{Bellman Error:} $\mathcal{E}_h^{Q}(f,g) = \E_{d_h^{\pi_f}}[ \phi(s,a)^\top w_{h,g} - r_h(s,a) - \E_{P^\star}[V_{h+1,g}(s')] ]$.
+\end{itemize}
+
+\pause
+\vspace{0.2cm}
+From our "Magic Property" Lemma: $r_h(s,a) + \E_{P^\star}[V_{h+1,g}]$ is linear in $\phi(s,a)$. Let its coefficient be $w_{lookahead}^\star$.
 \begin{align*}
-\onslide<2->{ \sum_{k=0}^{K-1}\|\phi(s_h^k,a_h^k)\|_{(\Lambda_h^k)^{-1}} &\le \sqrt{K \sum_{k=0}^{K-1} \|\phi(s_h^k,a_h^k)\|_{(\Lambda_h^k)^{-1}}^2 } \\ }
-\onslide<3->{ &\le \sqrt{2 K d \log\Big(1+\frac{K}{\lambda}\Big)} }
+\mathcal{E}_h^{Q}(f,g) &= \E_{(s,a)\sim d_h^{\pi_f}} \Big[ \phi(s,a)^\top (w_{h,g} - w_{lookahead}^\star) \Big] \\
+&= \Big\langle \underbrace{\E_{d_h^{\pi_f}}[\phi(s,a)]}_{X_h(f)}, \underbrace{w_{h,g} - w_{lookahead}^\star}_{W_h(g)} \Big\rangle
 \end{align*}
 
-\onslide<4->{
+\pause
+\alert{Result:} LinMDPs are just one specific instance of the "Model Zoo" unified by Bellman Rank.
+\end{frame}
+
+
+\begin{frame}\frametitle{Algorithmic Teaser: Optimistic Elimination}
+
+How do we learn if the error matrix is low-rank but the features are unknown?
+
+\vspace{0.4cm}
+\textbf{The PAC-RL Strategy:}
+\begin{enumerate}
+    \item \textbf{Eliminate:} If a hypothesis $g$ shows a large empirical Bellman error on any past roll-in data, throw it out.
+    \item \textbf{Optimism:} Pick the $f_{t}$ that predicts the highest value among survivors.
+    \item \textbf{Roll-in:} Collect new data using policy $\pi_{f_t}$.
+\end{enumerate}
+
+\vspace{0.4cm}
+\pause
+\textbf{The Logic for Next Time:}
+Since the error matrix has rank $d$, we can only "fail" to eliminate a sub-optimal $f_t$ a maximum of $d$ times before we have spanned the space of possible errors. 
+
 \vspace{0.2cm}
-Multiply by $H$ (for the outer sum) and $\beta$, and we get our final bound:
-\[
-R_K \;\le\; \mathcal{O}\left( \beta H \sqrt{K d \log(K)} \right) \;=\; \tilde{O}\Big(H^2 \sqrt{d^3 K}\Big)
-\]
-}
+\textit{Next Lecture: Formalizing the "Simplicity" of RL and the PAC proof.}
 \end{frame}
 
 \end{document}
