@@ -43,14 +43,22 @@
     \item Great, but scales poorly when the state space $\Scal$ is enormous.
   \end{itemize}
   
-\vspace{0.4cm}
-\pause
+\vspace{0.2cm}
 \item \textbf{Linear Bandits (LinUCB):} We achieved $\tilde{O}(d \sqrt{K})$ regret.
   \begin{itemize}
     \item No dependence on the number of arms! We exploit the feature dimension $d$.
   \end{itemize}
 
-\vspace{0.4cm}
+\vspace{0.2cm}
+\item \textbf{Linear Bellman Completeness:}  $\textrm{poly}(d,H)$
+  sample size with gen model.
+  \begin{itemize}
+  \item What about exploration/episodic setting? \\
+    Random exploration is bad with $H>1$.
+  \item What about an instantiation?
+  \end{itemize}
+  
+\vspace{0.2cm}
 \pause
 \item \textbf{Today's Goal:} Can we combine these ideas? 
   \begin{itemize}
@@ -183,8 +191,7 @@ For all $f:\Scal\to\R$,
 \begin{lemma}[Linearization of $P_h^\star f$]\label{lem:linearize_Pf_slides}
 Fix $h$ and bounded $f$. Let $w_{h,f}^\star := (\mu_h^\star)^\top f\in\R^d$. Then
 \[
-(P_h^\star f)(s,a)
-:= \E_{s'\sim P_h^\star(\cdot\mid s,a)}[f(s')]
+\E_{s'\sim P_h^\star(\cdot\mid s,a)}[f(s')] \;=\; (P_h^\star f)(s,a)
 \;=\;
 \phi(s,a)^\top w_{h,f}^\star.
 \]
@@ -418,8 +425,10 @@ Uniformly control value-dependent regression targets:
 \ \le\ \beta\,\|\phi(s,a)\|_{(\Lambda_h^k)^{-1}}
 \quad \text{for } f=\widehat V_{h+1}^k.
 \]
+\pause
 \item \textbf{(Optimism)} \quad
 Backward induction shows $\widehat V_h^k(s)\ge V_h^\star(s)$ for all $k,h,s$.
+\pause
 \item \textbf{(Simulation + summation)} \quad
 For each episode $k$,
 \[
@@ -662,7 +671,7 @@ From our "Magic Property" Lemma: $r_h(s,a) + \E_{P^\star}[V_{h+1,g}]$ is linear 
 \end{align*}
 
 \pause
-\alert{Result:} LinMDPs are just one specific instance of the "Model Zoo" unified by Bellman Rank.
+\alert{Result:} LinMDPs are just one specific instance of the ``Model Zoo'' unified by Bellman Rank.
 \end{frame}
 
 
