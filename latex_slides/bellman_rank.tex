@@ -1,0 +1,671 @@
+\documentclass[aspectratio=169]{beamer}
+
+% The 'handout' option collapses all overlays into single slides
+%\documentclass[aspectratio=169, handout]{beamer}
+
+\usepackage{amsmath, amssymb, amsthm, mathtools}
+\usepackage{algorithm, algorithmic}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,shapes}
+
+\newtheorem{proposition}[theorem]{Proposition}
+
+% --- Standard Beamer Theme ---
+\usetheme{Madrid}
+\usecolortheme{default}
+
+\include{macros} 
+
+
+\title[LinMDPs]{Linear MDPs}
+\author[Sham \& Kiant\'{e}]{Kiant\'{e} Brantley \& Sham Kakade}
+\date{}
+
+
+\begin{document}
+
+
+
+\begin{frame}
+\titlepage  
+\end{frame}
+
+\begin{frame}[noframenumbering]
+  \frametitle{Outline}
+  \tableofcontents
+\end{frame}
+
+% =========================================================
+% Part 1: The Hook & The Exploration Problem
+% =========================================================
+\section{The Exploration Problem}
+
+\begin{frame}\frametitle{Recap: The "Bonus" Recipe for Exploration}
+
+So far, we have a clear recipe for strategic exploration: \textbf{build an explicit uncertainty bonus}.
+
+\vspace{0.2cm}
+\begin{itemize}
+    \item \textbf{Tabular UCBVI:} Bonus $\propto 1/\sqrt{N(s,a)}$. Works, but scales with $|\Scal||\Acal|$.
+    \item \textbf{Linear MDPs:} Bonus $\propto \|\phi(s,a)\|_{\Lambda^{-1}}$. Scales with $d$.
+\end{itemize}
+
+\vspace{0.4cm}
+\pause
+\textbf{The Catch:} Both rely on explicitly estimating the transition dynamics (either locally or via known features) to construct the bonus.
+
+\vspace{0.2cm}
+\pause
+\textbf{What if we only have Linear Bellman Completeness?}
+\[
+r_h(s,a) + \E_{P^\star}[\max_{a'} w_{h+1} \cdot \phi(s',a')] \;=\; \phi(s,a)^\top \mathcal{T}_h(w_{h+1})
+\]
+We know this is learnable with a \emph{generative model}
+(simulator). But how do we explore \emph{online}?
+%We don't have explicit transition features to build a covariance matrix $\Lambda$ for a bonus!
+\end{frame}
+
+\begin{frame}\frametitle{Our Goal: PAC-RL for General Classes}
+
+We want to move beyond explicit bonuses and ask: when can we explore efficiently given an arbitrary, structured hypothesis class $\Hcal$?
+
+\vspace{0.4cm}
+\pause
+\textbf{The PAC-RL Objective (Fixed Confidence):}
+Given $\epsilon, \delta \in (0,1)$, we want to output a \emph{single} policy $\hat{\pi}$ such that:
+\[
+V_0^\star(s_0) - V_0^{\hat{\pi}}(s_0) \;\le\; \epsilon \qquad \text{with probability at least } 1-\delta.
+\]
+
+\vspace{0.2cm}
+\pause
+\textbf{PAC vs. Regret:}
+\begin{itemize}
+    \item \textbf{Regret:} Control cumulative suboptimality \emph{during} learning. Requires carefully shrinking uncertainty bonuses at every step.
+    \item \textbf{PAC:} We just need to find one good policy eventually. This allows for purely \emph{elimination-based} strategies. 
+\end{itemize}
+
+\end{frame}
+
+% ============================================
+% Part 2: A Natural Algorithm (Optimistic Elimination)
+% ============================================
+\section{A Natural Algorithm: Optimistic Elimination}
+
+\begin{frame}[noframenumbering]
+  \frametitle{Outline}
+  \tableofcontents[currentsection]
+\end{frame}
+
+
+\begin{frame}\frametitle{The Core Object: Average Bellman Error}
+
+Data reuse: We can't build a structural bonus, so let's test if our hypotheses are
+consistent with the collected data.
+
+\vspace{0.1cm}
+Define the one-step \textbf{Bellman residual} of a hypothesis $g \in \Hcal$ as:
+\[
+\ell_h(s,a,s';g) \;:=\; Q_{h,g}(s,a) - r_h(s,a) - V_{h+1,g}(s')
+\]
+
+\pause
+\vspace{0.1cm}
+With data from some ``roll in policy'' $\pi_f$, we can check if the
+average Bellman error is small.
+
+\vspace{0.1cm}
+We evaluate candidate $g$ using its \textbf{Average Bellman Error} under the roll-in distribution induced by another policy $\pi_f$:
+\[
+\mathcal{E}_h(f,g) \;:=\; \E_{(s,a)\sim d_h^{\pi_f},\ s'\sim P_h^\star}\Big[\ell_h(s,a,s';g)\Big]
+\]
+
+\pause
+\vspace{0.1cm}
+\textit{Key Insight: Under realizability, the true optimal hypothesis $f^\star \in \Hcal$ is perfectly consistent everywhere. Thus, $\mathcal{E}_h(f, f^\star) = 0$ for \emph{every} roll-in policy $f$.}
+\end{frame}
+
+\iffalse
+\begin{frame}\frametitle{Algorithm: Optimistic Elimination (Exact Case)}
+
+Let's look at the \textbf{exact (noiseless)} case where we measure $\mathcal{E}_h(f,g)$ perfectly. How would we use this to find the optimal policy?
+
+\vspace{0.4cm}
+\pause
+\textbf{Algorithm Loop:} For iteration $t = 0, 1, 2, \dots$
+\begin{enumerate}
+    \item \textbf{Version Space:} Keep all hypotheses $g \in \mathcal{H}$ that have zero error on all past roll-ins:
+    \[
+      \mathcal{E}_h(f_1, g) \;=\; 0, \quad
+      \mathcal{E}_h(f_2, g) \;=\; 0, \quad
+      \ldots \mathcal{E}_h(f_{t-1}, g) \;=\; 0 %\qquad \forall i < t, \quad \forall h
+    \]
+    \item \textbf{Optimism:} Pick the surviving hypothesis $f_t$ that predicts the highest value $V_{0, g}(s_0)$.
+    \item \textbf{Roll-in:} Execute $\pi_{f_t}$ to collect new data and add it to our test set.
+\end{enumerate}
+
+\end{frame}
+
+\begin{frame}\frametitle{The Core Object: Average Bellman Error}
+
+If we can't build a structural bonus, let's test if our hypotheses are consistent with the data we collect.
+
+\vspace{0.2cm}
+Define the one-step \textbf{Bellman residual} of a hypothesis $g \in \Hcal$ as:
+\[
+\ell_h(s,a,s';g) \;:=\; Q_{h,g}(s,a) - r_h(s,a) - V_{h+1,g}(s')
+\]
+
+\pause
+\vspace{0.2cm}
+We evaluate candidate $g$ using its \textbf{Average Bellman Error} under the roll-in distribution induced by another policy $\pi_f$:
+\[
+\mathcal{E}_h(f,g) \;:=\; \E_{(s,a)\sim d_h^{\pi_f},\ s'\sim P_h^\star}\Big[\ell_h(s,a,s';g)\Big]
+\]
+
+\pause
+\vspace{0.2cm}
+\textbf{Key Intuition:}
+\begin{itemize}
+    \item Under realizability, the true optimal hypothesis $f^\star$ is perfectly consistent. Thus, $\mathcal{E}_h(f, f^\star) = 0$ for \emph{every} roll-in policy $f$.
+    \item Finding a near-optimal policy is equivalent to finding a $g$ that has low Bellman error under its own distribution ($\mathcal{E}_h(g, g) \approx 0$).
+\end{itemize}
+\end{frame}
+\fi
+
+\begin{frame}\frametitle{Data Reuse: Estimating Errors for all $g \in \Hcal$}
+
+How do we actually estimate $\mathcal{E}_h(f,g)$ from data? 
+
+\vspace{0.2cm}
+\textbf{1. Data Collection:} 
+Fix a roll-in hypothesis $f$. Execute its greedy policy $\pi_f$ for $m$ independent episodes. At stage $h$, this yields a dataset:
+\[
+\mathcal{D}_{f, h} \;=\; \Big\{ \big( s_h^{(i)}, a_h^{(i)}, s_{h+1}^{(i)} \big) \Big\}_{i=1}^m
+\]
+
+\pause
+\vspace{0.2cm}
+\textbf{2. The Empirical Estimator:} 
+For \emph{any} candidate $g \in \Hcal$, we define its empirical Bellman error on this dataset as:
+\[
+\widehat{\mathcal{E}}_h(f, g) \;:=\; \frac{1}{m} \sum_{i=1}^m \Big( Q_{h,g}(s_h^{(i)}, a_h^{(i)}) - r_h(s_h^{(i)}, a_h^{(i)}) - V_{h+1,g}(s_{h+1}^{(i)}) \Big)
+\]
+
+\pause
+\vspace{0.4cm}
+\alert{The Supervised Learning (SL) Connection:} 
+Notice that the dataset $\mathcal{D}_{f, h}$ depends \emph{only} on the roll-in policy $f$. It does not depend on $g$. 
+\begin{itemize}
+    \item We collect data \textbf{once} using $f$.
+    \item We can then evaluate $\widehat{\mathcal{E}}_h(f, g)$ for \textbf{every single} $g \in \Hcal$ offline.
+    \item This completely reduces the problem of maintaining our Version Space to a standard, offline Supervised Learning risk evaluation.
+\end{itemize}
+\end{frame}
+
+\begin{frame}\frametitle{Algorithm: Optimistic Elimination (Sample-Based)}
+
+\textbf{Algorithm Loop:} For iteration $t = 1, 2, \dots$
+\begin{enumerate}
+    \item \textbf{Version Space:} Keep all hypotheses $g \in \mathcal{H}$ that have small empirical error on all past datasets:
+    \[
+      \big|\widehat{\mathcal{E}}_h(f_i, g)\big| \;\le\; \epsilon_{\text{stat}} \qquad \forall i < t, \quad \forall h
+    \]
+    \item \textbf{Optimism:} Pick the surviving hypothesis $f_t$ that predicts the highest value $V_{0, g}(s_0)$.
+    \item \textbf{Roll-in:} Gather $m$ trajectories using $\pi_{f_t}$ to form dataset $\mathcal{D}_t$.
+\end{enumerate}
+
+\pause
+\vspace{0.4cm}
+\alert{The Power of Data Reuse:} 
+We use $\mathcal{D}_t$ (collected via $f_t$) to evaluate the empirical average $\widehat{\mathcal{E}}_h(f_t, g)$ for \emph{all} $g \in \mathcal{H}$. This reduces RL exploration to a sequence of Supervised Learning-style risk minimization problems.
+\end{frame}
+
+\begin{frame}\frametitle{Why does this work? (Lemma 1: Self-Error)}
+
+To understand why this works, we need to connect a hypothesis's \emph{error} to its actual \emph{performance}.
+
+\vspace{0.4cm}
+\begin{lemma}[Self-Error Telescoping Identity]
+For any $f \in \Hcal$, the difference between its predicted value and the true value of its greedy policy $\pi_f$ is exactly the sum of its \emph{self-errors}:
+\[
+V_{0,f}(s_0) - V_0^{\pi_f}(s_0) \;=\; \sum_{h=0}^{H-1} \mathcal{E}_h(f,f)
+\]
+\end{lemma}
+
+\vspace{0.4cm}
+\pause
+\textit{Note: $V_{0,f}(s_0) = \max_a Q_{0,f}(s_0, a)$ is what the hypothesis $f$ \textbf{claims} it will get. $V_0^{\pi_f}(s_0)$ is what it \textbf{actually} gets in the real environment.}
+
+\end{frame}
+
+\begin{frame}\frametitle{Proof of Lemma 1}
+
+\textbf{Proof:}
+Take the expectation over the true trajectory $(s_h, a_h)$ induced by running $\pi_f$. Since the policy takes the greedy action, $a_h = \pi_{h,f}(s_h)$, we have $V_{h,f}(s_h) = Q_{h,f}(s_h, a_h)$.
+
+\vspace{0.2cm}
+\begin{align*}
+\onslide<2->{ V_{0,f}(s_0) - \sum_{h=0}^{H-1} r_h(s_h, a_h) &= \sum_{h=0}^{H-1} \Big( V_{h,f}(s_h) - r_h(s_h,a_h) - V_{h+1,f}(s_{h+1}) \Big) \\ }
+\onslide<3->{ &= \sum_{h=0}^{H-1} \Big( Q_{h,f}(s_h, a_h) - r_h(s_h,a_h) - V_{h+1,f}(s_{h+1}) \Big) }
+\end{align*}
+
+\onslide<4->{
+\vspace{0.2cm}
+Taking the expectation over the trajectory dynamics yields exactly the sum of the average Bellman errors: $\sum_{h=0}^{H-1} \mathcal{E}_h(f,f)$. \qed
+}
+\end{frame}
+
+\begin{frame}\frametitle{OE Correctness: The Exact Case}
+
+Assume the exact case for a moment ($\epsilon_{\text{stat}} = 0$). Does this algorithm find the optimal policy? \alert{Assume $f^\star \in \Hcal$}.
+
+\vspace{0.2cm}
+\begin{enumerate}
+    \item \textbf{Survival:} $f^\star$ is never eliminated because $\mathcal{E}_h(f, f^\star) = 0$ for all roll-ins $f$.
+    \pause
+    \item \textbf{Optimism:} Because $f^\star$ is in the version space, the algorithm picks an $f_t$ such that $V_{0, f_t}(s_0) \ge V_{0, f^\star}(s_0) = V^\star(s_0)$.
+    \pause
+    \item \textbf{Elimination:} Suppose $f_t$ is strictly sub-optimal ($V^\star(s_0) > V^{\pi_{f_t}}(s_0)$).
+    \begin{itemize}
+        \item By optimism, $V_{0, f_t}(s_0) - V^{\pi_{f_t}}(s_0) > 0$. 
+        \item By Lemma 1, this means $\sum_h \mathcal{E}_h(f_t, f_t) > 0$.
+        \item Therefore, $f_t$ will have a non-zero error on its own dataset $\mathcal{D}_t$, and will be \alert{eliminated} in the next round.
+    \end{itemize}
+\end{enumerate}
+
+\pause
+\vspace{0.2cm}
+\textbf{Conclusion:} Every round we either play the optimal policy, or we eliminate at least one hypothesis. The algorithm terminates in trivially $\le |\Hcal|$ rounds.
+\end{frame}
+
+\begin{frame}\frametitle{The Big Question}
+
+We established a clean algorithmic loop:
+\begin{itemize}
+    \item Pick an optimistic hypothesis $f_t$.
+    \item Roll it out to collect data.
+    \item If it is sub-optimal, it generates a non-zero self-error $\mathcal{E}_h(f_t, f_t) \neq 0$.
+    \item We add this data to our test set, ensuring $f_t$ is eliminated forever.
+\end{itemize}
+
+\vspace{0.4cm}
+\pause
+\textbf{The Catch:}
+We proved it takes at most $|\Hcal|$ rounds. But if $\Hcal$ is massive, or a continuous space of neural networks, $|\Hcal|$ could be infinite. 
+
+\vspace{0.4cm}
+\pause
+\textit{To guarantee this terminates quickly independent of $|\Hcal|$,
+  we want a structural assumption about the \textbf{matrix of
+    errors}... the \textbf{Bellman Rank}.}
+
+\end{frame}
+
+
+% ==========================================
+% Part 3: The Structural Bottleneck (Bellman Rank)
+% ==========================================
+\section{The Structural Bottleneck: Bellman Rank}
+
+\begin{frame}[noframenumbering]
+  \frametitle{Outline}
+  \tableofcontents[currentsection]
+\end{frame}
+
+
+\begin{frame}\frametitle{The Error Matrix}
+
+Consider a matrix $M_h$ where the rows correspond to roll-in policies $f \in \mathcal{H}$ and the columns correspond to tested hypotheses $g \in \mathcal{H}$. 
+
+\vspace{0.2cm}
+Each entry is the cross-error:
+\[
+M_h[f,g] \;:=\; \mathcal{E}_h(f,g)
+\]
+
+\pause
+\vspace{0.2cm}
+If $\mathcal{H}$ is large or continuous, $M_h$ is massive. However, in many reinforcement learning settings, this matrix contains redundant information. 
+
+\vspace{0.2cm}
+We formalize this redundancy by assuming $M_h$ has a low rank.
+\end{frame}
+
+\begin{frame}\frametitle{Defining Bellman Rank}
+
+\begin{definition}[$Q$-Bellman Rank]
+The environment and hypothesis class pair $(\Mcal,\Hcal)$ has \emph{$Q$-Bellman rank at most $d$} if for each stage $h$ there exist maps $X_h, W_h: \Hcal \to \R^d$ such that:
+\[
+\mathcal{E}_h(f,g) \;=\; \langle X_h(f),\, W_h(g)\rangle \qquad \forall f,g\in\Hcal
+\]
+\end{definition}
+
+\pause
+\vspace{0.4cm}
+\textbf{Key Properties:}
+\begin{itemize}
+    \item $X_h(f)$ acts as the latent feature of the roll-in distribution $d_h^{\pi_f}$.
+    \item $W_h(g)$ acts as the latent feature of the Bellman residual of $g$.
+    \item We only assume these maps exist. The algorithm does not need to know $X_h$ or $W_h$ to execute Optimistic Elimination.
+\end{itemize}
+\end{frame}
+
+\begin{frame}\frametitle{Fast Convergence via Dimension Counting}
+
+Let us return to the exact Optimistic Elimination algorithm ($\epsilon_{\text{stat}} = 0$). How many rounds does it take to terminate if the Bellman Rank is $d$?
+
+\vspace{0.4cm}
+\pause
+Suppose at iteration $t$, the algorithm selects $f_t$, and it is strictly sub-optimal.
+\begin{enumerate}
+    \item By the Self-Error Telescoping Identity (Lemma 1), a sub-optimal optimistic hypothesis must have a non-zero self-error at some stage $h$:
+    \[
+    \mathcal{E}_h(f_t, f_t) \;\neq\; 0
+    \]
+    \pause
+    \item Using the Bellman rank factorization, this implies:
+    \[
+    \langle X_h(f_t), W_h(f_t) \rangle \;\neq\; 0
+    \]
+\end{enumerate}
+
+\end{frame}
+
+\begin{frame}\frametitle{The Geometry of Elimination}
+
+
+
+\begin{enumerate}
+    \setcounter{enumi}{2}
+    \item Because $f_t$ survived the version space, it must have had zero error on all data collected in previous rounds $i < t$:
+    \[
+    \mathcal{E}_h(f_i, f_t) \;=\; 0 \implies \langle X_h(f_i), W_h(f_t) \rangle \;=\; 0 \qquad \forall i < t
+    \]
+    \pause
+    \item This means $W_h(f_t)$ is orthogonal to the subspace spanned by all previous roll-in features $\{X_h(f_1), \dots, X_h(f_{t-1})\}$.
+    \pause
+    \item Since $\langle X_h(f_t), W_h(f_t) \rangle \neq 0$, the new roll-in feature $X_h(f_t)$ cannot be entirely contained in that past subspace. It must possess a linearly independent component.
+\end{enumerate}
+
+\vspace{0.4cm}
+\pause
+\textbf{Conclusion:}
+Every time we execute a sub-optimal policy, we discover a strictly new, linearly independent direction in $\R^d$. In a $d$-dimensional space, this can happen at most $d$ times per stage. The algorithm terminates in at most $dH$ rounds.
+\end{frame}
+
+% =========================================================
+% Part 4: The Model Zoo
+% =========================================================
+\section{The Model Zoo}
+
+\begin{frame}[noframenumbering]
+  \frametitle{Outline}
+  \tableofcontents[currentsection]
+\end{frame}
+
+
+\begin{frame}\frametitle{Example 1: Linear Bellman Completeness}
+
+\begin{itemize}
+    \item \textbf{Hypothesis Class $\Hcal$:} $Q_{h,w}(s,a) = \phi(s,a)^\top w_h$, where $\|w_h\|_2 \le W$.
+    \item \textbf{Completeness Assumption:} $r_h(s,a) + \E_{P^\star}[\max_{a'} w_{h+1}^\top \phi(s',a')] \;=\; \phi(s,a)^\top \mathcal{T}_h(w_{h+1})$.
+\end{itemize}
+
+\pause
+\vspace{0.2cm}
+\textbf{The Factorization:} $f=\widetilde w$, $g=w$, $\pi_{\widetilde w }(s) = \argmax_a \widetilde w_h^\top \phi(s,a)$.
+\begin{align*}
+\mathcal{E}_h(\widetilde w,w) &= \E_{d_h^{\pi_{\widetilde w}}}\Big[ \phi(s,a)^\top w_{h} - \phi(s,a)^\top \mathcal{T}_h(w_{h+1}) \Big] \\
+&= \Big\langle \underbrace{\E_{d_h^{\pi_{\widetilde w}}}[\phi(s,a)]}_{X_h(\widetilde w)}, \; \underbrace{w_{h} - \mathcal{T}_h(w_{h+1})}_{W_h(w)} \Big\rangle
+\end{align*}
+
+\pause
+\textbf{Key Observations:}
+\begin{itemize}
+    \item This implies a Bellman Rank of at most $d$.
+    \item This uses the exact same feature $\phi$ as the Linear MDP analysis.
+    \item \alert{Crucially:} Optimistic Elimination only requires access to $\Hcal$; it never explicitly constructs or uses the unknown operator $\mathcal{T}_h$.
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}\frametitle{Example 2: Sparse Linear MDPs}
+
+Suppose the state-action features are extremely high-dimensional: $\phi(s,a) \in \R^D$, where $D \gg |\Scal|$. 
+
+\vspace{0.2cm}
+Assume the environment is a Linear MDP, but the transition dynamics depend entirely on an \emph{unknown} active subset of $s$ features ($s \ll D$). 
+
+\pause
+\vspace{0.2cm}
+\textbf{Hypothesis Class $\Hcal$:}
+\begin{itemize}
+    \item We restrict our search to linear models using at most $s$ features.
+    \item $\Hcal = \bigcup_{K \subset [D], |K|=s} \Hcal(\phi_K)$, where $\Hcal(\phi_K)$ is the dense class restricted to the subset $K$.
+\end{itemize}
+
+\pause
+\vspace{0.2cm}
+\textbf{What is the Bellman Rank?}
+\begin{itemize}
+    \item The ambient dimension is $D$.
+    \item However, the transition operator factors through an $s$-dimensional bottleneck.
+    \item \alert{Therefore, the latent Bellman Rank is $s$.} (Note, we do not need to know the active subset here).
+\end{itemize}
+
+\vspace{0.2cm}
+\textit{Note: Applying Optimistic Elimination here involves some subtleties regarding off-policy evaluation ($V$-Bellman Rank), but the core geometric structure remains a rank-$s$ error matrix.}
+\end{frame}
+
+% =========================================================
+% Part 5: The Sample-Based Reality & Proof Gist
+% =========================================================
+\section{The Sample-Based Reality}
+
+\begin{frame}[noframenumbering]
+  \frametitle{Outline}
+  \tableofcontents[currentsection]
+\end{frame}
+
+\begin{frame}\frametitle{From Exact to Sample-Based Elimination}
+
+We estimate $\widehat{\mathcal{E}}_h(f_i, g)$ using finite datasets of size $m$. 
+
+\vspace{0.2cm}
+\textbf{Assumption (Realizability):} The true optimal hypothesis $f^\star \in \Hcal$.
+
+\pause
+\vspace{0.2cm}
+\textbf{The Statistical Relaxation:}
+Because of finite-sample noise, $\widehat{\mathcal{E}}_h(f_i, f^\star)$ will not be exactly zero.
+\begin{itemize}
+    \item We require \textbf{uniform concentration}: with high probability, the empirical error is close to the true error for \emph{all} $g \in \Hcal$.
+    \item Let $\epsilon_{\text{stat}}$ be this uniform confidence radius.
+    \item We relax the version space constraint to an elliptical radius $R$:
+    \[
+    \sum_{i=0}^{t-1} \Big( \widehat{\mathcal{E}}_h(f_i, g) \Big)^2 \;\le\; R^2 \qquad \forall h
+    \]
+    
+    \item We set $R^2 \approx t \cdot \epsilon_{\text{stat}}^2$ to ensure $f^\star$ safely remains in the version space.
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}\frametitle{PAC-RL under Bounded Bellman Rank}
+
+\begin{theorem}[Sample-Based Optimistic Elimination]
+Suppose $(\mathcal{M}, \mathcal{H})$ has Bellman Rank $d$ and $f^\star \in \Hcal$. If we run Optimistic Elimination using the relaxed version space constraint:
+\begin{enumerate}
+    \item \textbf{Iteration Complexity:} The algorithm terminates in $T = \widetilde{\mathcal{O}}(H d)$ iterations.
+    \item \textbf{Sample Complexity:} With probability $\ge 1-\delta$, the output policy is $\epsilon$-optimal using a batch size per iteration of:
+    \[
+    m \;=\; \widetilde{\mathcal{O}}\left( \frac{d^2 H^5}{\epsilon^2} \cdot \log\frac{|\mathcal{H}|}{\delta} \right)
+    \]
+\end{enumerate}
+\end{theorem}
+
+\pause
+\vspace{0.4cm}
+\textit{Proof Gist: The exact dimension-counting proof is replaced by the \textbf{Elliptical Potential Lemma} (the log-determinant bound from LinUCB) applied to the cumulative errors.}
+\end{frame}
+
+\begin{frame}\frametitle{Instantiations: What is the Sample Complexity?}
+
+Let us plug our two running examples into the general PAC bound.
+
+\vspace{0.4cm}
+\pause
+\textbf{1. Linear Bellman Completeness}
+\begin{itemize}
+    \item \textbf{Hypothesis Class:} All linear models $Q_{h}(s,a) = \phi(s,a)^\top w_h$.
+    \item \textbf{Complexity:} Standard covering number arguments yield $\log|\mathcal{H}| \approx d \log(1/\epsilon)$.
+    \item \textbf{Total Sample Complexity:} $\widetilde{\mathcal{O}}(d^3 H^5 / \epsilon^2)$.
+    \item \textit{Note: We achieve the same polynomial dependence on $d$ as the LinMDP algorithm, but under a strictly weaker assumption.}
+\end{itemize}
+
+\vspace{0.4cm}
+\pause
+\textbf{2. Sparse Linear MDPs}
+\begin{itemize}
+    \item \textbf{Hypothesis Class:} Union of all $s$-sparse linear models out of $D$ features.
+    \item \textbf{Complexity:} $\log|\mathcal{H}| \approx s \log(eD/s) + s \log(1/\epsilon)$.
+    \item \textbf{Total Sample Complexity:} $\widetilde{\mathcal{O}}(s^3 H^5 / \epsilon^2 \cdot \alert{\log(D)})$.
+    \item \textit{Note: The statistical complexity depends primarily on the latent rank $s$, while the massive ambient dimension $D$ only enters logarithmically.}
+\end{itemize}
+
+\end{frame}
+
+% old
+
+\begin{frame}\frametitle{Example 1: Linear Bellman Completeness}
+
+
+\vspace{0.1cm}
+\begin{itemize}
+    \item \textbf{Hypotheses:} $Q_{h}(s,a) = \phi(s,a)^\top w_{h}$.
+    \item \textbf{Completeness Assumption:} $r_h(s,a) + \E_{P^\star}[\max_{a'} w_{h+1} \cdot \phi(s',a')] \;=\; \phi(s,a)^\top \mathcal{T}_h(w_{h+1})$.
+\end{itemize}
+
+\pause
+\vspace{0.4cm}
+\textbf{The Factorization:} $f=\widetilde w$, $g=w$, $\pi_{\widetilde w }(s) = \argmax_a \widetilde w_h \cdot \phi(s,a)$.
+\begin{align*}
+\mathcal{E}_h(f,g) =\mathcal{E}_h(\widetilde w,w) &= \E_{d_h^{\pi_{\widetilde w}}}\Big[ \phi(s,a)^\top w_{h} - \phi(s,a)^\top \mathcal{T}_h(w_{h+1}) \Big] \\
+&= \Big\langle \underbrace{\E_{d_h^{\pi_{\widetilde w}}}[\phi(s,a)]}_{X_h(\widetilde w)}, \; \underbrace{w_{h} - \mathcal{T}_h(w_{h+1})}_{W_h(w)} \Big\rangle
+\end{align*}
+
+\pause
+\textbf{Key Observations:}
+\begin{itemize}
+    \item This implies a Bellman Rank of at most $d$.
+    \item This uses the exact same feature $\phi$ as the Linear MDP analysis.
+    \item \alert{Hypothesis class:} $\Hcal = \{ w_h \cdot \phi(s,a) : w_h
+      \in R_d\}$ (for each $h$).
+    \end{itemize}
+
+    SK: give class.
+    
+\end{frame}
+
+
+
+
+\begin{frame}\frametitle{Example 2: Sparse Linear MDPs}
+
+Suppose the state-action features are extremely high-dimensional: $\phi(s,a) \in \R^D$, where $D \gg |\Scal|$. 
+
+\vspace{0.2cm}
+Assume the environment is a Linear MDP, but the transition dynamics depend entirely on an \emph{unknown} active subset of $s$ features ($s \ll D$). 
+
+\vspace{0.4cm}
+\pause
+\textbf{What is the Bellman Rank?}
+\begin{itemize}
+    \item The ambient dimension is $D$.
+    \item However, the transition operator factors through an
+      $s$-dimensional bottleneck.
+    \item \alert{Therefore, the latent Bellman Rank is $s$. }
+      (Note, we don't need to know the subest $s$ here).
+\end{itemize}
+
+    SK: give class, where the class uses sparsity level $s$.
+
+\vspace{0.4cm}
+\pause
+\textit{Note: Applying Optimistic Elimination here involves some subtleties regarding off-policy evaluation ($V$-Bellman Rank), but the core geometric structure remains a rank-$s$ error matrix.}
+\end{frame}
+
+% =========================================================
+% Part 5: The Sample-Based Reality & Proof Gist
+% =========================================================
+\section{The Sample-Based Reality}
+
+\begin{frame}[noframenumbering]
+  \frametitle{Outline}
+  \tableofcontents[currentsection]
+\end{frame}
+
+\begin{frame}\frametitle{From Exact to Sample-Based Elimination}
+
+We estimate $\widehat{\mathcal{E}}_h(f_i, g)$ using finite datasets of size $m$. 
+
+SK: maybe we need to break this into to slides so it fits? What is $R$
+in the theorem? What are we assuming? This looks like a pretty low
+effort for clarity. We also need to say assume fstar in H. And we are
+sample based but need to say something about must happen in our sample
+based approach. this is why two slides may be nicer?? 
+
+\vspace{0.2cm}
+\textbf{The Statistical Relaxation:} We then relax the exact version space constraint $\mathcal{E}_h = 0$ to an elliptical radius constraint $R^2$.
+
+\pause
+\vspace{0.1cm}
+\begin{theorem}[PAC-RL under Bounded Bellman Rank]
+Suppose $(\mathcal{M}, \mathcal{H})$ has Bellman Rank $d$. If we run Optimistic Elimination maintaining the version space:
+\[
+\sum_{i=0}^{t-1} \Big( \widehat{\mathcal{E}}_h(f_i, g) \Big)^2 \;\le\; R^2 \qquad \forall h
+\]
+The algorithm terminates in $T = \widetilde{\mathcal{O}}(H d)$ iterations. \\
+Furthermore, with probability $\ge 1-\delta$, the output policy is $\epsilon$-optimal using a batch size per iteration of:
+\[
+m \;=\; \widetilde{\mathcal{O}}\left( \frac{d^2 H^5}{\epsilon^2} \cdot \log\frac{|\mathcal{H}|}{\delta} \right)
+\]
+\end{theorem}
+
+SK: this doesn't fit
+
+\vspace{0.1cm}
+\pause
+\textit{Proof Gist: The exact dimension counting proof is replaced by the \textbf{Elliptical Potential Lemma} (the log-determinant bound from LinUCB/LinMDPs).}
+\end{frame}
+
+\begin{frame}\frametitle{Instantiations: What is the Sample Complexity?}
+
+Let's plug our two running examples into the general PAC bound.
+
+\vspace{0.4cm}
+\pause
+\textbf{1. Linear Bellman Completeness}
+\begin{itemize}
+    \item \textbf{Hypothesis Class:} All linear models $Q_{h}(s,a) = \phi(s,a)^\top w_h$.
+    \item \textbf{Complexity:} Standard covering number arguments give $\log|\mathcal{H}| \approx d \log(1/\epsilon)$.
+    \item \textbf{Total Sample Complexity:} $\widetilde{\mathcal{O}}(d^3 H^5 / \epsilon^2)$.
+    \item \textit{Note: We achieve the same polynomial dependence on $d$ as the LinMDP algorithm, but under a strictly weaker assumption!}
+\end{itemize}
+
+\vspace{0.4cm}
+\pause
+\textbf{2. Sparse Linear MDPs}
+\begin{itemize}
+    \item \textbf{Hypothesis Class:} Union of all possible linear models using $s$ features out of $D$.
+    \item \textbf{Complexity:} $\log|\mathcal{H}| \approx s \log(eD/s) + s \log(1/\epsilon)$.
+    \item \textbf{Total Sample Complexity:} $\widetilde{\mathcal{O}}(s^3 H^5 / \epsilon^2 \cdot \alert{\log(D)})$.
+    \item \textit{Note: The statistical complexity only depends on the latent rank $s$, while the massive ambient dimension $D$ only costs us a $\log$ factor!}
+\end{itemize}
+
+\end{frame}
+
+
+\end{document}
+
