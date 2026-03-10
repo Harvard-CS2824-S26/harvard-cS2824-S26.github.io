@@ -125,53 +125,6 @@ We evaluate candidate $g$ using its \textbf{Average Bellman Error} under the rol
 \textit{Key Insight: Under realizability, the true optimal hypothesis $f^\star \in \Hcal$ is perfectly consistent everywhere. Thus, $\mathcal{E}_h(f, f^\star) = 0$ for \emph{every} roll-in policy $f$.}
 \end{frame}
 
-\iffalse
-\begin{frame}\frametitle{Algorithm: Optimistic Elimination (Exact Case)}
-
-Let's look at the \textbf{exact (noiseless)} case where we measure $\mathcal{E}_h(f,g)$ perfectly. How would we use this to find the optimal policy?
-
-\vspace{0.4cm}
-\pause
-\textbf{Algorithm Loop:} For iteration $t = 0, 1, 2, \dots$
-\begin{enumerate}
-    \item \textbf{Version Space:} Keep all hypotheses $g \in \mathcal{H}$ that have zero error on all past roll-ins:
-    \[
-      \mathcal{E}_h(f_1, g) \;=\; 0, \quad
-      \mathcal{E}_h(f_2, g) \;=\; 0, \quad
-      \ldots \mathcal{E}_h(f_{t-1}, g) \;=\; 0 %\qquad \forall i < t, \quad \forall h
-    \]
-    \item \textbf{Optimism:} Pick the surviving hypothesis $f_t$ that predicts the highest value $V_{0, g}(s_0)$.
-    \item \textbf{Roll-in:} Execute $\pi_{f_t}$ to collect new data and add it to our test set.
-\end{enumerate}
-
-\end{frame}
-
-\begin{frame}\frametitle{The Core Object: Average Bellman Error}
-
-If we can't build a structural bonus, let's test if our hypotheses are consistent with the data we collect.
-
-\vspace{0.2cm}
-Define the one-step \textbf{Bellman residual} of a hypothesis $g \in \Hcal$ as:
-\[
-\ell_h(s,a,s';g) \;:=\; Q_{h,g}(s,a) - r_h(s,a) - V_{h+1,g}(s')
-\]
-
-\pause
-\vspace{0.2cm}
-We evaluate candidate $g$ using its \textbf{Average Bellman Error} under the roll-in distribution induced by another policy $\pi_f$:
-\[
-\mathcal{E}_h(f,g) \;:=\; \E_{(s,a)\sim d_h^{\pi_f},\ s'\sim P_h^\star}\Big[\ell_h(s,a,s';g)\Big]
-\]
-
-\pause
-\vspace{0.2cm}
-\textbf{Key Intuition:}
-\begin{itemize}
-    \item Under realizability, the true optimal hypothesis $f^\star$ is perfectly consistent. Thus, $\mathcal{E}_h(f, f^\star) = 0$ for \emph{every} roll-in policy $f$.
-    \item Finding a near-optimal policy is equivalent to finding a $g$ that has low Bellman error under its own distribution ($\mathcal{E}_h(g, g) \approx 0$).
-\end{itemize}
-\end{frame}
-\fi
 
 \begin{frame}\frametitle{Data Reuse: Estimating Errors for all $g \in \Hcal$}
 
@@ -517,24 +470,24 @@ Suppose $(\mathcal{M}, \mathcal{H})$ has Bellman Rank $d$ and $f^\star \in \Hcal
 
 Let us plug our two running examples into the general PAC bound.
 
-\vspace{0.4cm}
+\vspace{0.2cm}
 \pause
 \textbf{1. Linear Bellman Completeness}
 \begin{itemize}
     \item \textbf{Hypothesis Class:} All linear models $Q_{h}(s,a) = \phi(s,a)^\top w_h$.
     \item \textbf{Complexity:} Standard covering number arguments yield $\log|\mathcal{H}| \approx d \log(1/\epsilon)$.
-    \item \textbf{Total Sample Complexity:} $\widetilde{\mathcal{O}}(d^3 H^5 / \epsilon^2)$.
+    \item \textbf{Total Sample Complexity:} $\widetilde{\mathcal{O}}(d^3 H^6 / \epsilon^2)$.
     \item \textit{Note: We achieve the same polynomial dependence on $d$ as the LinMDP algorithm, but under a strictly weaker assumption.}
 \end{itemize}
 
-\vspace{0.4cm}
+\vspace{0.2cm}
 \pause
 \textbf{2. Sparse Linear MDPs}
 \begin{itemize}
     \item \textbf{Hypothesis Class:} Union of all $s$-sparse linear models out of $D$ features.
     \item \textbf{Complexity:} $\log|\mathcal{H}| \approx s \log(eD/s) + s \log(1/\epsilon)$.
-    \item \textbf{Total Sample Complexity:} $\widetilde{\mathcal{O}}(s^3 H^5 / \epsilon^2 \cdot \alert{\log(D)})$.
-    \item \textit{Note: The statistical complexity depends primarily on the latent rank $s$, while the massive ambient dimension $D$ only enters logarithmically.}
+    \item \textbf{Total Sample Complexity:} $\widetilde{\mathcal{O}}(s^3 H^6 / \epsilon^2 \cdot \alert{\log(D)})$.
+    \item \alert{\textit{Note: The statistical complexity is $\textrm{poly}(s,\log(D))$.}}
 \end{itemize}
 
 \end{frame}
