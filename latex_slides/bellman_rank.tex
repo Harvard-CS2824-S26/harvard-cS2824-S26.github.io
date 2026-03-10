@@ -425,14 +425,15 @@ Every time we execute a sub-optimal policy, we discover a strictly new, linearly
 \begin{itemize}
     \item This implies a Bellman Rank of at most $d$.
     \item This uses the exact same feature $\phi$ as the Linear MDP analysis.
-    \item \alert{Crucially:} Optimistic Elimination only requires access to $\Hcal$; it never explicitly constructs or uses the unknown operator $\mathcal{T}_h$.
+    \item \alert{Crucially:} Optimistic Elimination only requires
+      access to $\Hcal$, and not $X(\cdot)$.
 \end{itemize}
 \end{frame}
 
 
 \begin{frame}\frametitle{Example 2: Sparse Linear MDPs}
 
-Suppose the state-action features are extremely high-dimensional: $\phi(s,a) \in \R^D$, where $D \gg |\Scal|$. 
+Suppose the features are extremely high-dimensional: $\phi(s,a) \in \R^D$, where $D \gg |\Scal|$. 
 
 \vspace{0.2cm}
 Assume the environment is a Linear MDP, but the transition dynamics depend entirely on an \emph{unknown} active subset of $s$ features ($s \ll D$). 
@@ -451,10 +452,12 @@ Assume the environment is a Linear MDP, but the transition dynamics depend entir
 \begin{itemize}
     \item The ambient dimension is $D$.
     \item However, the transition operator factors through an $s$-dimensional bottleneck.
-    \item \alert{Therefore, the latent Bellman Rank is $s$.} (Note, we do not need to know the active subset here).
+    \item Therefore, the latent Bellman Rank is $s$.\\
+      \alert{Note, we do not need to know the active subset here.}
 \end{itemize}
 
-\vspace{0.2cm}
+\vspace{0.1cm}
+\pause
 \textit{Note: Applying Optimistic Elimination here involves some subtleties regarding off-policy evaluation ($V$-Bellman Rank), but the core geometric structure remains a rank-$s$ error matrix.}
 \end{frame}
 
@@ -492,7 +495,7 @@ Because of finite-sample noise, $\widehat{\mathcal{E}}_h(f_i, f^\star)$ will not
 
 \end{frame}
 
-\begin{frame}\frametitle{PAC-RL under Bounded Bellman Rank}
+\begin{frame}\frametitle{PAC-RL under Bounded Bellman Rank (finite $|\mathcal{H}|$)}
 
 \begin{theorem}[Sample-Based Optimistic Elimination]
 Suppose $(\mathcal{M}, \mathcal{H})$ has Bellman Rank $d$ and $f^\star \in \Hcal$. If we run Optimistic Elimination using the relaxed version space constraint:
@@ -532,136 +535,6 @@ Let us plug our two running examples into the general PAC bound.
     \item \textbf{Complexity:} $\log|\mathcal{H}| \approx s \log(eD/s) + s \log(1/\epsilon)$.
     \item \textbf{Total Sample Complexity:} $\widetilde{\mathcal{O}}(s^3 H^5 / \epsilon^2 \cdot \alert{\log(D)})$.
     \item \textit{Note: The statistical complexity depends primarily on the latent rank $s$, while the massive ambient dimension $D$ only enters logarithmically.}
-\end{itemize}
-
-\end{frame}
-
-% old
-
-\begin{frame}\frametitle{Example 1: Linear Bellman Completeness}
-
-
-\vspace{0.1cm}
-\begin{itemize}
-    \item \textbf{Hypotheses:} $Q_{h}(s,a) = \phi(s,a)^\top w_{h}$.
-    \item \textbf{Completeness Assumption:} $r_h(s,a) + \E_{P^\star}[\max_{a'} w_{h+1} \cdot \phi(s',a')] \;=\; \phi(s,a)^\top \mathcal{T}_h(w_{h+1})$.
-\end{itemize}
-
-\pause
-\vspace{0.4cm}
-\textbf{The Factorization:} $f=\widetilde w$, $g=w$, $\pi_{\widetilde w }(s) = \argmax_a \widetilde w_h \cdot \phi(s,a)$.
-\begin{align*}
-\mathcal{E}_h(f,g) =\mathcal{E}_h(\widetilde w,w) &= \E_{d_h^{\pi_{\widetilde w}}}\Big[ \phi(s,a)^\top w_{h} - \phi(s,a)^\top \mathcal{T}_h(w_{h+1}) \Big] \\
-&= \Big\langle \underbrace{\E_{d_h^{\pi_{\widetilde w}}}[\phi(s,a)]}_{X_h(\widetilde w)}, \; \underbrace{w_{h} - \mathcal{T}_h(w_{h+1})}_{W_h(w)} \Big\rangle
-\end{align*}
-
-\pause
-\textbf{Key Observations:}
-\begin{itemize}
-    \item This implies a Bellman Rank of at most $d$.
-    \item This uses the exact same feature $\phi$ as the Linear MDP analysis.
-    \item \alert{Hypothesis class:} $\Hcal = \{ w_h \cdot \phi(s,a) : w_h
-      \in R_d\}$ (for each $h$).
-    \end{itemize}
-
-    SK: give class.
-    
-\end{frame}
-
-
-
-
-\begin{frame}\frametitle{Example 2: Sparse Linear MDPs}
-
-Suppose the state-action features are extremely high-dimensional: $\phi(s,a) \in \R^D$, where $D \gg |\Scal|$. 
-
-\vspace{0.2cm}
-Assume the environment is a Linear MDP, but the transition dynamics depend entirely on an \emph{unknown} active subset of $s$ features ($s \ll D$). 
-
-\vspace{0.4cm}
-\pause
-\textbf{What is the Bellman Rank?}
-\begin{itemize}
-    \item The ambient dimension is $D$.
-    \item However, the transition operator factors through an
-      $s$-dimensional bottleneck.
-    \item \alert{Therefore, the latent Bellman Rank is $s$. }
-      (Note, we don't need to know the subest $s$ here).
-\end{itemize}
-
-    SK: give class, where the class uses sparsity level $s$.
-
-\vspace{0.4cm}
-\pause
-\textit{Note: Applying Optimistic Elimination here involves some subtleties regarding off-policy evaluation ($V$-Bellman Rank), but the core geometric structure remains a rank-$s$ error matrix.}
-\end{frame}
-
-% =========================================================
-% Part 5: The Sample-Based Reality & Proof Gist
-% =========================================================
-\section{The Sample-Based Reality}
-
-\begin{frame}[noframenumbering]
-  \frametitle{Outline}
-  \tableofcontents[currentsection]
-\end{frame}
-
-\begin{frame}\frametitle{From Exact to Sample-Based Elimination}
-
-We estimate $\widehat{\mathcal{E}}_h(f_i, g)$ using finite datasets of size $m$. 
-
-SK: maybe we need to break this into to slides so it fits? What is $R$
-in the theorem? What are we assuming? This looks like a pretty low
-effort for clarity. We also need to say assume fstar in H. And we are
-sample based but need to say something about must happen in our sample
-based approach. this is why two slides may be nicer?? 
-
-\vspace{0.2cm}
-\textbf{The Statistical Relaxation:} We then relax the exact version space constraint $\mathcal{E}_h = 0$ to an elliptical radius constraint $R^2$.
-
-\pause
-\vspace{0.1cm}
-\begin{theorem}[PAC-RL under Bounded Bellman Rank]
-Suppose $(\mathcal{M}, \mathcal{H})$ has Bellman Rank $d$. If we run Optimistic Elimination maintaining the version space:
-\[
-\sum_{i=0}^{t-1} \Big( \widehat{\mathcal{E}}_h(f_i, g) \Big)^2 \;\le\; R^2 \qquad \forall h
-\]
-The algorithm terminates in $T = \widetilde{\mathcal{O}}(H d)$ iterations. \\
-Furthermore, with probability $\ge 1-\delta$, the output policy is $\epsilon$-optimal using a batch size per iteration of:
-\[
-m \;=\; \widetilde{\mathcal{O}}\left( \frac{d^2 H^5}{\epsilon^2} \cdot \log\frac{|\mathcal{H}|}{\delta} \right)
-\]
-\end{theorem}
-
-SK: this doesn't fit
-
-\vspace{0.1cm}
-\pause
-\textit{Proof Gist: The exact dimension counting proof is replaced by the \textbf{Elliptical Potential Lemma} (the log-determinant bound from LinUCB/LinMDPs).}
-\end{frame}
-
-\begin{frame}\frametitle{Instantiations: What is the Sample Complexity?}
-
-Let's plug our two running examples into the general PAC bound.
-
-\vspace{0.4cm}
-\pause
-\textbf{1. Linear Bellman Completeness}
-\begin{itemize}
-    \item \textbf{Hypothesis Class:} All linear models $Q_{h}(s,a) = \phi(s,a)^\top w_h$.
-    \item \textbf{Complexity:} Standard covering number arguments give $\log|\mathcal{H}| \approx d \log(1/\epsilon)$.
-    \item \textbf{Total Sample Complexity:} $\widetilde{\mathcal{O}}(d^3 H^5 / \epsilon^2)$.
-    \item \textit{Note: We achieve the same polynomial dependence on $d$ as the LinMDP algorithm, but under a strictly weaker assumption!}
-\end{itemize}
-
-\vspace{0.4cm}
-\pause
-\textbf{2. Sparse Linear MDPs}
-\begin{itemize}
-    \item \textbf{Hypothesis Class:} Union of all possible linear models using $s$ features out of $D$.
-    \item \textbf{Complexity:} $\log|\mathcal{H}| \approx s \log(eD/s) + s \log(1/\epsilon)$.
-    \item \textbf{Total Sample Complexity:} $\widetilde{\mathcal{O}}(s^3 H^5 / \epsilon^2 \cdot \alert{\log(D)})$.
-    \item \textit{Note: The statistical complexity only depends on the latent rank $s$, while the massive ambient dimension $D$ only costs us a $\log$ factor!}
 \end{itemize}
 
 \end{frame}
