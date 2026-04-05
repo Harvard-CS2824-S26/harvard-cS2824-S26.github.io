@@ -1,384 +1,538 @@
 \chapter{Policy Gradient Methods and Non-Convex Optimization}
 
-
-For a distribution $\rho$ over states, define:
+For a starting-state distribution $\mu \in \Delta(\Scal)$, define
 \[
-V^\pi(\rho) := \E_{s_0\sim \rho} [ V^\pi(s_0)] \, ,
+J_\mu(\theta) := V^{\pi_\theta}(\mu)
+= \E_{s_0\sim \mu}\big[V^{\pi_\theta}(s_0)\big].
 \]
-where we slightly overload notation.
-%where we drop the $\rho$ dependence when clear from context.
-Consider a class of parametric policies
-$\{\pi_\theta| \theta \in \Theta \subset \R^d\}$. The
-optimization problem of interest is:
+We study differentiable stochastic policy classes
 \[
-\max_{\theta \in \Theta}  V^{\pi_\theta}(\rho) \, .
+\Pi=\{\pi_\theta:\theta\in\Theta\subseteq \R^d\}
 \]
-We drop the MDP subscript in this chapter.
+and the optimization problem
+\[
+\max_{\theta\in\Theta} J_\mu(\theta).
+\]
+We suppress the MDP subscript throughout the chapter.
 
-\iffalse
-In many settings, one of the most practically effective methods is gradient ascent. A
-``direct'' approach often more easily handles large state
-and action spaces, and, in some cases, more readily handles settings where
-the model is not known. While we are interested in good performance
-under $\rho$, we will see how it is helpful to optimize under
-a different measure $\mu$. Specifically, we consider optimizing
-$V^{\pi_\theta}(\mu)$ even though our ultimate goal is performance
-under $V^{\pi_\theta}(\rho)$.
-\fi
-
-One immediate issue is that if the policy class $\{\pi_\theta\}$ consists of deterministic
-policies then $\pi_\theta$ will, in  general, not be differentiable.
-This motivates us to consider policy classes that are stochastic, which
-permit differentiability. 
+A direct optimization over deterministic policies is typically not differentiable, which
+motivates the use of stochastic parameterizations.
 
 \begin{example}[Softmax policies] \label{ex:softmax}
-It is instructive
-to explicitly consider a ``tabular'' policy representation, given by the \emph{softmax policy}:
+For the tabular softmax parameterization,
 \begin{equation}\label{eq:softmax}
-\pi_\theta(a|s) = \frac{\exp(\theta_{s,a})}{\sum_{a'} \exp(\theta_{s,a'})}
-\, ,
+\pi_\theta(a|s)
+=
+\frac{\exp(\theta_{s,a})}{\sum_{a'\in\Acal}\exp(\theta_{s,a'})},
+\qquad
+\theta\in \R^{|\Scal||\Acal|}.
 \end{equation}
-where the parameter space is $\Theta =\R^{|\Scal||\Acal|}$.
-Note that (the closure of) the set of softmax policies contains all
-stationary and deterministic policies.
+The closure of this policy class contains all stationary deterministic policies.
 \end{example}
 
 \begin{example}[Log-linear policies] \label{ex:linear_policy}
-For any state, action pair $s,a$, suppose we have a feature
-mapping $\phi_{s,a} \in \R^d$. Let us
-consider the policy class
+Given features $\phi_{s,a}\in\R^d$, consider
 \[
-  \pi_\theta(a| s) = \frac{\exp(\theta \cdot \phi_{s,a})}
-  {\sum_{a' \in \Acal} \exp(\theta \cdot \phi_{s,a'})}\]
-with $\theta \in
-\R^d$. 
+\pi_\theta(a|s)
+=
+\frac{\exp(\theta\cdot \phi_{s,a})}
+{\sum_{a'\in\Acal}\exp(\theta\cdot \phi_{s,a'})},
+\qquad
+\theta\in\R^d.
+\]
 \end{example}
 
 \begin{example}[Neural softmax policies] \label{ex:neural_policy}
-Here we may be interested in working with the policy class
+Let $f_\theta(s,a)$ be a differentiable scalar-valued function, for example a neural network.
+The induced softmax policy class is
 \[
-  \pi_\theta(a| s) = \frac{\exp\big(f_\theta (s,a)\big)}
-  {\sum_{a' \in \Acal} \exp\big(f_\theta (s,a')\big)}\]
-where the scalar function $f_\theta (s,a)$ may be parameterized by a
-neural network, with $\theta \in
-\R^d$. 
+\pi_\theta(a|s)
+=
+\frac{\exp(f_\theta(s,a))}
+{\sum_{a'\in\Acal}\exp(f_\theta(s,a'))},
+\qquad
+\theta\in\R^d.
+\]
 \end{example}
 
+\section{Policy Gradient Expressions}
 
-\section{Policy Gradient Expressions and the Likelihood Ratio Method}
+Let $\tau=(s_0,a_0,r_0,s_1,a_1,r_1,\ldots)$ denote a trajectory.
+For a fixed policy $\pi$, the trajectory distribution under start distribution $\mu$ is
+\begin{equation}\label{eq:prob_traj}
+{\Pr}_\mu^\pi(\tau)
+=
+\mu(s_0)\pi(a_0|s_0)P(s_1|s_0,a_0)\pi(a_1|s_1)P(s_2|s_1,a_1)\cdots .
+\end{equation}
+We write ${\Pr}^{\pi_\theta}_\mu$ when the policy is parameterized by $\theta$.
 
-Let $\tau$ denote a trajectory, whose unconditional distribution
-${\Pr}^\pi_{\mu}(\tau) $ under $\pi$ with starting
-distribution $\mu$, is
-\begin{align} \label{eq:prob_traj}
-  {\Pr}^\pi_{\mu}(\tau) = \mu(s_0) \pi(a_0|s_0) P(s_1|s_0,a_0)
-  \pi(a_1|s_1) \cdots \, .
-\end{align}
-We  drop the $\mu$ subscript when it is clear from context.
-
-It is convenient to define the discounted total reward of a trajectory as:
+Define the discounted return of a trajectory by
 \[
-R(\tau) := \sum_{t=0}^\infty \gamma^t r(s_t,a_t)
+R(\tau):=\sum_{t=0}^\infty \gamma^t r(s_t,a_t).
 \]
-where $s_t,a_t$ are the state-action pairs in $\tau$. Observe that:
+Then
 \[
-V^{\pi_\theta}(\mu) = \E_{\tau \sim \Pr^{\pi_\theta}_\mu} [ R(\tau)] \, .
+J_\mu(\theta)=V^{\pi_\theta}(\mu)=\E_{\tau\sim {\Pr}^{\pi_\theta}_\mu}[R(\tau)].
 \]
+
+It will be convenient to also write the discounted visitation distributions
+\[
+d_\mu^\pi(s)
+:=
+(1-\gamma)\,\E_{s_0\sim\mu}\Big[\sum_{t=0}^\infty \gamma^t \mathbf{1}\{s_t=s\}\Big],
+\qquad
+d_\mu^\pi(s,a):=d_\mu^\pi(s)\pi(a|s).
+\]
+
+The next theorem records the basic policy gradient identities. We assume throughout
+that $\theta\mapsto \pi_\theta(a|s)$ is differentiable and that differentiation may be
+interchanged with the relevant infinite sums / expectations. This is standard for the
+policy classes above in the tabular discounted setting.
 
 \begin{theorem}\label{thm:pg_expressions}
-(Policy gradients) The following are expressions for $\nabla_\theta V^{\pi_\theta}(\mu)$:
-  \begin{itemize}
-  \item REINFORCE:
-    \[
-      \nabla V^{\pi_\theta}(\mu) = \E_{\tau \sim \Pr^{\pi_\theta}_\mu} \left[ R(\tau)
-      \sum_{t=0}^\infty \nabla \log \pi_\theta(a_t|s_t) \right]
-    \]
-  \item Action value expression:
-\begin{eqnarray*}
-      \nabla V^{\pi_\theta}(\mu) &=& \E_{\tau \sim \Pr^{\pi_\theta}_\mu} \left[
-      \sum_{t=0}^\infty \gamma^t Q^{\pi_\theta}(s_t,a_t)\nabla \log
-      \pi_\theta(a_t|s_t) \right]\\
-&=& \frac{1}{1-\gamma}\E_{s\sim d^{\pi_\theta} }\E_{a\sim \pi_\theta(\cdot|s) }
-\Big[Q^{\pi_\theta}(s,a)\nabla \log
-      \pi_\theta(a|s)\Big]
-\end{eqnarray*}
-    \item Advantage expression:
+For any differentiable policy class $\{\pi_\theta\}$ and any start distribution $\mu$,
 \[
-      \nabla V^{\pi_\theta}(\mu) = \frac{1}{1-\gamma}\E_{s\sim d^{\pi_\theta} }\E_{a\sim \pi_\theta(\cdot|s) }
-\Big[A^{\pi_\theta}(s,a)\nabla \log
-      \pi_\theta(a|s)\Big]
-  \]
-  \end{itemize}
+\nabla_\theta J_\mu(\theta)
+=
+\E_{\tau\sim {\Pr}^{\pi_\theta}_\mu}
+\left[
+R(\tau)\sum_{t=0}^\infty \nabla_\theta \log \pi_\theta(a_t|s_t)
+\right].
+\]
+Moreover,
+\[
+\nabla_\theta J_\mu(\theta)
+=
+\E_{\tau\sim {\Pr}^{\pi_\theta}_\mu}
+\left[
+\sum_{t=0}^\infty \gamma^t Q^{\pi_\theta}(s_t,a_t)\nabla_\theta \log \pi_\theta(a_t|s_t)
+\right],
+\]
+and therefore
+\[
+\nabla_\theta J_\mu(\theta)
+=
+\frac{1}{1-\gamma}\,
+\E_{(s,a)\sim d_\mu^{\pi_\theta}}
+\Big[
+Q^{\pi_\theta}(s,a)\nabla_\theta \log \pi_\theta(a|s)
+\Big].
+\]
+Finally,
+\[
+\nabla_\theta J_\mu(\theta)
+=
+\frac{1}{1-\gamma}\,
+\E_{(s,a)\sim d_\mu^{\pi_\theta}}
+\Big[
+A^{\pi_\theta}(s,a)\nabla_\theta \log \pi_\theta(a|s)
+\Big].
+\]
 \end{theorem}
 
-The alternative expressions are more helpful to use when we turn to
-Monte Carlo estimation.
-
 \begin{proof}
-We have:
-\begin{eqnarray*}
-\nabla V^{\pi_\theta}(\mu)
-&= & \nabla \sum_{\tau} R(\tau) {\Pr}^{\pi_\theta}_\mu(\tau) \\
-&= & \sum_{\tau} R(\tau) \nabla {\Pr}^{\pi_\theta}_\mu(\tau)  \\
-&= & \sum_{\tau} R(\tau) {\Pr}^{\pi_\theta}_\mu(\tau) \nabla \log {\Pr}^{\pi_\theta}_\mu(\tau) \\
-&= & \sum_{\tau} R(\tau) {\Pr}^{\pi_\theta}_\mu (\tau) \nabla \log \left(\mu(s_0) \pi_\theta(a_0|s_0) P(s_1|s_0,a_0) \pi_\theta(a_1|s_1) \cdots \right)\\
-&= & \sum_{\tau} R(\tau) {\Pr}^{\pi_\theta}_\mu (\tau)   \left(\sum_{t=0}^\infty \nabla \log \pi_\theta(a_t|s_t) \right)
-\end{eqnarray*}
-which completes the proof of the first claim.
+For the first identity,
+\begin{align*}
+\nabla_\theta J_\mu(\theta)
+&=
+\nabla_\theta \sum_\tau R(\tau){\Pr}_\mu^{\pi_\theta}(\tau) \\
+&=
+\sum_\tau R(\tau)\nabla_\theta {\Pr}_\mu^{\pi_\theta}(\tau) \\
+&=
+\sum_\tau R(\tau){\Pr}_\mu^{\pi_\theta}(\tau)\nabla_\theta \log {\Pr}_\mu^{\pi_\theta}(\tau).
+\end{align*}
+Since neither the start distribution $\mu$ nor the transition kernel depends on $\theta$,
+\[
+\nabla_\theta \log {\Pr}_\mu^{\pi_\theta}(\tau)
+=
+\sum_{t=0}^\infty \nabla_\theta \log \pi_\theta(a_t|s_t),
+\]
+which proves the REINFORCE identity.
 
-For the second claim, for any state $s_0$
-\begin{eqnarray*}
-  &&\nabla V^{\pi_\theta} (s_0)\\
-&= & \nabla \sum_{a_0} \pi_\theta(a_0|s_0) Q^{\pi_\theta}(s_0,a_0)\\
-&= & \sum_{a_0} \Big(\nabla \pi_\theta(a_0|s_0)\Big) Q^{\pi_\theta}(s_0,a_0)
-+ \sum_{a_0} \pi_\theta(a_0|s_0) \nabla Q^{\pi_\theta}(s_0,a_0)\\
-&= & \sum_{a_0} \pi_\theta(a_0|s_0) \Big(\nabla \log \pi_\theta(a_0|s_0)\Big) Q^{\pi_\theta}(s_0,a_0)\\
-&&+ \sum_{a_0} \pi_\theta(a_0|s_0) \nabla\Big( r(s_0,a_0)
-+ \gamma\sum_{s_1}P(s_1|s_0,a_0) V^{\pi_\theta}(s_1)\Big)\\
-&= & \sum_{a_0} \pi_\theta(a_0|s_0) \Big(\nabla \log \pi_\theta(a_0|s_0)\Big) Q^{\pi_\theta}(s_0,a_0)
-+ \gamma \sum_{a_0,s_1} \pi_\theta(a_0|s_0)
-    P(s_1|s_0,a_0) \nabla V^{\pi_\theta}(s_1)\\
-&= & \E_{\tau \sim {\Pr}^{\pi_\theta}_{s_0} }\left[ Q^{\pi_\theta}(s_0,a_0) \nabla \log \pi_\theta(a_0|s_0)\right]
-+ \gamma \E_{\tau \sim {\Pr}^{\pi_\theta}_{s_0} }\left[\nabla V^{\pi_\theta}(s_1) \right].
-\end{eqnarray*}
-By linearity of expectation,
-\begin{eqnarray*}
-  &&\nabla V^{\pi_\theta} (\mu)\\
-&= & \E_{\tau \sim {\Pr}^{\pi_\theta}_\mu }\left[ Q^{\pi_\theta}(s_0,a_0) \nabla \log \pi_\theta(a_0|s_0)\right]
-+ \gamma \E_{\tau \sim {\Pr}^{\pi_\theta}_\mu }\left[\nabla V^{\pi_\theta}(s_1) \right] \\
-&= & \E_{\tau \sim {\Pr}^{\pi_\theta}_\mu }\left[ Q^{\pi_\theta}(s_0,a_0) \nabla \log \pi_\theta(a_0|s_0)\right]
-+ \gamma \E_{\tau \sim {\Pr}^{\pi_\theta}_\mu }\left[Q^{\pi_\theta}(s_1,a_1) \nabla \log \pi_\theta(a_1|s_1) \right]
-+\ldots \, .
-\end{eqnarray*}
-where the last step follows from recursion. This completes the proof of the second claim.
-%Taking an expectation over $s_0$ completes the proof of the second claim.
+For the second identity, define
+\[
+G_t := \sum_{u=t}^\infty \gamma^{u-t} r(s_u,a_u),
+\]
+so that
+\[
+R(\tau)=\sum_{u=0}^{t-1}\gamma^u r(s_u,a_u)+\gamma^t G_t.
+\]
+Fix $t$, and let
+\[
+\mathcal{F}_t:=\sigma(s_0,a_0,r_0,\ldots,s_{t-1},a_{t-1},r_{t-1},s_t)
+\]
+be the history up to time $t$, before sampling $a_t$.
+Then
+\[
+\E\!\left[\nabla_\theta \log \pi_\theta(a_t|s_t)\mid \mathcal{F}_t\right]
+=
+\sum_{a\in\Acal}\pi_\theta(a|s_t)\nabla_\theta \log \pi_\theta(a|s_t)
+=
+\sum_{a\in\Acal}\nabla_\theta \pi_\theta(a|s_t)
+=
+0.
+\]
+Hence the past rewards do not contribute:
+\[
+\E\!\left[
+\Big(\sum_{u=0}^{t-1}\gamma^u r(s_u,a_u)\Big)\nabla_\theta \log \pi_\theta(a_t|s_t)
+\right]
+=
+0.
+\]
+Also, by the Markov property,
+\[
+\E[G_t\mid s_t,a_t] = Q^{\pi_\theta}(s_t,a_t).
+\]
+Therefore
+\[
+\E\!\left[R(\tau)\nabla_\theta \log \pi_\theta(a_t|s_t)\right]
+=
+\E\!\left[\gamma^t Q^{\pi_\theta}(s_t,a_t)\nabla_\theta \log \pi_\theta(a_t|s_t)\right].
+\]
+Summing over $t$ gives
+\[
+\nabla_\theta J_\mu(\theta)
+=
+\E_{\tau\sim {\Pr}^{\pi_\theta}_\mu}
+\left[
+\sum_{t=0}^\infty \gamma^t Q^{\pi_\theta}(s_t,a_t)\nabla_\theta \log \pi_\theta(a_t|s_t)
+\right].
+\]
+The discounted occupancy form follows from the definition of $d_\mu^{\pi_\theta}(s,a)$.
 
-The proof of the final claim is left as an exercise to the reader.
+For the advantage expression, write
+\[
+Q^{\pi_\theta}(s,a)=A^{\pi_\theta}(s,a)+V^{\pi_\theta}(s)
+\]
+and note that
+\[
+\E_{a\sim \pi_\theta(\cdot|s)}
+\big[V^{\pi_\theta}(s)\nabla_\theta \log \pi_\theta(a|s)\big]
+=
+V^{\pi_\theta}(s)\nabla_\theta \sum_a \pi_\theta(a|s)
+=
+0.
+\]
+Substituting proves the final identity.
 \end{proof}
-%HW
 
-\section{(Non-convex) Optimization}
+The action-value and advantage forms are typically more useful for Monte Carlo estimation.
 
-It is worth explicitly noting that $V^{\pi_\theta}(s)$ is non-concave in $\theta$ for 
-the softmax parameterizations, so the standard tools of
-convex optimization are not applicable. 
+\section{Monte Carlo Gradient Estimation}
 
-\begin{lemma}
-(Non-convexity) There is an MDP $M$ (described in Figure~\ref{fig:noncon}) such that the optimization problem $
-V^{\pi_\theta} (s)$ is not concave for both the direct and softmax
-parameterizations.
-\label{lemma:softmax-noncon}
+The previous theorem suggests a simulation-based estimator that only requires sampled
+trajectories. For a single trajectory $\tau$, define
+\[
+\widehat Q_t := \sum_{u=t}^\infty \gamma^{u-t} r(s_u,a_u),
+\]
+and
+\[
+\widehat{\nabla_\theta J_\mu}(\tau)
+:=
+\sum_{t=0}^\infty \gamma^t \widehat Q_t \,\nabla_\theta \log \pi_\theta(a_t|s_t).
+\]
+
+\begin{lemma}\label{lemma:unbiased_grad}
+We have
+\[
+\E_{\tau\sim {\Pr}_\mu^{\pi_\theta}}
+\big[\widehat{\nabla_\theta J_\mu}(\tau)\big]
+=
+\nabla_\theta J_\mu(\theta).
+\]
 \end{lemma}
 
 \begin{proof}
-Recall the MDP in Figure \ref{fig:noncon}. Note that since actions in terminal states $s_3$, $s_4$ and $s_5$ do not change the expected reward, we only consider actions in states $s_1$ and $s_2$. Let the "up/above" action as $a_1$ and "right" action as $a_2$. Note that
-	\[V^\pi(s_1) = \pi(a_2|s_1) \pi(a_1|s_2) \cdot r \]
-
-	Now consider
-	\[\theta^{(1)} = (\log 1, \log 3, \log 3, \log 1), \quad
-        \theta^{(2)} = (-\log 1, -\log 3, -\log 3, -\log 1) \] where
-        $\theta$ is written as a tuple $(\theta_{a_1,s_1},
-        \theta_{a_2,s_1}, \theta_{a_1,s_2}, \theta_{a_2,s_2})$. Then,
-        for the softmax parameterization, we have: 
-	\[\pi^{(1)}(a_2|s_1) = \frac{3}{4};\quad \pi^{(1)}(a_1|s_2) = \frac{3}{4};\quad V^{(1)}(s_1) = \frac{9}{16} r\]
-	and
-	\[\pi^{(2)}(a_2|s_1) = \frac{1}{4};\quad \pi^{(2)}(a_1|s_2) = \frac{1}{4};\quad V^{(2)}(s_1) = \frac{1}{16} r.\]
-	
-	Also, for $\theta^{(\text{mid})} = \frac{\theta^{(1)} + \theta^{(2)}}{2}$,
-	\[\pi^{(\text{mid})}(a_2|s_1) = \frac{1}{2};\quad \pi^{(\text{mid})}(a_1|s_2) = \frac{1}{2};\quad V^{(\text{mid})}(s_1) = \frac{1}{4} r.\]
-	
-	This gives
-	\[V^{(1)}(s_1) + V^{(2)}(s_1) > 2  V^{(\text{mid})}(s_1),\]
-	which shows that $V^\pi$ is non-concave.
+By the tower property and the Markov property,
+\[
+\E[\widehat Q_t\mid s_t,a_t]=Q^{\pi_\theta}(s_t,a_t).
+\]
+Therefore
+\begin{align*}
+\E\big[\widehat{\nabla_\theta J_\mu}(\tau)\big]
+&=
+\E\left[\sum_{t=0}^\infty \gamma^t \widehat Q_t \,\nabla_\theta \log \pi_\theta(a_t|s_t)\right] \\
+&=
+\E\left[\sum_{t=0}^\infty \gamma^t Q^{\pi_\theta}(s_t,a_t)\,\nabla_\theta \log \pi_\theta(a_t|s_t)\right],
+\end{align*}
+which is exactly the action-value expression in Theorem~\ref{thm:pg_expressions}.
 \end{proof}
 
+In practice, one typically uses finite-horizon episodes or truncates the infinite-horizon
+trajectory. In the discounted setting, truncating after $T_{\mathrm{tr}}$ steps introduces
+a bias of order $O(\gamma^{T_{\mathrm{tr}}}/(1-\gamma))$.
+
+\subsection{Baselines}
+
+A basic and extremely useful variance-reduction device is to subtract a baseline.
+
+\begin{lemma}[Baselines preserve unbiasedness]
+\label{lem:baseline_unbiased}
+Let $(b_t)_{t\ge 0}$ be any sequence such that, for each $t$, $b_t$ is measurable with
+respect to $\mathcal{F}_t$ (the history up to time $t$, before sampling $a_t$). Assume the
+expectations below are well-defined. Then
+\[
+\E\left[
+\sum_{t=0}^\infty \gamma^t b_t \,\nabla_\theta \log \pi_\theta(a_t|s_t)
+\right]
+=
+0.
+\]
+Consequently,
+\[
+\E\left[
+\sum_{t=0}^\infty \gamma^t \big(\widehat Q_t-b_t\big)\nabla_\theta \log \pi_\theta(a_t|s_t)
+\right]
+=
+\nabla_\theta J_\mu(\theta).
+\]
+\end{lemma}
+
+\begin{proof}
+For each $t$,
+\begin{align*}
+\E\big[b_t \nabla_\theta \log \pi_\theta(a_t|s_t)\big]
+&=
+\E\Big[\E\big[b_t \nabla_\theta \log \pi_\theta(a_t|s_t)\mid \mathcal{F}_t\big]\Big] \\
+&=
+\E\Big[b_t\,\E\big[\nabla_\theta \log \pi_\theta(a_t|s_t)\mid \mathcal{F}_t\big]\Big] \\
+&= 0,
+\end{align*}
+using the same identity as in the proof of Theorem~\ref{thm:pg_expressions}.
+Summing over $t$ gives the first claim, and the second follows from Lemma~\ref{lemma:unbiased_grad}.
+\end{proof}
+
+The most common choice is a state-dependent baseline $b_t=b(s_t)$, often intended to
+approximate $V^{\pi_\theta}(s_t)$. This leads to the familiar advantage-style estimator.
+More generally, any baseline measurable with respect to the history before sampling $a_t$
+is valid.
+
+\section{Non-Convex Optimization}
+
+Even in very small MDPs, the map $\theta\mapsto J_\mu(\theta)$ is generally non-concave.
 
 \input{Figures/fig_nonconvex}
 
+\begin{proposition}[Non-concavity of the softmax parameterization]
+\label{lemma:softmax-noncon}
+There exists an MDP such that the optimization problem
+\[
+\max_\theta V^{\pi_\theta}(s_1)
+\]
+is non-concave under the softmax parameterization.
+\end{proposition}
 
-\subsection{Gradient ascent and convergence to stationary points}
-Let us say a function $f:\mathbb{R}^d \rightarrow
-\mathbb{R}$ is  $\beta$ -\emph{smooth} if
+\begin{proof}
+Consider the MDP in Figure~\ref{fig:noncon}. Only the actions at states $s_1$ and $s_2$
+affect the value. Let $a_1$ denote the ``up'' action and $a_2$ the ``right'' action.
+Then
+\[
+V^\pi(s_1)=\pi(a_2|s_1)\,\pi(a_1|s_2)\,r.
+\]
+
+Write the parameters in the order
+\[
+(\theta_{s_1,a_1},\theta_{s_1,a_2},\theta_{s_2,a_1},\theta_{s_2,a_2}).
+\]
+Consider
+\[
+\theta^{(1)}=(0,\log 3,\log 3,0),
+\qquad
+\theta^{(2)}=(0,-\log 3,-\log 3,0).
+\]
+Under the softmax parameterization,
+\[
+\pi^{(1)}(a_2|s_1)=\frac{3}{4},
+\qquad
+\pi^{(1)}(a_1|s_2)=\frac{3}{4},
+\qquad
+V^{(1)}(s_1)=\frac{9}{16}r,
+\]
+while
+\[
+\pi^{(2)}(a_2|s_1)=\frac{1}{4},
+\qquad
+\pi^{(2)}(a_1|s_2)=\frac{1}{4},
+\qquad
+V^{(2)}(s_1)=\frac{1}{16}r.
+\]
+The midpoint is
+\[
+\theta^{(\mathrm{mid})}=\frac{\theta^{(1)}+\theta^{(2)}}{2}=(0,0,0,0),
+\]
+for which
+\[
+\pi^{(\mathrm{mid})}(a_2|s_1)=\frac{1}{2},
+\qquad
+\pi^{(\mathrm{mid})}(a_1|s_2)=\frac{1}{2},
+\qquad
+V^{(\mathrm{mid})}(s_1)=\frac{1}{4}r.
+\]
+Thus
+\[
+V^{(\mathrm{mid})}(s_1)
+<
+\frac{1}{2}V^{(1)}(s_1)+\frac{1}{2}V^{(2)}(s_1),
+\]
+so the objective is not concave.
+\end{proof}
+
+For this reason, the standard tools of convex optimization do not directly apply.
+Nevertheless, smooth non-convex optimization still provides useful guarantees: if the gradient
+is small, then the iterate is close to a first-order stationary point.
+
+Let $J:\R^d\to \R$ be differentiable. We say $J$ is $\beta$-smooth if
 \begin{equation}\label{eq:def_smoothness}
-\|\nabla f(w) - \nabla f(w') \| \leq \beta \|w - w'\| \, ,
+\|\nabla J(\theta)-\nabla J(\theta')\|_2
+\le
+\beta \|\theta-\theta'\|_2
+\qquad
+\forall \theta,\theta'\in\R^d.
 \end{equation}
-where the norm  $\|\cdot \|$ is the Euclidean norm. In other words, the derivatives
-of $f$ do not change too quickly.
 
-Gradient ascent, with a fixed stepsize $\eta$, follows the update
-rule:
-\[
-\theta_{t+1} = \theta_t + \eta {\nabla V^{\pi_{\theta_t}}(\mu)} \, .
-\]
-It is convenient to use the shorthand notation:
-\[
-\pi^{(t)}:=\pi_{\theta_t} , \quad \quad V^{(t)} := V^{\pi_{\theta_t}}
-\]
-
-The next lemma is standard in non-convex optimization.
+We now record two standard consequences.
 
 \begin{lemma}\label{lemma:stationary}
-(Convergence to Stationary Points) Assume that
-for all $\theta\in \Theta$, $V^{\pi_{\theta}}$ is $\beta$-smooth and
-bounded below by $V_*$. Suppose
-we use the constant stepsize $\eta = 1/\beta$.
-For all $T$, we have that
+Let $J:\R^d\to\R$ be $\beta$-smooth and bounded above by
 \[
-  \min_{t\leq T} \|\nabla V^{(t)}(\mu)\|^2 \leq
-  \frac{2\beta (V^*(\mu) - V^{(0)}(\mu)) }{T} \, .
+J^\star:=\sup_{\theta} J(\theta)<\infty.
 \]
-%where $\theta^*$ is a global minimizer of $V^{\pi_{\theta^*}}$.
-\end{lemma}
-
-
-\subsection{Monte Carlo estimation and stochastic gradient ascent} One difficulty is that even if we
-know the MDP $M$, computing the gradient may be computationally
-intensive. It turns out that we can obtain unbiased estimates of $\pi$
-with only simulation based access to our model, i.e. assuming we can
-obtain sampled trajectories $\tau \sim {\Pr}^{\pi_\theta}_\mu$.
-
-With respect to a trajectory $\tau$, define:
-  \begin{eqnarray*}
-\widehat{Q^{\pi_\theta}}(s_t,a_t) &:=& \sum_{t'=t}^\infty \gamma ^{t' - t} r(s_{t'},a_{t'}) \\
-\widehat{\nabla V^{\pi_\theta}}(\mu) &:= &
-\sum_{t=0}^\infty \gamma ^t \widehat{Q^{\pi_\theta}}(s_t,a_t) \nabla \log \pi_\theta(a_t|s_t)
-\end{eqnarray*}
-
-
-
-We now show this provides an unbiased estimated of the gradient:
-\begin{lemma}~\label{lemma:unbiased_grad}
-(Unbiased gradient estimate) We have :
-  \[
-\E_{\tau \sim {\Pr}^{\pi_\theta}_\mu}\left[\widehat{\nabla V^{\pi_\theta}}(\mu)\right] = \nabla V^{\pi_\theta}(\mu)
-  \]
+Consider gradient ascent
+\[
+\theta_{t+1}=\theta_t+\eta \nabla J(\theta_t)
+\]
+with stepsize $\eta=1/\beta$. Then for every $T\ge 1$,
+\[
+\min_{0\le t<T}\|\nabla J(\theta_t)\|_2^2
+\le
+\frac{2\beta\big(J^\star-J(\theta_0)\big)}{T}.
+\]
 \end{lemma}
 
 \begin{proof}
-Observe:
-    \begin{eqnarray*}
-\E[\widehat{\nabla V^{\pi_\theta}}(\mu)] &= &
-\E\left[\sum_{t=0}^\infty \gamma ^t \widehat{Q^{\pi_\theta}}(s_t,a_t) \nabla \log \pi_\theta(a_t|s_t) \right]\\
-&\stackrel{(a)}{=}&
-\E\left[\sum_{t=0}^\infty \gamma ^t \E[\widehat{Q^{\pi_\theta}}(s_t,a_t)|s_t,a_t] \nabla \log \pi_\theta(a_t|s_t) \right]\\
-&\stackrel{(b)}{=}&
-\E\left[\sum_{t=0}^\infty \gamma ^t Q^{\pi_\theta}(s_t,a_t) \nabla \log \pi_\theta(a_t|s_t) \right]\\
-\end{eqnarray*}
-where $(a)$ follows from the tower property of the conditional expectations
-and $(b)$ follows from that the Markov property implies 
-$\E[\widehat{Q^{\pi_\theta}}(s_t,a_t)|s_t,a_t]=Q^{\pi_\theta}(s_t,a_t)$.
+By $\beta$-smoothness,
+\[
+J(\theta_{t+1})
+\ge
+J(\theta_t)
++
+\eta \|\nabla J(\theta_t)\|_2^2
+-
+\frac{\beta\eta^2}{2}\|\nabla J(\theta_t)\|_2^2.
+\]
+With $\eta=1/\beta$, this becomes
+\[
+J(\theta_{t+1})
+\ge
+J(\theta_t)
++
+\frac{1}{2\beta}\|\nabla J(\theta_t)\|_2^2.
+\]
+Summing from $t=0$ to $T-1$ gives
+\[
+\frac{1}{2\beta}\sum_{t=0}^{T-1}\|\nabla J(\theta_t)\|_2^2
+\le
+J^\star-J(\theta_0).
+\]
+The claim follows by taking the minimum over $t<T$.
 \end{proof}
 
-
-%\paragraph{Convergence:}
-Hence, the following procedure is a stochastic gradient ascent algorithm:
-\begin{enumerate}
-\item initialize $\theta_0$.
-\item For $t=0, 1, \ldots$
-  \begin{enumerate}
-  \item Sample $\tau \sim {\Pr}^{\pi_\theta}_\mu$.
-  \item Update:
-    \[
-\theta_{t+1} = \theta_t + \eta_t \widehat{\nabla V^{\pi_\theta}}(\mu)
-\]
-where $\eta_t$ is the stepsize and $\widehat{\nabla
-  V^{\pi_\theta}(\mu)}$ estimated with $\tau$.
-\end{enumerate}
-\end{enumerate}
-
-Note here that we are ignoring that $\tau$ is an infinte length sequence. It
-can be truncated appropriately so as to control the bias.
-
-The following is standard result with regards to non-convex
-optimization. Again,
-with reasonably bounded variance, we will obtain a point
-$\theta_t$ with small gradient norm.
-
-\begin{lemma} \label{lemma:sgd_stationary}
-(Stochastic Convergence to Stationary Points) Assume that
-for all $\theta\in \Theta$, $V^{\pi_{\theta}}$ is $\beta$-smooth and
-bounded below by $V_*$. Suppose the variance is
-bounded as follows:
+\begin{lemma}\label{lemma:sgd_stationary}
+Let $J:\R^d\to\R$ be $\beta$-smooth and bounded above by $J^\star$.
+Suppose we run the stochastic gradient ascent updates
 \[
-\E[\|\widehat{\nabla V^{\pi_\theta}}(\mu) - \nabla V^{\pi_\theta}(\mu)\|^2] \leq \sigma^2
+\theta_{t+1}=\theta_t+\eta g_t,
 \]
-For $t\leq \beta (V^*(\mu) - V^{(0)}(\mu)) /\sigma^2$, suppose we use a
-constant stepsize of $\eta_t=1/\beta$, and thereafter, we use $ \eta_t
-=\sqrt{2/(\beta T)} $.
-For all $T$, we have:
+where
 \[
-  \min_{t\leq T} \E[\|\nabla V^{(t)}(\mu)\|^2 ]\leq
-  \frac{2\beta (V^*(\mu) - V^{(0)}(\mu)) }{T}
-+  \sqrt{\frac{2\sigma^2 }{T}}\, .
+\E[g_t\mid \theta_t]=\nabla J(\theta_t),
+\qquad
+\E[\|g_t-\nabla J(\theta_t)\|_2^2\mid \theta_t]\le \sigma^2,
 \]
-\end{lemma}
-
-
-\subsubsection{Baselines and stochastic gradient ascent}
-A significant practical issue is that the variance $\sigma^2$ is often
-large in practice. Here, a form of variance
-reduction is often critical in practice. A common method is as follows.
-
-Let $f:\Scal \rightarrow \R$.
-\begin{enumerate}
-\item 
-Construct $f$ as an estimate of $V^{\pi_\theta}(\mu)$. This can be
-done using any previous data.
-\item Sample a new trajectory $\tau$, and define:
-  \begin{eqnarray*}
-\widehat{Q^{\pi_\theta}}(s_t,a_t) &:=& \sum_{t'=t}^\infty \gamma^{t'-t} r(s_{t'},a_{t'}) \\
-\widehat{\nabla V^{\pi_\theta}}(\mu) &:= &
-\sum_{t=0}^\infty \gamma^t \Big( \widehat{Q^{\pi_\theta}}(s_t,a_t)-f(s_t) \Big) \nabla \log \pi_\theta(a_t|s_t)
-\end{eqnarray*}
-\end{enumerate}
-
-We often refer to $f(s)$ as a \emph{baseline} at state $s$. 
-
-\begin{lemma}
-  (Unbiased gradient estimate with Variance Reduction)
-For any procedure used to construct to the baseline function  $f:\Scal
-\rightarrow \R$,
-if the samples
-used to construct $f$ are independent of the trajectory $\tau$, where
-$\widehat{Q^{\pi_\theta}}(s_t,a_t)$ is constructed using $\tau$, then:
-  \[
-    \E\left[
-      \sum_{t=0}^\infty \gamma^t \Big( \widehat{Q^{\pi_\theta}}(s_t,a_t)-f(s_t) \Big)
-      \nabla \log \pi_\theta(a_t|s_t) \right]
-    = \nabla V^{\pi_\theta}(\mu)
-  \]
-  where the expectation is with respect to both the random trajectory
-  $\tau$ and the random function $f(\cdot)$.
+and $\eta\in(0,1/\beta]$ is constant.
+Then for every $T\ge 1$,
+\[
+\frac{1}{T}\sum_{t=0}^{T-1}\E\|\nabla J(\theta_t)\|_2^2
+\le
+\frac{2\big(J^\star-J(\theta_0)\big)}{\eta T}
++
+\beta\eta \sigma^2.
+\]
+In particular,
+\[
+\min_{0\le t<T}\E\|\nabla J(\theta_t)\|_2^2
+\le
+\frac{2\big(J^\star-J(\theta_0)\big)}{\eta T}
++
+\beta\eta \sigma^2.
+\]
 \end{lemma}
 
 \begin{proof}
-  For any function $g(s)$,
-  \[
-    \E\left[\nabla \log \pi(a|s) g(s) \right] = \sum_a \nabla \pi(a|s) g(s) =    g(s) \sum_a \nabla \pi(a|s)  =
-    g(s) \nabla \sum_a \pi(a|s)  = g(s) \nabla 1  = 0
-    \]
-Using that $f(\cdot)$ is independent of $\tau$, we have that for all $t$
+Taking conditional expectation in the smoothness inequality gives
+\begin{align*}
+\E[J(\theta_{t+1})\mid \theta_t]
+&\ge
+J(\theta_t)
++
+\eta \nabla J(\theta_t)\cdot \E[g_t\mid \theta_t]
+-
+\frac{\beta\eta^2}{2}\E[\|g_t\|_2^2\mid \theta_t] \\
+&=
+J(\theta_t)
++
+\eta \|\nabla J(\theta_t)\|_2^2
+-
+\frac{\beta\eta^2}{2}
+\Big(\|\nabla J(\theta_t)\|_2^2+\E[\|g_t-\nabla J(\theta_t)\|_2^2\mid \theta_t]\Big) \\
+&\ge
+J(\theta_t)
++
+\Big(\eta-\frac{\beta\eta^2}{2}\Big)\|\nabla J(\theta_t)\|_2^2
+-
+\frac{\beta\eta^2}{2}\sigma^2.
+\end{align*}
+Since $\eta\le 1/\beta$,
 \[
-\E\left[
-\sum_{t=0}^\infty \gamma^t f(s_t) \nabla \log \pi_\theta(a_t|s_t) \right]
-= 0
+\eta-\frac{\beta\eta^2}{2}\ge \frac{\eta}{2}.
 \]
-The result now follow froms Lemma~\ref{lemma:unbiased_grad}.
+Therefore,
+\[
+\frac{\eta}{2}\E\|\nabla J(\theta_t)\|_2^2
+\le
+\E[J(\theta_{t+1})]-\E[J(\theta_t)] + \frac{\beta\eta^2}{2}\sigma^2.
+\]
+Summing over $t=0,\ldots,T-1$ and using $\E[J(\theta_T)]\le J^\star$ yields
+\[
+\frac{\eta}{2}\sum_{t=0}^{T-1}\E\|\nabla J(\theta_t)\|_2^2
+\le
+J^\star-J(\theta_0)+\frac{\beta\eta^2 T}{2}\sigma^2.
+\]
+Divide by $\eta T/2$.
 \end{proof}
 
+In the policy-gradient setting, these lemmas apply to $J_\mu(\theta)=V^{\pi_\theta}(\mu)$
+whenever the policy class is sufficiently regular to make $J_\mu$ smooth and the Monte Carlo
+gradient estimator has controlled variance. Later chapters will exploit additional structure
+beyond generic stationarity in order to obtain global guarantees.
 
+\paragraph{Global optimality vs.\ first-order stationarity.}
+Obtaining an approximate first-order stationary point is, in general,
+a fairly weak guarantee. As we will see in the next chapter, policy
+gradient methods can become trapped at first-order stationary points
+that are still far from globally optimal, and in some cases far from
+any meaningful local optimum. 
 
 \section{Bibliographic Remarks and Further Readings}\label{bib:pg_basics}
 
-The REINFOCE algorithm is due to \cite{williams1992simple}, which is
-an example of the likelihood ratio method for gradient estimation~\cite{glynn_likelihood}.
+The REINFORCE algorithm is due to \cite{williams1992simple}, and is an example of the
+likelihood-ratio method for gradient estimation \cite{glynn_likelihood}.
 
-For standard optimization results in non-convex optimization (e.g. Lemma~\ref{lemma:stationary}
-and \ref{lemma:sgd_stationary}), we refer the reader to
-\cite{book:beck}. Our results for convergence rates for SGD to
-approximate stationary points follow from~\cite{DBLP:journals/siamjo/GhadimiL13a}.
+For the optimization facts used in this chapter, including smooth non-convex gradient
+and stochastic gradient methods, we refer the reader to \cite{book:beck}; see also
+\cite{DBLP:journals/siamjo/GhadimiL13a} for standard stochastic-gradient convergence
+bounds to approximate stationary points.
 
-\iffalse
-The notion of \emph{compatible function approximation} was due to
-\cite{sutton1999policy}. 
-\fi
+
+
