@@ -1,10 +1,6 @@
 \chapter{Function Approximation and the NPG}
 \label{chap:pg_approx}
 
-\newcommand{\epsstat}{\epsilon_{\mathrm{stat}}}
-\newcommand{\epsbias}{\epsilon_{\mathrm{bias}}}
-\newcommand{\epsapprox}{\epsilon_{\mathrm{approx}}}
-
 
 We now analyze the case of using parametric policy classes:
 \[
@@ -53,8 +49,6 @@ gradients) and approximation (due to using a parameterized function
 class). We will see an precise estimation/approximation decomposition
 based on the compatible function approximation error.
 
-The presentation in this chapter largely follows the results
-in~\cite{agarwal2019optimality}. 
 
 \section{Compatible function approximation and the NPG}
 
@@ -941,6 +935,7 @@ would be $O(1/\sqrt{N})$.
 \fi
 
 \section{Bibliographic Remarks and Further Readings}\label{bib:pg_approx}
+
 
 The notion of \emph{compatible function approximation} was due to
 \cite{sutton1999policy}, which also proved the claim in
